@@ -2,966 +2,1111 @@ import streamlit as st
 import pikepdf
 import io
 import zipfile
+from PIL import Image
+import fitz  # PyMuPDF
 from datetime import datetime
 
-# ─── Page Config ───
+# ──────────────────────────────────────────────
+# Configuration & Page Setup
+# ──────────────────────────────────────────────
+
 st.set_page_config(
-    page_title="PDF Toolkit Pro",
-    page_icon="🔐",
+    page_title="PDF Tools Pro",
+    page_icon="📄",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ─── CSS: passlab-inspired dark theme ───
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+# ──────────────────────────────────────────────
+# Translations
+# ──────────────────────────────────────────────
 
-    :root {
-        --bg-primary: #050505;
-        --bg-secondary: #0d0d0d;
-        --bg-card: #111111;
-        --bg-card-hover: #171717;
-        --bg-elevated: #1a1a1a;
-        --border: #2a2a2a;
-        --border-light: #222222;
-        --accent: #8cff2e;
-        --accent-dim: rgba(140, 255, 46, 0.08);
-        --accent-glow: rgba(140, 255, 46, 0.15);
-        --text-primary: #ffffff;
-        --text-secondary: rgba(255, 255, 255, 0.55);
-        --text-tertiary: rgba(255, 255, 255, 0.3);
-        --text-muted: rgba(255, 255, 255, 0.18);
-        --danger: #ff4757;
-        --warning: #ffa502;
-        --success: #8cff2e;
-        --radius: 14px;
-        --radius-sm: 10px;
-        --radius-lg: 20px;
-        --radius-xl: 28px;
-    }
-
-    /* ── Global ── */
-    .stApp, [data-testid="stAppViewContainer"], .main .block-container {
-        background-color: var(--bg-primary) !important;
-        color: var(--text-primary);
-        font-family: 'Manrope', -apple-system, sans-serif;
-    }
-    .main .block-container {
-        max-width: 900px;
-        padding: 2rem 1.5rem 4rem;
-    }
-    header[data-testid="stHeader"] {
-        background: transparent !important;
-    }
-
-    /* Hide default streamlit elements */
-    #MainMenu, footer, .stDeployButton { display: none !important; }
-
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-primary); }
-    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-
-    /* ── Hero ── */
-    .hero {
-        text-align: center;
-        padding: 3.5rem 1rem 2.5rem;
-        position: relative;
-    }
-    .hero::before {
-        content: '';
-        position: absolute;
-        top: -100px; left: 50%;
-        transform: translateX(-50%);
-        width: 600px; height: 400px;
-        background: radial-gradient(ellipse, rgba(140,255,46,0.06) 0%, transparent 70%);
-        pointer-events: none;
-    }
-    .hero-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--accent-dim);
-        border: 1px solid rgba(140,255,46,0.12);
-        color: var(--accent);
-        font-size: 0.72rem;
-        font-weight: 600;
-        padding: 6px 16px;
-        border-radius: 50px;
-        margin-bottom: 1.5rem;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-    }
-    .hero-pill::before {
-        content: '';
-        width: 6px; height: 6px;
-        background: var(--accent);
-        border-radius: 50%;
-        box-shadow: 0 0 8px var(--accent);
-    }
-    .hero h1 {
-        font-size: 3.2rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        margin: 0;
-        letter-spacing: -1.5px;
-        line-height: 1.1;
-    }
-    .hero h1 .accent { color: var(--accent); }
-    .hero-sub {
-        color: var(--text-secondary);
-        font-size: 1.05rem;
-        margin-top: 0.8rem;
-        font-weight: 400;
-        line-height: 1.6;
-    }
-
-    /* Hero features row */
-    .hero-features {
-        display: flex;
-        justify-content: center;
-        gap: 1.5rem;
-        margin-top: 2rem;
-        flex-wrap: wrap;
-    }
-    .hero-feat {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--text-tertiary);
-        font-size: 0.82rem;
-        font-weight: 500;
-    }
-    .hero-feat-dot {
-        width: 5px; height: 5px;
-        background: var(--accent);
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-
-    /* ── Section Header ── */
-    .sec-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-bottom: 6px;
-    }
-    .sec-icon {
-        width: 44px; height: 44px;
-        background: var(--accent-dim);
-        border: 1px solid rgba(140,255,46,0.1);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-    .sec-title {
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        letter-spacing: -0.3px;
-    }
-    .sec-desc {
-        color: var(--text-secondary);
-        font-size: 0.88rem;
-        font-weight: 400;
-    }
-
-    /* ── Divider ── */
-    .divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--border), transparent);
-        margin: 1.2rem 0 1.8rem;
-    }
-
-    /* ── File Card ── */
-    .file-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius);
-        padding: 14px 18px;
-        margin: 8px 0;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        transition: all 0.25s ease;
-    }
-    .file-card:hover {
-        border-color: var(--border);
-        background: var(--bg-card-hover);
-    }
-    .file-card-icon {
-        width: 40px; height: 40px;
-        background: linear-gradient(135deg, rgba(140,255,46,0.1), rgba(140,255,46,0.04));
-        border: 1px solid rgba(140,255,46,0.08);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        flex-shrink: 0;
-    }
-    .file-card-name {
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .file-card-meta {
-        color: var(--text-tertiary);
-        font-size: 0.78rem;
-        font-family: 'JetBrains Mono', monospace;
-        flex-shrink: 0;
-    }
-
-    /* ── File List (Merge) ── */
-    .flist-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 14px;
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-sm);
-        margin: 5px 0;
-        transition: all 0.2s ease;
-    }
-    .flist-item:hover {
-        border-color: rgba(140,255,46,0.15);
-        background: var(--bg-card-hover);
-    }
-    .flist-num {
-        width: 24px; height: 24px;
-        background: var(--accent);
-        color: #050505;
-        border-radius: 7px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 800;
-        flex-shrink: 0;
-    }
-    .flist-name {
-        flex: 1;
-        font-weight: 500;
-        color: var(--text-primary);
-        font-size: 0.88rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .flist-size {
-        color: var(--text-tertiary);
-        font-size: 0.75rem;
-        font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* ── Toast / Status ── */
-    .toast {
-        border-radius: var(--radius-sm);
-        padding: 12px 18px;
-        margin: 10px 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        animation: fadeSlide 0.4s ease;
-    }
-    @keyframes fadeSlide {
-        from { opacity: 0; transform: translateY(-8px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .toast-success {
-        background: rgba(140,255,46,0.06);
-        border: 1px solid rgba(140,255,46,0.12);
-        color: var(--accent);
-    }
-    .toast-error {
-        background: rgba(255,71,87,0.06);
-        border: 1px solid rgba(255,71,87,0.12);
-        color: var(--danger);
-    }
-    .toast-warning {
-        background: rgba(255,165,2,0.06);
-        border: 1px solid rgba(255,165,2,0.12);
-        color: var(--warning);
-    }
-    .toast-icon { font-size: 1.1rem; flex-shrink: 0; }
-
-    /* ── Tip Box ── */
-    .tip {
-        background: rgba(140,255,46,0.03);
-        border: 1px solid rgba(140,255,46,0.06);
-        border-radius: var(--radius-sm);
-        padding: 10px 16px;
-        margin: 10px 0;
-        font-size: 0.82rem;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .tip-icon { font-size: 1rem; flex-shrink: 0; }
-
-    /* ── Stats Grid ── */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        margin: 1.5rem 0;
-    }
-    .stat-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius);
-        padding: 16px;
-        text-align: center;
-        transition: all 0.25s ease;
-    }
-    .stat-card:hover {
-        border-color: rgba(140,255,46,0.15);
-        background: var(--bg-card-hover);
-    }
-    .stat-icon { font-size: 1.3rem; margin-bottom: 6px; }
-    .stat-val {
-        font-size: 1.3rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        font-family: 'JetBrains Mono', monospace;
-    }
-    .stat-label {
-        font-size: 0.68rem;
-        color: var(--text-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-top: 4px;
-        font-weight: 600;
-    }
-
-    /* ── Meta Table ── */
-    .meta-tbl {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        border-radius: var(--radius);
-        overflow: hidden;
-        border: 1px solid var(--border-light);
-        margin: 1rem 0;
-    }
-    .meta-tbl tr { transition: background 0.2s; }
-    .meta-tbl tr:hover { background: var(--bg-card-hover); }
-    .meta-tbl td {
-        padding: 12px 18px;
-        border-bottom: 1px solid var(--border-light);
-        font-size: 0.88rem;
-    }
-    .meta-tbl tr:last-child td { border-bottom: none; }
-    .meta-tbl td:first-child {
-        font-weight: 600;
-        color: var(--text-secondary);
-        width: 130px;
-        background: rgba(255,255,255,0.02);
-    }
-    .meta-tbl td:last-child { color: var(--text-primary); }
-
-    /* ── Sidebar ── */
-    [data-testid="stSidebar"] {
-        background: var(--bg-secondary) !important;
-        border-right: 1px solid var(--border-light) !important;
-    }
-    [data-testid="stSidebar"] .stMarkdown h1,
-    [data-testid="stSidebar"] .stMarkdown h2,
-    [data-testid="stSidebar"] .stMarkdown h3,
-    [data-testid="stSidebar"] .stMarkdown h4 {
-        color: var(--text-primary) !important;
-    }
-    [data-testid="stSidebar"] .stMarkdown p,
-    [data-testid="stSidebar"] .stMarkdown li,
-    [data-testid="stSidebar"] .stMarkdown small {
-        color: var(--text-secondary) !important;
-    }
-    [data-testid="stSidebar"] .stRadio label p,
-    [data-testid="stSidebar"] .stRadio label span {
-        color: rgba(255,255,255,0.75) !important;
-        font-weight: 500 !important;
-    }
-    [data-testid="stSidebar"] hr {
-        border-color: var(--border-light) !important;
-    }
-
-    /* Sidebar logo */
-    .sb-logo {
-        text-align: center;
-        padding: 1.5rem 0 0.8rem;
-    }
-    .sb-logo-icon { font-size: 2rem; display: block; margin-bottom: 4px; }
-    .sb-logo-name {
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        letter-spacing: -0.3px;
-    }
-    .sb-logo-name .accent { color: var(--accent); }
-    .sb-logo-ver {
-        font-size: 0.6rem;
-        color: var(--text-muted);
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-top: 2px;
-    }
-
-    /* History */
-    .hist-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 7px 10px;
-        border-radius: 8px;
-        margin: 3px 0;
-        background: rgba(255,255,255,0.02);
-        border: 1px solid rgba(255,255,255,0.03);
-    }
-    .hist-item:hover { background: rgba(255,255,255,0.04); }
-    .hist-dot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        margin-top: 5px;
-        flex-shrink: 0;
-    }
-    .hist-dot.ok { background: var(--accent); box-shadow: 0 0 6px rgba(140,255,46,0.4); }
-    .hist-dot.fail { background: var(--danger); box-shadow: 0 0 6px rgba(255,71,87,0.4); }
-    .hist-text {
-        font-size: 0.72rem;
-        color: var(--text-tertiary);
-        line-height: 1.4;
-    }
-    .hist-text b { color: var(--text-secondary); }
-    .hist-time {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.6rem;
-        color: var(--text-muted);
-    }
-
-    /* ── Buttons ── */
-    .stButton > button[kind="primary"] {
-        background: var(--accent) !important;
-        color: #050505 !important;
-        border: none !important;
-        border-radius: var(--radius-sm) !important;
-        padding: 10px 24px !important;
-        font-weight: 700 !important;
-        font-size: 0.92rem !important;
-        font-family: 'Manrope', sans-serif !important;
-        letter-spacing: -0.2px !important;
-        transition: all 0.25s ease !important;
-        box-shadow: 0 0 20px rgba(140,255,46,0.15) !important;
-    }
-    .stButton > button[kind="primary"]:hover {
-        box-shadow: 0 0 35px rgba(140,255,46,0.25) !important;
-        transform: translateY(-1px) !important;
-    }
-    .stButton > button[kind="primary"]:active {
-        transform: translateY(0) !important;
-    }
-
-    .stDownloadButton > button {
-        background: var(--accent) !important;
-        color: #050505 !important;
-        border: none !important;
-        border-radius: var(--radius-sm) !important;
-        font-weight: 700 !important;
-        font-size: 0.92rem !important;
-        font-family: 'Manrope', sans-serif !important;
-        box-shadow: 0 0 20px rgba(140,255,46,0.15) !important;
-        transition: all 0.25s ease !important;
-    }
-    .stDownloadButton > button:hover {
-        box-shadow: 0 0 35px rgba(140,255,46,0.25) !important;
-        transform: translateY(-1px) !important;
-    }
-
-    /* secondary buttons */
-    .stButton > button:not([kind="primary"]) {
-        background: var(--bg-card) !important;
-        color: var(--text-secondary) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        font-family: 'Manrope', sans-serif !important;
-        font-weight: 600 !important;
-        transition: all 0.2s ease !important;
-    }
-    .stButton > button:not([kind="primary"]):hover {
-        border-color: var(--accent) !important;
-        color: var(--accent) !important;
-        background: var(--accent-dim) !important;
-    }
-
-    /* ── File Uploader ── */
-    [data-testid="stFileUploader"] {
-        border: 1.5px dashed var(--border) !important;
-        border-radius: var(--radius) !important;
-        padding: 16px !important;
-        background: var(--bg-card) !important;
-        transition: all 0.25s ease !important;
-    }
-    [data-testid="stFileUploader"]:hover {
-        border-color: rgba(140,255,46,0.2) !important;
-        background: var(--bg-card-hover) !important;
-    }
-    [data-testid="stFileUploader"] label p {
-        color: var(--text-secondary) !important;
-    }
-    [data-testid="stFileUploader"] small {
-        color: var(--text-tertiary) !important;
-    }
-    [data-testid="stFileUploader"] button {
-        background: var(--bg-elevated) !important;
-        color: var(--text-primary) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 8px !important;
-    }
-
-    /* ── Text Input ── */
-    .stTextInput label p { color: var(--text-secondary) !important; }
-    .stTextInput > div > div > input {
-        background: var(--bg-card) !important;
-        border: 1.5px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        color: var(--text-primary) !important;
-        padding: 10px 14px !important;
-        font-family: 'Manrope', sans-serif !important;
-        font-size: 0.92rem !important;
-        transition: all 0.25s ease !important;
-    }
-    .stTextInput > div > div > input:focus {
-        border-color: var(--accent) !important;
-        box-shadow: 0 0 0 2px var(--accent-dim) !important;
-    }
-    .stTextInput > div > div > input::placeholder {
-        color: var(--text-muted) !important;
-    }
-
-    /* ── Select / Radio ── */
-    .stSelectbox label p,
-    .stRadio label { color: var(--text-secondary) !important; }
-    .stSelectbox > div > div {
-        background: var(--bg-card) !important;
-        border: 1.5px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        color: var(--text-primary) !important;
-    }
-    .stRadio > div > label > div:first-child {
-        background-color: var(--accent) !important;
-    }
-
-    /* ── Progress ── */
-    .stProgress > div > div > div > div {
-        background: var(--accent) !important;
-        border-radius: 50px !important;
-    }
-    .stProgress > div > div {
-        background: var(--bg-elevated) !important;
-    }
-
-    /* ── Markdown in main ── */
-    .stMarkdown p, .stMarkdown li { color: var(--text-secondary); }
-    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
-    .stMarkdown h4, .stMarkdown h5 { color: var(--text-primary); }
-    .stMarkdown strong { color: var(--text-primary); }
-    .stMarkdown code {
-        background: var(--bg-card);
-        color: var(--accent);
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-    /* ── Warning / Error ── */
-    .stAlert {
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: var(--radius-sm) !important;
-        color: var(--text-secondary) !important;
-    }
-
-    /* ── Footer ── */
-    .footer {
-        text-align: center;
-        padding: 2.5rem 0 1.5rem;
-        margin-top: 4rem;
-        position: relative;
-    }
-    .footer::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 15%; right: 15%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--border), transparent);
-    }
-    .footer-text {
-        color: var(--text-muted);
-        font-size: 0.75rem;
-        line-height: 1.8;
-    }
-    .footer-brand {
-        font-weight: 700;
-        color: var(--accent);
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 768px) {
-        .hero h1 { font-size: 2.2rem; }
-        .hero-features { flex-direction: column; align-items: center; gap: 0.6rem; }
-        .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-</style>
-
-<!-- Keep-alive -->
-<script>
-    setInterval(function() {
-        fetch(window.location.href, { method: 'HEAD', mode: 'no-cors' }).catch(function(){});
-    }, 5 * 60 * 1000);
-</script>
-""", unsafe_allow_html=True)
-
-
-# ─── Session State ───
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-
-# ─── Helpers ───
-def fmt_size(b):
-    if b < 1024: return f"{b} B"
-    if b < 1024**2: return f"{b/1024:.1f} KB"
-    return f"{b/1024**2:.1f} MB"
-
-
-def pdf_info(data):
-    try:
-        pdf = pikepdf.open(io.BytesIO(data))
-        info = {"pages": len(pdf.pages), "encrypted": False}
-        di = pdf.docinfo
-        for k, f in [("/Title","title"),("/Author","author"),("/Creator","creator"),("/Producer","producer")]:
-            if k in di: info[f] = str(di[k])
-        pdf.close()
-        return info
-    except pikepdf.PasswordError:
-        return {"encrypted": True}
-    except Exception:
-        return None
-
-
-def unlock(data, pw):
-    pdf = pikepdf.open(io.BytesIO(data), password=pw)
-    out = io.BytesIO(); pdf.save(out); pdf.close(); out.seek(0); return out
-
-
-def protect(data, opw, upw=""):
-    pdf = pikepdf.open(io.BytesIO(data))
-    out = io.BytesIO()
-    perms = pikepdf.Permissions(extract=True, print_lowres=True, print_highres=True)
-    enc = pikepdf.Encryption(owner=opw, user=upw or "", R=6, allow=perms)
-    pdf.save(out, encryption=enc); pdf.close(); out.seek(0); return out
-
-
-def merge(files):
-    m = pikepdf.Pdf.new()
-    for d in files:
-        s = pikepdf.open(io.BytesIO(d)); m.pages.extend(s.pages)
-    out = io.BytesIO(); m.save(out); m.close(); out.seek(0); return out
-
-
-def split(data, ranges_str):
-    pdf = pikepdf.open(io.BytesIO(data)); total = len(pdf.pages); results = []
-    for part in ranges_str.split(","):
-        part = part.strip()
-        if "-" in part:
-            s, e = part.split("-",1); s, e = max(1,int(s)), min(total,int(e))
-        else:
-            s = e = max(1, min(total, int(part)))
-        n = pikepdf.Pdf.new()
-        for i in range(s-1, e): n.pages.append(pdf.pages[i])
-        b = io.BytesIO(); n.save(b); n.close(); b.seek(0)
-        results.append((f"pages_{s}-{e}.pdf", b))
-    pdf.close(); return results
-
-
-def extract(data, pages):
-    pdf = pikepdf.open(io.BytesIO(data)); total = len(pdf.pages)
-    n = pikepdf.Pdf.new()
-    for p in pages:
-        if 1 <= p <= total: n.pages.append(pdf.pages[p-1])
-    b = io.BytesIO(); n.save(b); n.close(); b.seek(0); pdf.close(); return b
-
-
-def rotate(data, deg, pages=None):
-    pdf = pikepdf.open(io.BytesIO(data)); total = len(pdf.pages)
-    if pages is None: pages = list(range(1, total+1))
-    for p in pages:
-        if 1 <= p <= total:
-            pg = pdf.pages[p-1]; cur = int(pg.get("/Rotate",0))
-            pg["/Rotate"] = pikepdf.Name(str((cur+deg)%360))
-    b = io.BytesIO(); pdf.save(b); pdf.close(); b.seek(0); return b
-
-
-def hist_add(action, fname, status):
-    st.session_state.history.insert(0, {"time": datetime.now().strftime("%H:%M:%S"), "action": action, "file": fname, "status": status})
-    st.session_state.history = st.session_state.history[:20]
-
-
-def file_card(name, size, extra=""):
-    m = fmt_size(size) + (f" · {extra}" if extra else "")
-    st.markdown(f'<div class="file-card"><div class="file-card-icon">📄</div><div class="file-card-name">{name}</div><div class="file-card-meta">{m}</div></div>', unsafe_allow_html=True)
-
-
-def sec_header(icon, title, desc):
-    st.markdown(f'<div class="sec-header"><div class="sec-icon">{icon}</div><div><div class="sec-title">{title}</div><div class="sec-desc">{desc}</div></div></div>', unsafe_allow_html=True)
-
-
-TOOLS = {
-    "🔓 암호 해제": ("🔓","PDF 암호 해제","비밀번호가 걸린 PDF의 암호를 제거합니다"),
-    "🔒 암호 설정": ("🔒","PDF 암호 설정","PDF에 비밀번호를 설정하여 보호합니다"),
-    "📋 PDF 병합": ("📋","PDF 병합","여러 PDF를 하나로 합칩니다"),
-    "✂️ PDF 분할": ("✂️","PDF 분할","페이지 범위별로 분할합니다"),
-    "📄 페이지 추출": ("📄","페이지 추출","원하는 페이지만 추출합니다"),
-    "🔄 페이지 회전": ("🔄","페이지 회전","원하는 각도로 회전합니다"),
-    "ℹ️ PDF 정보": ("ℹ️","PDF 정보 보기","메타데이터와 상세 정보를 확인합니다"),
+TRANSLATIONS = {
+    "ko": {
+        "app_title": "PDF Tools Pro",
+        "app_subtitle": "올인원 PDF 도구 — 비밀번호 해제, 병합, 분할, 압축, 워터마크, 이미지 변환",
+        "sidebar_title": "도구 선택",
+        "tool_unlock": "🔓 비밀번호 해제",
+        "tool_merge": "📎 PDF 병합",
+        "tool_split": "✂️ PDF 분할",
+        "tool_compress": "🗜️ PDF 압축",
+        "tool_watermark": "💧 워터마크 추가",
+        "tool_to_image": "🖼️ PDF → 이미지",
+        "tool_image_to_pdf": "📄 이미지 → PDF",
+        "tool_extract_pages": "📑 페이지 추출",
+        "tool_rotate": "🔄 페이지 회전",
+        "tool_protect": "🔒 비밀번호 설정",
+        "upload_pdf": "PDF 파일을 업로드하세요",
+        "upload_pdfs": "PDF 파일들을 업로드하세요 (여러 개 가능)",
+        "upload_images": "이미지 파일들을 업로드하세요 (여러 개 가능)",
+        "file_info": "업로드된 파일: **{name}** ({size})",
+        "password_input": "PDF 비밀번호를 입력하세요",
+        "btn_unlock": "암호 해제",
+        "btn_merge": "PDF 병합하기",
+        "btn_split": "PDF 분할하기",
+        "btn_compress": "압축하기",
+        "btn_watermark": "워터마크 추가",
+        "btn_convert": "변환하기",
+        "btn_extract": "페이지 추출",
+        "btn_rotate": "회전하기",
+        "btn_protect": "비밀번호 설정",
+        "btn_download": "다운로드",
+        "btn_download_all": "전체 다운로드 (ZIP)",
+        "success": "처리가 완료되었습니다!",
+        "error_password": "비밀번호가 올바르지 않습니다.",
+        "error_general": "처리 중 오류가 발생했습니다: {error}",
+        "processing": "처리 중...",
+        "page_range": "페이지 범위 (예: 1-3, 5, 7-10)",
+        "page_range_help": "쉼표로 구분하여 개별 페이지 또는 범위를 지정할 수 있습니다.",
+        "watermark_text": "워터마크 텍스트",
+        "watermark_opacity": "투명도",
+        "compress_level": "압축 수준",
+        "compress_low": "낮음 (품질 우선)",
+        "compress_medium": "보통",
+        "compress_high": "높음 (용량 우선)",
+        "total_pages": "총 페이지: {pages}",
+        "original_size": "원본 크기",
+        "result_size": "결과 크기",
+        "compression_ratio": "압축률",
+        "rotate_angle": "회전 각도",
+        "rotate_pages": "적용할 페이지",
+        "rotate_all": "전체 페이지",
+        "rotate_specific": "특정 페이지만",
+        "new_password": "새 비밀번호 설정",
+        "confirm_password": "비밀번호 확인",
+        "password_mismatch": "비밀번호가 일치하지 않습니다.",
+        "image_format": "이미지 포맷",
+        "image_dpi": "해상도 (DPI)",
+        "security_notice": "🔒 **보안 안내**: 모든 파일은 서버에 저장되지 않으며, 처리 후 즉시 삭제됩니다.",
+        "footer": "PDF Tools Pro — 빠르고 안전한 PDF 도구",
+        "split_mode": "분할 방식",
+        "split_each": "각 페이지별 분할",
+        "split_range": "범위 지정 분할",
+        "split_every_n": "N페이지마다 분할",
+        "split_n_pages": "몇 페이지마다?",
+        "files_count": "{count}개 파일이 업로드되었습니다.",
+        "preview": "미리보기",
+        "no_file": "파일을 업로드해주세요.",
+        "already_optimized": "이미 최적화된 파일입니다. 추가 압축이 불가합니다.",
+        "files_generated": "**{count}**개의 파일이 생성되었습니다.",
+        "extracted_pages": "**{count}**개의 페이지가 추출되었습니다.",
+        "individual_files": "개별 파일 다운로드",
+    },
+    "en": {
+        "app_title": "PDF Tools Pro",
+        "app_subtitle": "All-in-One PDF Tools — Unlock, Merge, Split, Compress, Watermark, Convert",
+        "sidebar_title": "Select Tool",
+        "tool_unlock": "🔓 Remove Password",
+        "tool_merge": "📎 Merge PDFs",
+        "tool_split": "✂️ Split PDF",
+        "tool_compress": "🗜️ Compress PDF",
+        "tool_watermark": "💧 Add Watermark",
+        "tool_to_image": "🖼️ PDF to Image",
+        "tool_image_to_pdf": "📄 Image to PDF",
+        "tool_extract_pages": "📑 Extract Pages",
+        "tool_rotate": "🔄 Rotate Pages",
+        "tool_protect": "🔒 Set Password",
+        "upload_pdf": "Upload a PDF file",
+        "upload_pdfs": "Upload PDF files (multiple allowed)",
+        "upload_images": "Upload image files (multiple allowed)",
+        "file_info": "Uploaded: **{name}** ({size})",
+        "password_input": "Enter PDF password",
+        "btn_unlock": "Remove Password",
+        "btn_merge": "Merge PDFs",
+        "btn_split": "Split PDF",
+        "btn_compress": "Compress",
+        "btn_watermark": "Add Watermark",
+        "btn_convert": "Convert",
+        "btn_extract": "Extract Pages",
+        "btn_rotate": "Rotate",
+        "btn_protect": "Set Password",
+        "btn_download": "Download",
+        "btn_download_all": "Download All (ZIP)",
+        "success": "Processing complete!",
+        "error_password": "Incorrect password.",
+        "error_general": "An error occurred: {error}",
+        "processing": "Processing...",
+        "page_range": "Page range (e.g., 1-3, 5, 7-10)",
+        "page_range_help": "Separate individual pages or ranges with commas.",
+        "watermark_text": "Watermark text",
+        "watermark_opacity": "Opacity",
+        "compress_level": "Compression level",
+        "compress_low": "Low (quality first)",
+        "compress_medium": "Medium",
+        "compress_high": "High (size first)",
+        "total_pages": "Total pages: {pages}",
+        "original_size": "Original size",
+        "result_size": "Result size",
+        "compression_ratio": "Compression ratio",
+        "rotate_angle": "Rotation angle",
+        "rotate_pages": "Apply to pages",
+        "rotate_all": "All pages",
+        "rotate_specific": "Specific pages only",
+        "new_password": "Set new password",
+        "confirm_password": "Confirm password",
+        "password_mismatch": "Passwords do not match.",
+        "image_format": "Image format",
+        "image_dpi": "Resolution (DPI)",
+        "security_notice": "🔒 **Security**: All files are processed in memory and never stored on our servers.",
+        "footer": "PDF Tools Pro — Fast & Secure PDF Tools",
+        "split_mode": "Split mode",
+        "split_each": "Split each page",
+        "split_range": "Split by range",
+        "split_every_n": "Split every N pages",
+        "split_n_pages": "Every how many pages?",
+        "files_count": "{count} file(s) uploaded.",
+        "preview": "Preview",
+        "no_file": "Please upload a file.",
+        "already_optimized": "The file is already optimized — compression did not reduce size.",
+        "files_generated": "**{count}** file(s) generated.",
+        "extracted_pages": "**{count}** page(s) extracted.",
+        "individual_files": "Individual file downloads",
+    },
 }
 
 
-# ─── Sidebar ───
-with st.sidebar:
-    st.markdown('<div class="sb-logo"><span class="sb-logo-icon">🔐</span><div class="sb-logo-name">PDF Toolkit <span class="accent">Pro</span></div><div class="sb-logo-ver">v2.0</div></div>', unsafe_allow_html=True)
-    st.markdown("---")
-    tool = st.radio("도구 선택", list(TOOLS.keys()), index=0, label_visibility="collapsed")
-    st.markdown("---")
-
-    if st.session_state.history:
-        st.markdown("#### 📜 작업 기록")
-        for h in st.session_state.history[:8]:
-            dc = "ok" if h["status"]=="success" else "fail"
-            st.markdown(f'<div class="hist-item"><div class="hist-dot {dc}"></div><div><div class="hist-text"><b>{h["action"]}</b><br>{h["file"]}</div><div class="hist-time">{h["time"]}</div></div></div>', unsafe_allow_html=True)
-        if st.button("기록 초기화", use_container_width=True):
-            st.session_state.history = []; st.rerun()
-        st.markdown("---")
-
-    st.markdown('<div style="text-align:center;padding:1rem 0"><small style="color:rgba(255,255,255,0.12)">Built with Streamlit & pikepdf</small></div>', unsafe_allow_html=True)
+def t(key, **kwargs):
+    """Get translation for current language."""
+    lang = st.session_state.get("lang", "ko")
+    text = TRANSLATIONS.get(lang, TRANSLATIONS["ko"]).get(key, key)
+    if kwargs:
+        text = text.format(**kwargs)
+    return text
 
 
-# ─── Hero ───
-st.markdown("""
-<div class="hero">
-    <div class="hero-pill">All-in-One PDF Solution</div>
-    <h1>PDF Toolkit <span class="accent">Pro</span></h1>
-    <div class="hero-sub">PDF 암호 해제부터 병합, 분할, 보호까지 — 하나의 도구로 해결하세요.</div>
-    <div class="hero-features">
-        <div class="hero-feat"><div class="hero-feat-dot"></div>AES-256 암호화</div>
-        <div class="hero-feat"><div class="hero-feat-dot"></div>최대 200MB 업로드</div>
-        <div class="hero-feat"><div class="hero-feat-dot"></div>서버 저장 없음</div>
-        <div class="hero-feat"><div class="hero-feat-dot"></div>일괄 처리 지원</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+def format_size(size_bytes):
+    """Format file size in human-readable format."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
+    else:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
 
 
-# ─── Tool Header ───
-c = TOOLS[tool]
-sec_header(c[0], c[1], c[2])
-st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
-
-
-# ─── 암호 해제 ───
-if tool == "🔓 암호 해제":
-    files = st.file_uploader("PDF 파일을 업로드하세요 (여러 파일 가능)", type=["pdf"], accept_multiple_files=True, key="u1")
-    if files:
-        for f in files: file_card(f.name, f.size)
-        pw = st.text_input("PDF 비밀번호", type="password", key="p1")
-        if st.button("암호 해제 실행", type="primary", disabled=not pw, use_container_width=True):
-            res = []; prog = st.progress(0, text="처리 중...")
-            for i, f in enumerate(files):
-                try:
-                    r = unlock(f.read(), pw); res.append((f.name.replace(".pdf","_unlocked.pdf"), r)); hist_add("암호 해제", f.name, "success")
-                except pikepdf.PasswordError:
-                    st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span><b>{f.name}</b> — 비밀번호가 올바르지 않습니다.</div>', unsafe_allow_html=True); hist_add("암호 해제", f.name, "fail")
-                except Exception as e:
-                    st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span><b>{f.name}</b> — {e}</div>', unsafe_allow_html=True); hist_add("암호 해제", f.name, "fail")
-                prog.progress((i+1)/len(files), text=f"{i+1}/{len(files)} 완료")
-            if res:
-                st.markdown('<div class="toast toast-success"><span class="toast-icon">✓</span>암호 해제 완료!</div>', unsafe_allow_html=True)
-                if len(res)==1:
-                    n,d = res[0]; st.download_button(f"📥 {n} 다운로드", data=d, file_name=n, mime="application/pdf", type="primary", use_container_width=True)
-                else:
-                    zb = io.BytesIO()
-                    with zipfile.ZipFile(zb,"w",zipfile.ZIP_DEFLATED) as zf:
-                        for n,d in res: zf.writestr(n, d.read())
-                    zb.seek(0); st.download_button(f"📥 {len(res)}개 파일 다운로드 (ZIP)", data=zb, file_name="unlocked.zip", mime="application/zip", type="primary", use_container_width=True)
-
-
-# ─── 암호 설정 ───
-elif tool == "🔒 암호 설정":
-    f = st.file_uploader("PDF 파일을 업로드하세요", type=["pdf"], key="u2")
-    if f:
-        file_card(f.name, f.size)
-        c1, c2 = st.columns(2)
-        with c1: opw = st.text_input("소유자 비밀번호 (필수)", type="password", key="op", help="권한 변경용")
-        with c2: upw = st.text_input("열람 비밀번호 (선택)", type="password", key="up", help="열 때 필요 (비워두면 자유)")
-        st.markdown('<div class="tip"><span class="tip-icon">💡</span>소유자 비밀번호는 권한 수정용이고, 열람 비밀번호를 설정하면 열 때 입력해야 합니다.</div>', unsafe_allow_html=True)
-        if st.button("암호 설정 실행", type="primary", disabled=not opw, use_container_width=True):
-            try:
-                r = protect(f.read(), opw, upw); on = f.name.replace(".pdf","_protected.pdf"); hist_add("암호 설정", f.name, "success")
-                st.markdown('<div class="toast toast-success"><span class="toast-icon">✓</span>암호 설정 완료!</div>', unsafe_allow_html=True)
-                st.download_button(f"📥 {on} 다운로드", data=r, file_name=on, mime="application/pdf", type="primary", use_container_width=True)
-            except Exception as e:
-                st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span>오류: {e}</div>', unsafe_allow_html=True); hist_add("암호 설정", f.name, "fail")
-
-
-# ─── 병합 ───
-elif tool == "📋 PDF 병합":
-    st.markdown('<div class="tip"><span class="tip-icon">💡</span>업로드 순서대로 병합됩니다. 2개 이상 선택해주세요.</div>', unsafe_allow_html=True)
-    files = st.file_uploader("PDF 파일 업로드 (2개 이상)", type=["pdf"], accept_multiple_files=True, key="u3")
-    if files:
-        for i, f in enumerate(files, 1):
-            st.markdown(f'<div class="flist-item"><div class="flist-num">{i}</div><div class="flist-name">{f.name}</div><div class="flist-size">{fmt_size(f.size)}</div></div>', unsafe_allow_html=True)
-        if len(files) < 2:
-            st.markdown('<div class="toast toast-warning"><span class="toast-icon">⚠</span>2개 이상의 파일을 업로드해주세요.</div>', unsafe_allow_html=True)
-        elif st.button("병합 실행", type="primary", use_container_width=True):
-            try:
-                prog = st.progress(0, text="병합 중...")
-                bl = []
-                for i, f in enumerate(files): bl.append(f.read()); prog.progress((i+1)/len(files), text=f"읽는 중... {i+1}/{len(files)}")
-                r = merge(bl); prog.progress(1.0, text="완료!"); hist_add("PDF 병합", f"{len(files)}개 파일", "success")
-                st.markdown('<div class="toast toast-success"><span class="toast-icon">✓</span>병합 완료!</div>', unsafe_allow_html=True)
-                info = pdf_info(r.getvalue())
-                if info and not info.get("encrypted"): st.markdown(f"총 **{info['pages']}페이지**로 병합되었습니다.")
-                st.download_button("📥 병합된 PDF 다운로드", data=r, file_name="merged.pdf", mime="application/pdf", type="primary", use_container_width=True)
-            except Exception as e:
-                st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span>병합 오류: {e}</div>', unsafe_allow_html=True); hist_add("PDF 병합", f"{len(files)}개", "fail")
-
-
-# ─── 분할 ───
-elif tool == "✂️ PDF 분할":
-    f = st.file_uploader("PDF 파일을 업로드하세요", type=["pdf"], key="u4")
-    if f:
-        fb = f.read(); info = pdf_info(fb)
-        if info and not info.get("encrypted"):
-            file_card(f.name, f.size, f"{info['pages']}페이지")
-            mode = st.radio("분할 방식", ["페이지 범위 지정","모든 페이지 개별 분할"], horizontal=True)
-            if mode == "페이지 범위 지정":
-                rng = st.text_input("페이지 범위", placeholder="예: 1-3, 4-6, 7-10", help="콤마로 구분")
-                if st.button("분할 실행", type="primary", disabled=not rng, use_container_width=True):
-                    try:
-                        rs = split(fb, rng); hist_add("PDF 분할", f.name, "success")
-                        st.markdown('<div class="toast toast-success"><span class="toast-icon">✓</span>분할 완료!</div>', unsafe_allow_html=True)
-                        if len(rs)==1:
-                            n,d = rs[0]; st.download_button(f"📥 {n}", data=d, file_name=n, mime="application/pdf", type="primary", use_container_width=True)
-                        else:
-                            zb = io.BytesIO()
-                            with zipfile.ZipFile(zb,"w",zipfile.ZIP_DEFLATED) as zf:
-                                for n,d in rs: zf.writestr(n,d.read())
-                            zb.seek(0); st.download_button(f"📥 {len(rs)}개 파일 (ZIP)", data=zb, file_name="split.zip", mime="application/zip", type="primary", use_container_width=True)
-                    except Exception as e:
-                        st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span>{e}</div>', unsafe_allow_html=True); hist_add("PDF 분할", f.name, "fail")
-            else:
-                if st.button("모든 페이지 개별 분할", type="primary", use_container_width=True):
-                    try:
-                        ar = ", ".join(str(i) for i in range(1, info["pages"]+1)); rs = split(fb, ar); hist_add("개별 분할", f.name, "success")
-                        st.markdown('<div class="toast toast-success"><span class="toast-icon">✓</span>분할 완료!</div>', unsafe_allow_html=True)
-                        zb = io.BytesIO()
-                        with zipfile.ZipFile(zb,"w",zipfile.ZIP_DEFLATED) as zf:
-                            for n,d in rs: zf.writestr(n,d.read())
-                        zb.seek(0); st.download_button(f"📥 {info['pages']}개 페이지 (ZIP)", data=zb, file_name="split_pages.zip", mime="application/zip", type="primary", use_container_width=True)
-                    except Exception as e:
-                        st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span>{e}</div>', unsafe_allow_html=True); hist_add("개별 분할", f.name, "fail")
-        elif info and info.get("encrypted"):
-            st.markdown('<div class="toast toast-warning"><span class="toast-icon">🔒</span>암호가 걸려 있습니다. 먼저 암호 해제를 사용하세요.</div>', unsafe_allow_html=True)
-
-
-# ─── 추출 ───
-elif tool == "📄 페이지 추출":
-    f = st.file_uploader("PDF 파일을 업로드하세요", type=["pdf"], key="u5")
-    if f:
-        fb = f.read(); info = pdf_info(fb)
-        if info and not info.get("encrypted"):
-            file_card(f.name, f.size, f"{info['pages']}페이지")
-            pi = st.text_input("추출할 페이지", placeholder="예: 1, 3, 5, 7-10", help="콤마로 구분, 범위 지원")
-            if st.button("추출 실행", type="primary", disabled=not pi, use_container_width=True):
-                try:
-                    pn = []
-                    for p in pi.split(","):
-                        p = p.strip()
-                        if "-" in p: s,e = p.split("-",1); pn.extend(range(int(s),int(e)+1))
-                        else: pn.append(int(p))
-                    r = extract(fb, pn); on = f.name.replace(".pdf","_extracted.pdf"); hist_add("페이지 추출", f.name, "success")
-                    st.markdown(f'<div class="toast toast-success"><span class="toast-icon">✓</span>{len(pn)}페이지 추출 완료!</div>', unsafe_allow_html=True)
-                    st.download_button(f"📥 {on} 다운로드", data=r, file_name=on, mime="application/pdf", type="primary", use_container_width=True)
-                except Exception as e:
-                    st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span>{e}</div>', unsafe_allow_html=True); hist_add("페이지 추출", f.name, "fail")
-
-
-# ─── 회전 ───
-elif tool == "🔄 페이지 회전":
-    f = st.file_uploader("PDF 파일을 업로드하세요", type=["pdf"], key="u6")
-    if f:
-        fb = f.read(); info = pdf_info(fb)
-        if info and not info.get("encrypted"):
-            file_card(f.name, f.size, f"{info['pages']}페이지")
-            c1, c2 = st.columns(2)
-            with c1: deg = st.selectbox("회전 각도", [90,180,270], format_func=lambda x: f"↻ {x}°")
-            with c2: scope = st.radio("적용 범위", ["모든 페이지","특정 페이지"], horizontal=True)
-            pn = None
-            if scope == "특정 페이지":
-                pi = st.text_input("회전할 페이지", placeholder="예: 1, 3, 5")
-                if pi: pn = [int(p.strip()) for p in pi.split(",")]
-            if st.button("회전 실행", type="primary", use_container_width=True):
-                try:
-                    r = rotate(fb, deg, pn); on = f.name.replace(".pdf",f"_rot{deg}.pdf"); hist_add("페이지 회전", f.name, "success")
-                    st.markdown('<div class="toast toast-success"><span class="toast-icon">✓</span>회전 완료!</div>', unsafe_allow_html=True)
-                    st.download_button(f"📥 {on} 다운로드", data=r, file_name=on, mime="application/pdf", type="primary", use_container_width=True)
-                except Exception as e:
-                    st.markdown(f'<div class="toast toast-error"><span class="toast-icon">✕</span>{e}</div>', unsafe_allow_html=True); hist_add("페이지 회전", f.name, "fail")
-
-
-# ─── 정보 ───
-elif tool == "ℹ️ PDF 정보":
-    f = st.file_uploader("PDF 파일을 업로드하세요", type=["pdf"], key="u7")
-    if f:
-        fb = f.read(); info = pdf_info(fb)
-        file_card(f.name, f.size)
-        if info:
-            if info.get("encrypted"):
-                st.markdown('<div class="toast toast-warning"><span class="toast-icon">🔒</span>암호로 보호되어 있습니다. 먼저 암호를 해제하세요.</div>', unsafe_allow_html=True)
-            else:
-                pp = f.size // max(info.get("pages",1),1)
-                st.markdown(
-                    f'<div class="stats-grid">'
-                    f'<div class="stat-card"><div class="stat-icon">📑</div><div class="stat-val">{info.get("pages","-")}</div><div class="stat-label">Pages</div></div>'
-                    f'<div class="stat-card"><div class="stat-icon">💾</div><div class="stat-val">{fmt_size(f.size)}</div><div class="stat-label">Size</div></div>'
-                    f'<div class="stat-card"><div class="stat-icon">🔐</div><div class="stat-val">No</div><div class="stat-label">Encrypted</div></div>'
-                    f'<div class="stat-card"><div class="stat-icon">📊</div><div class="stat-val">{fmt_size(pp)}</div><div class="stat-label">Per Page</div></div>'
-                    f'</div>', unsafe_allow_html=True)
-                st.markdown("#### 메타데이터")
-                meta = [("제목",info.get("title","—")),("저자",info.get("author","—")),("생성 프로그램",info.get("creator","—")),("프로듀서",info.get("producer","—"))]
-                rows = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k,v in meta)
-                st.markdown(f'<table class="meta-tbl">{rows}</table>', unsafe_allow_html=True)
+def parse_page_range(page_range_str, total_pages):
+    """Parse page range string like '1-3, 5, 7-10' into a list of 0-indexed page numbers."""
+    pages = []
+    parts = page_range_str.replace(" ", "").split(",")
+    for part in parts:
+        if "-" in part:
+            start, end = part.split("-", 1)
+            start = max(1, int(start))
+            end = min(total_pages, int(end))
+            pages.extend(range(start - 1, end))
         else:
-            st.markdown('<div class="toast toast-error"><span class="toast-icon">✕</span>PDF 정보를 읽을 수 없습니다.</div>', unsafe_allow_html=True)
+            page_num = int(part)
+            if 1 <= page_num <= total_pages:
+                pages.append(page_num - 1)
+    return sorted(set(pages))
 
 
-# ─── Footer ───
-st.markdown("""
-<div class="footer">
-    <div class="footer-text">
-        <span class="footer-brand">PDF Toolkit Pro</span> — 모든 파일은 서버에 저장되지 않습니다<br>
-        Built with ❤ using Streamlit & pikepdf
-    </div>
+def get_pdf_preview(pdf_bytes, max_pages=3):
+    """Generate preview images from PDF bytes."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    images = []
+    for i in range(min(max_pages, len(doc))):
+        page = doc[i]
+        mat = fitz.Matrix(1.5, 1.5)
+        pix = page.get_pixmap(matrix=mat)
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        images.append(img)
+    doc.close()
+    return images
+
+
+def create_zip(files_dict):
+    """Create a ZIP file from a dict of {filename: bytes_data}."""
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, data in files_dict.items():
+            zf.writestr(name, data)
+    zip_buffer.seek(0)
+    return zip_buffer
+
+
+# ──────────────────────────────────────────────
+# Custom CSS
+# ──────────────────────────────────────────────
+
+st.markdown(
+    """
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    .stApp {
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Hero header */
+    .hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 2rem;
+        border-radius: 16px;
+        color: white;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    .hero h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+        color: white;
+    }
+    .hero p {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+        color: white;
+    }
+
+    /* Stats cards */
+    .stat-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 1rem 1.2rem;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    .stat-card h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        color: #333;
+    }
+    .stat-card p {
+        font-size: 0.85rem;
+        color: #666;
+        margin: 0;
+    }
+
+    /* Result card */
+    .result-card {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+
+    /* Security badge */
+    .security-badge {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        font-size: 0.85rem;
+        margin-top: 1rem;
+    }
+
+    /* Footer */
+    .footer {
+        text-align: center;
+        padding: 1.5rem;
+        color: #999;
+        font-size: 0.8rem;
+        border-top: 1px solid #eee;
+        margin-top: 3rem;
+    }
+
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    .stFileUploader > div > div {
+        border-radius: 12px;
+    }
+
+    .stButton > button[kind="primary"] {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.5rem 2rem;
+    }
+
+    .stDownloadButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# ──────────────────────────────────────────────
+# Session State Init
+# ──────────────────────────────────────────────
+
+if "lang" not in st.session_state:
+    st.session_state.lang = "ko"
+
+# ──────────────────────────────────────────────
+# Sidebar
+# ──────────────────────────────────────────────
+
+with st.sidebar:
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🇰🇷 한국어", use_container_width=True,
+                      type="primary" if st.session_state.lang == "ko" else "secondary"):
+            st.session_state.lang = "ko"
+            st.rerun()
+    with col2:
+        if st.button("🇺🇸 English", use_container_width=True,
+                      type="primary" if st.session_state.lang == "en" else "secondary"):
+            st.session_state.lang = "en"
+            st.rerun()
+
+    st.markdown("---")
+    st.markdown(f"### {t('sidebar_title')}")
+
+    tools = [
+        "tool_unlock",
+        "tool_merge",
+        "tool_split",
+        "tool_compress",
+        "tool_watermark",
+        "tool_to_image",
+        "tool_image_to_pdf",
+        "tool_extract_pages",
+        "tool_rotate",
+        "tool_protect",
+    ]
+
+    selected_tool = st.radio(
+        t("sidebar_title"),
+        tools,
+        format_func=lambda x: t(x),
+        label_visibility="collapsed",
+    )
+
+    st.markdown("---")
+    st.markdown(f'<div class="security-badge">{t("security_notice")}</div>', unsafe_allow_html=True)
+
+# ──────────────────────────────────────────────
+# Header
+# ──────────────────────────────────────────────
+
+st.markdown(
+    f"""
+<div class="hero">
+    <h1>{t("app_title")}</h1>
+    <p>{t("app_subtitle")}</p>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
+# ──────────────────────────────────────────────
+# Tool: Password Removal
+# ──────────────────────────────────────────────
+
+if selected_tool == "tool_unlock":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="unlock_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+
+        # Preview (may fail for encrypted PDFs)
+        try:
+            previews = get_pdf_preview(file_bytes, max_pages=2)
+            if previews:
+                cols = st.columns(len(previews))
+                for i, img in enumerate(previews):
+                    with cols[i]:
+                        st.image(img, caption=f"Page {i + 1}", use_container_width=True)
+        except Exception:
+            pass
+
+        password = st.text_input(t("password_input"), type="password")
+
+        if st.button(t("btn_unlock"), type="primary", disabled=not password, use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    pdf = pikepdf.open(io.BytesIO(file_bytes), password=password)
+                    output = io.BytesIO()
+                    pdf.save(output)
+                    pdf.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+                    output_filename = uploaded_file.name.replace(".pdf", "_unlocked.pdf")
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(
+                            f'<div class="stat-card"><h3>{format_size(len(file_bytes))}</h3><p>{t("original_size")}</p></div>',
+                            unsafe_allow_html=True,
+                        )
+                    with col2:
+                        st.markdown(
+                            f'<div class="stat-card"><h3>{format_size(len(result_bytes))}</h3><p>{t("result_size")}</p></div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — {output_filename}",
+                        data=result_bytes,
+                        file_name=output_filename,
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except pikepdf.PasswordError:
+                    st.error(t("error_password"))
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Merge PDFs
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_merge":
+    uploaded_files = st.file_uploader(t("upload_pdfs"), type=["pdf"], accept_multiple_files=True, key="merge_upload")
+
+    if uploaded_files:
+        st.info(t("files_count", count=len(uploaded_files)))
+        for i, f in enumerate(uploaded_files):
+            st.markdown(f"**{i + 1}.** {f.name} ({format_size(f.size)})")
+
+        if st.button(t("btn_merge"), type="primary", use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    merger = pikepdf.Pdf.new()
+                    for f in uploaded_files:
+                        src = pikepdf.open(io.BytesIO(f.read()))
+                        merger.pages.extend(src.pages)
+
+                    output = io.BytesIO()
+                    merger.save(output)
+                    merger.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+                    st.markdown(
+                        f'<div class="stat-card"><h3>{format_size(len(result_bytes))}</h3><p>{t("result_size")}</p></div>',
+                        unsafe_allow_html=True,
+                    )
+
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — merged_{timestamp}.pdf",
+                        data=result_bytes,
+                        file_name=f"merged_{timestamp}.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Split PDF
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_split":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="split_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        src_pdf = pikepdf.open(io.BytesIO(file_bytes))
+        total_pages = len(src_pdf.pages)
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+        st.markdown(t("total_pages", pages=total_pages))
+
+        split_mode = st.radio(
+            t("split_mode"),
+            ["split_each", "split_range", "split_every_n"],
+            format_func=lambda x: t(x),
+            horizontal=True,
+        )
+
+        page_range_str = ""
+        n_pages = 1
+        if split_mode == "split_range":
+            page_range_str = st.text_input(t("page_range"), help=t("page_range_help"))
+        elif split_mode == "split_every_n":
+            n_pages = st.number_input(t("split_n_pages"), min_value=1, max_value=total_pages, value=1)
+
+        if st.button(t("btn_split"), type="primary", use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    result_files = {}
+
+                    if split_mode == "split_each":
+                        for i in range(total_pages):
+                            new_pdf = pikepdf.Pdf.new()
+                            new_pdf.pages.append(src_pdf.pages[i])
+                            buf = io.BytesIO()
+                            new_pdf.save(buf)
+                            new_pdf.close()
+                            name = uploaded_file.name.replace(".pdf", f"_page{i + 1}.pdf")
+                            result_files[name] = buf.getvalue()
+
+                    elif split_mode == "split_range":
+                        pages = parse_page_range(page_range_str, total_pages)
+                        if pages:
+                            new_pdf = pikepdf.Pdf.new()
+                            for p in pages:
+                                new_pdf.pages.append(src_pdf.pages[p])
+                            buf = io.BytesIO()
+                            new_pdf.save(buf)
+                            new_pdf.close()
+                            name = uploaded_file.name.replace(".pdf", "_extracted.pdf")
+                            result_files[name] = buf.getvalue()
+
+                    elif split_mode == "split_every_n":
+                        for start in range(0, total_pages, n_pages):
+                            end = min(start + n_pages, total_pages)
+                            new_pdf = pikepdf.Pdf.new()
+                            for p in range(start, end):
+                                new_pdf.pages.append(src_pdf.pages[p])
+                            buf = io.BytesIO()
+                            new_pdf.save(buf)
+                            new_pdf.close()
+                            name = uploaded_file.name.replace(
+                                ".pdf", f"_pages{start + 1}-{end}.pdf"
+                            )
+                            result_files[name] = buf.getvalue()
+
+                    src_pdf.close()
+
+                    if result_files:
+                        st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                        st.success(t("success"))
+
+                        if len(result_files) == 1:
+                            name, data = next(iter(result_files.items()))
+                            st.download_button(
+                                label=f"⬇️ {t('btn_download')} — {name}",
+                                data=data,
+                                file_name=name,
+                                mime="application/pdf",
+                                type="primary",
+                                use_container_width=True,
+                            )
+                        else:
+                            st.markdown(t("files_generated", count=len(result_files)))
+                            zip_data = create_zip(result_files)
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            st.download_button(
+                                label=f"⬇️ {t('btn_download_all')}",
+                                data=zip_data,
+                                file_name=f"split_{timestamp}.zip",
+                                mime="application/zip",
+                                type="primary",
+                                use_container_width=True,
+                            )
+                            with st.expander(t("individual_files")):
+                                for name, data in result_files.items():
+                                    st.download_button(
+                                        label=f"⬇️ {name}",
+                                        data=data,
+                                        file_name=name,
+                                        mime="application/pdf",
+                                        key=f"dl_{name}",
+                                        use_container_width=True,
+                                    )
+                        st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Compress PDF
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_compress":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="compress_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+
+        compress_level = st.select_slider(
+            t("compress_level"),
+            options=["compress_low", "compress_medium", "compress_high"],
+            format_func=lambda x: t(x),
+            value="compress_medium",
+        )
+
+        if st.button(t("btn_compress"), type="primary", use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    pdf = pikepdf.open(io.BytesIO(file_bytes))
+                    pdf.remove_unreferenced_resources()
+
+                    output = io.BytesIO()
+                    if compress_level == "compress_high":
+                        pdf.save(output, recompress_flate=True, object_stream_mode=pikepdf.ObjectStreamMode.generate)
+                    elif compress_level == "compress_medium":
+                        pdf.save(output, object_stream_mode=pikepdf.ObjectStreamMode.generate)
+                    else:
+                        pdf.save(output)
+
+                    pdf.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    original_size = len(file_bytes)
+                    result_size = len(result_bytes)
+                    ratio = ((original_size - result_size) / original_size) * 100 if original_size > 0 else 0
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.markdown(
+                            f'<div class="stat-card"><h3>{format_size(original_size)}</h3><p>{t("original_size")}</p></div>',
+                            unsafe_allow_html=True,
+                        )
+                    with col2:
+                        st.markdown(
+                            f'<div class="stat-card"><h3>{format_size(result_size)}</h3><p>{t("result_size")}</p></div>',
+                            unsafe_allow_html=True,
+                        )
+                    with col3:
+                        st.markdown(
+                            f'<div class="stat-card"><h3>{ratio:.1f}%</h3><p>{t("compression_ratio")}</p></div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    if result_size < original_size:
+                        output_name = uploaded_file.name.replace(".pdf", "_compressed.pdf")
+                        st.download_button(
+                            label=f"⬇️ {t('btn_download')} — {output_name}",
+                            data=result_bytes,
+                            file_name=output_name,
+                            mime="application/pdf",
+                            type="primary",
+                            use_container_width=True,
+                        )
+                    else:
+                        st.warning(t("already_optimized"))
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Add Watermark
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_watermark":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="watermark_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            watermark_text = st.text_input(t("watermark_text"), value="CONFIDENTIAL")
+        with col2:
+            opacity = st.slider(t("watermark_opacity"), 0.05, 0.5, 0.15, 0.05)
+
+        col3, col4 = st.columns(2)
+        with col3:
+            font_size = st.slider("Font size", 20, 120, 60, 5)
+        with col4:
+            watermark_color = st.color_picker("Color", "#FF0000")
+
+        if st.button(t("btn_watermark"), type="primary", use_container_width=True, disabled=not watermark_text):
+            with st.spinner(t("processing")):
+                try:
+                    doc = fitz.open(stream=file_bytes, filetype="pdf")
+
+                    hex_color = watermark_color.lstrip("#")
+                    r = int(hex_color[0:2], 16) / 255
+                    g = int(hex_color[2:4], 16) / 255
+                    b = int(hex_color[4:6], 16) / 255
+
+                    for page in doc:
+                        rect = page.rect
+                        text_point = fitz.Point(rect.width / 4, rect.height * 2 / 3)
+                        page.insert_text(
+                            text_point,
+                            watermark_text,
+                            fontsize=font_size,
+                            color=(r, g, b),
+                            rotate=45,
+                            overlay=True,
+                            opacity=opacity,
+                        )
+
+                    output = io.BytesIO()
+                    doc.save(output)
+                    doc.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    previews = get_pdf_preview(result_bytes, max_pages=1)
+                    if previews:
+                        st.image(previews[0], caption=t("preview"), use_container_width=True)
+
+                    output_name = uploaded_file.name.replace(".pdf", "_watermarked.pdf")
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — {output_name}",
+                        data=result_bytes,
+                        file_name=output_name,
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: PDF to Image
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_to_image":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="toimg_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        src_pdf = fitz.open(stream=file_bytes, filetype="pdf")
+        total_pages = len(src_pdf)
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+        st.markdown(t("total_pages", pages=total_pages))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            img_format = st.selectbox(t("image_format"), ["PNG", "JPEG", "WEBP"])
+        with col2:
+            dpi = st.selectbox(t("image_dpi"), [72, 150, 300, 600], index=1)
+
+        page_range_str = st.text_input(t("page_range"), value=f"1-{total_pages}", help=t("page_range_help"))
+
+        if st.button(t("btn_convert"), type="primary", use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    pages = parse_page_range(page_range_str, total_pages)
+                    zoom = dpi / 72
+                    mat = fitz.Matrix(zoom, zoom)
+                    result_files = {}
+
+                    progress_bar = st.progress(0)
+                    for idx, page_num in enumerate(pages):
+                        page = src_pdf[page_num]
+                        pix = page.get_pixmap(matrix=mat)
+                        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+                        buf = io.BytesIO()
+                        fmt = img_format.upper()
+                        if fmt == "JPEG":
+                            img.save(buf, format="JPEG", quality=95)
+                        elif fmt == "WEBP":
+                            img.save(buf, format="WEBP", quality=90)
+                        else:
+                            img.save(buf, format="PNG")
+
+                        ext = img_format.lower()
+                        if ext == "jpeg":
+                            ext = "jpg"
+                        name = uploaded_file.name.replace(".pdf", f"_page{page_num + 1}.{ext}")
+                        result_files[name] = buf.getvalue()
+                        progress_bar.progress((idx + 1) / len(pages))
+
+                    src_pdf.close()
+                    progress_bar.empty()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    if len(result_files) == 1:
+                        name, data = next(iter(result_files.items()))
+                        st.image(data, caption=name, use_container_width=True)
+                        st.download_button(
+                            label=f"⬇️ {t('btn_download')} — {name}",
+                            data=data,
+                            file_name=name,
+                            mime=f"image/{img_format.lower()}",
+                            type="primary",
+                            use_container_width=True,
+                        )
+                    else:
+                        preview_items = list(result_files.items())[:3]
+                        cols = st.columns(len(preview_items))
+                        for i, (name, data) in enumerate(preview_items):
+                            with cols[i]:
+                                st.image(data, caption=name, use_container_width=True)
+
+                        zip_data = create_zip(result_files)
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        st.download_button(
+                            label=f"⬇️ {t('btn_download_all')} ({len(result_files)} files)",
+                            data=zip_data,
+                            file_name=f"images_{timestamp}.zip",
+                            mime="application/zip",
+                            type="primary",
+                            use_container_width=True,
+                        )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Image to PDF
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_image_to_pdf":
+    uploaded_files = st.file_uploader(
+        t("upload_images"),
+        type=["png", "jpg", "jpeg", "webp", "bmp", "tiff"],
+        accept_multiple_files=True,
+        key="img2pdf_upload",
+    )
+
+    if uploaded_files:
+        st.info(t("files_count", count=len(uploaded_files)))
+        for i, f in enumerate(uploaded_files):
+            st.markdown(f"**{i + 1}.** {f.name} ({format_size(f.size)})")
+
+        if st.button(t("btn_convert"), type="primary", use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    doc = fitz.open()
+                    for f in uploaded_files:
+                        img_bytes = f.read()
+                        img = Image.open(io.BytesIO(img_bytes))
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        img_buf = io.BytesIO()
+                        img.save(img_buf, format="JPEG", quality=95)
+                        img_buf.seek(0)
+
+                        img_doc = fitz.open(stream=img_buf, filetype="jpeg")
+                        rect = img_doc[0].rect
+                        pdf_page = doc.new_page(width=rect.width, height=rect.height)
+                        pdf_page.insert_image(rect, stream=img_buf.getvalue())
+                        img_doc.close()
+
+                    output = io.BytesIO()
+                    doc.save(output)
+                    doc.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — images_to_pdf_{timestamp}.pdf",
+                        data=result_bytes,
+                        file_name=f"images_to_pdf_{timestamp}.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Extract Pages
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_extract_pages":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="extract_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        src_pdf = pikepdf.open(io.BytesIO(file_bytes))
+        total_pages = len(src_pdf.pages)
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+        st.markdown(t("total_pages", pages=total_pages))
+
+        try:
+            previews = get_pdf_preview(file_bytes, max_pages=min(6, total_pages))
+            if previews:
+                cols = st.columns(min(3, len(previews)))
+                for i, img in enumerate(previews):
+                    with cols[i % 3]:
+                        st.image(img, caption=f"Page {i + 1}", use_container_width=True)
+        except Exception:
+            pass
+
+        page_range_str = st.text_input(t("page_range"), help=t("page_range_help"))
+
+        if st.button(t("btn_extract"), type="primary", use_container_width=True, disabled=not page_range_str):
+            with st.spinner(t("processing")):
+                try:
+                    pages = parse_page_range(page_range_str, total_pages)
+                    new_pdf = pikepdf.Pdf.new()
+                    for p in pages:
+                        new_pdf.pages.append(src_pdf.pages[p])
+
+                    output = io.BytesIO()
+                    new_pdf.save(output)
+                    new_pdf.close()
+                    src_pdf.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+                    st.markdown(t("extracted_pages", count=len(pages)))
+
+                    output_name = uploaded_file.name.replace(".pdf", "_extracted.pdf")
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — {output_name}",
+                        data=result_bytes,
+                        file_name=output_name,
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Rotate Pages
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_rotate":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="rotate_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        src_pdf = pikepdf.open(io.BytesIO(file_bytes))
+        total_pages = len(src_pdf.pages)
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+        st.markdown(t("total_pages", pages=total_pages))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            angle = st.selectbox(t("rotate_angle"), [90, 180, 270])
+        with col2:
+            apply_to = st.radio(t("rotate_pages"), [t("rotate_all"), t("rotate_specific")], horizontal=True)
+
+        page_range_str = ""
+        if apply_to == t("rotate_specific"):
+            page_range_str = st.text_input(t("page_range"), help=t("page_range_help"))
+
+        if st.button(t("btn_rotate"), type="primary", use_container_width=True):
+            with st.spinner(t("processing")):
+                try:
+                    if apply_to == t("rotate_all"):
+                        pages_to_rotate = list(range(total_pages))
+                    else:
+                        pages_to_rotate = parse_page_range(page_range_str, total_pages)
+
+                    for p in pages_to_rotate:
+                        page = src_pdf.pages[p]
+                        current = int(page.get("/Rotate", 0))
+                        page["/Rotate"] = pikepdf.Name(str((current + angle) % 360))
+
+                    output = io.BytesIO()
+                    src_pdf.save(output)
+                    src_pdf.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    try:
+                        previews = get_pdf_preview(result_bytes, max_pages=2)
+                        if previews:
+                            cols = st.columns(len(previews))
+                            for i, img in enumerate(previews):
+                                with cols[i]:
+                                    st.image(img, caption=f"Page {i + 1}", use_container_width=True)
+                    except Exception:
+                        pass
+
+                    output_name = uploaded_file.name.replace(".pdf", "_rotated.pdf")
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — {output_name}",
+                        data=result_bytes,
+                        file_name=output_name,
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Tool: Password Protect
+# ──────────────────────────────────────────────
+
+elif selected_tool == "tool_protect":
+    uploaded_file = st.file_uploader(t("upload_pdf"), type=["pdf"], key="protect_upload")
+
+    if uploaded_file:
+        file_bytes = uploaded_file.read()
+        st.info(t("file_info", name=uploaded_file.name, size=format_size(len(file_bytes))))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            new_password = st.text_input(t("new_password"), type="password")
+        with col2:
+            confirm_password = st.text_input(t("confirm_password"), type="password")
+
+        passwords_match = new_password and new_password == confirm_password
+        if new_password and confirm_password and not passwords_match:
+            st.warning(t("password_mismatch"))
+
+        if st.button(t("btn_protect"), type="primary", use_container_width=True, disabled=not passwords_match):
+            with st.spinner(t("processing")):
+                try:
+                    pdf = pikepdf.open(io.BytesIO(file_bytes))
+                    output = io.BytesIO()
+                    pdf.save(
+                        output,
+                        encryption=pikepdf.Encryption(
+                            owner=new_password,
+                            user=new_password,
+                            R=6,
+                        ),
+                    )
+                    pdf.close()
+                    output.seek(0)
+                    result_bytes = output.getvalue()
+
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
+                    st.success(t("success"))
+
+                    output_name = uploaded_file.name.replace(".pdf", "_protected.pdf")
+                    st.download_button(
+                        label=f"⬇️ {t('btn_download')} — {output_name}",
+                        data=result_bytes,
+                        file_name=output_name,
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                    )
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(t("error_general", error=str(e)))
+
+# ──────────────────────────────────────────────
+# Footer
+# ──────────────────────────────────────────────
+
+st.markdown(f'<div class="footer">{t("footer")} &copy; {datetime.now().year}</div>', unsafe_allow_html=True)
