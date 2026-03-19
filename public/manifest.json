@@ -1,0 +1,19 @@
+{
+  "name": "PDF Toolkit Pro",
+  "short_name": "PDF Toolkit",
+  "description": "All-in-one PDF solution. Unlock, merge, split, compress, watermark and more — safely in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "any",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

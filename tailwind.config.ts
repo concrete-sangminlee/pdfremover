@@ -5,20 +5,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Manrope", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
-      },
-      colors: {
-        accent: "#8cff2e",
-      },
-      keyframes: {
-        fadeIn: {
-          from: { opacity: "0", transform: "translateY(-8px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-      },
-      animation: {
-        fadeIn: "fadeIn 0.3s ease",
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
     },
   },
