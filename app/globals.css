@@ -187,6 +187,15 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
   font-weight: 600;
 }
 
+/* ━━━ View Transition ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.view-enter {
+  animation: viewEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes viewEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ━━━ Print ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @media print {
   header, footer, .hero-gradient { display: none !important; }

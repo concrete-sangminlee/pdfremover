@@ -991,12 +991,25 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       const toolLabel = t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "";
       switch (view) {
         case "unlock": {
-          const buf = await files[0].arrayBuffer();
-          const data = await unlockPDF(buf);
-          setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_unlocked.pdf"));
-          setMessage({ type: "success", text: t.msgUnlocked });
-          addHistory(toolLabel, files[0].name, true);
+          if (files.length === 1) {
+            const buf = await files[0].arrayBuffer();
+            const data = await unlockPDF(buf);
+            setResultData(data);
+            setResultName(files[0].name.replace(/\.pdf$/i, "_unlocked.pdf"));
+            setMessage({ type: "success", text: t.msgUnlocked });
+            addHistory(toolLabel, files[0].name, true);
+          } else {
+            // Batch unlock
+            const results: { name: string; data: Uint8Array }[] = [];
+            for (const f of files) {
+              const buf = await f.arrayBuffer();
+              const data = await unlockPDF(buf);
+              results.push({ name: f.name.replace(/\.pdf$/i, "_unlocked.pdf"), data });
+            }
+            setResultMulti(results);
+            setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 파일 잠금해제 완료!" : " files unlocked!"}` });
+            addHistory(toolLabel, `${files.length} files`, true);
+          }
           break;
         }
         case "merge": {
@@ -1168,8 +1181,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     return (
       <>
         <Header />
-        <div className="min-h-screen pt-14">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+        <div className="min-h-screen pt-14" key="home">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16 view-enter">
             {/* Hero */}
             <div className="relative text-center mb-14 sm:mb-20 animate-fadeInUp">
               <div className="hero-gradient" />
@@ -1394,10 +1407,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   return (
     <>
       <Header />
-      <div className="min-h-screen pt-14">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="min-h-screen pt-14" key={view}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 view-enter">
           {/* Back + Header */}
-          <div className="animate-fadeIn">
+          <div>
             <button onClick={goHome}
               className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-500 transition-colors mb-6 group">
               <span className="group-hover:-translate-x-1 transition-transform">&larr;</span>
@@ -1432,7 +1445,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={view === "merge"}
+              multiple={view === "merge" || view === "unlock"}
               pageInfo={pageInfo}
               t={t}
             />
@@ -1448,6 +1461,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* Tool-specific options */}
             {view === "merge" && files.length > 0 && files.length < 2 && (
               <Toast type="warning" text={t.mergeWarn} />
+            )}
+            {view === "merge" && files.length >= 2 && (
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-100 text-sm animate-fadeIn">
+                <span className="text-blue-700 font-medium">{files.length} {lang === "ko" ? "개 파일 선택됨" : "files selected"}</span>
+                {(() => {
+                  const total = files.reduce((sum, f) => sum + (pageInfo[f.name + f.size + f.lastModified] || 0), 0);
+                  return total > 0 ? <span className="text-blue-500 text-xs font-mono">{lang === "ko" ? `총 ${total}페이지` : `${total} pages total`}</span> : null;
+                })()}
+              </div>
             )}
 
             {view === "split" && files.length > 0 && (
