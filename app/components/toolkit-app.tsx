@@ -911,11 +911,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setView(tool);
     resetState();
     window.history.pushState(null, "", `/${tool}`);
+    window.scrollTo(0, 0);
   };
   const goHome = () => {
     setView("home");
     resetState();
     window.history.pushState(null, "", "/");
+    window.scrollTo(0, 0);
   };
 
   // Sync URL with browser back/forward
@@ -1334,18 +1336,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="mt-20 sm:mt-24 max-w-2xl mx-auto">
               <h2 className="text-center text-xs font-semibold text-gray-400 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="grid grid-cols-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold">
-                  <div className="px-5 py-3 text-gray-500">{t.compareFeature}</div>
-                  <div className="px-5 py-3 text-blue-600 text-center">{t.compareUs}</div>
-                  <div className="px-5 py-3 text-gray-400 text-center">{t.compareOthers}</div>
+                <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 border-b border-gray-200 text-[11px] sm:text-xs font-semibold">
+                  <div className="px-3 sm:px-5 py-3 text-gray-500">{t.compareFeature}</div>
+                  <div className="px-2 sm:px-5 py-3 text-blue-600 text-center truncate">{t.compareUs}</div>
+                  <div className="px-2 sm:px-5 py-3 text-gray-400 text-center truncate">{t.compareOthers}</div>
                 </div>
                 {[t.cmpPrivacy, t.cmpUpload, t.cmpFree, t.cmpSignup, t.cmpSpeed].map((feat, i) => (
-                  <div key={i} className={`grid grid-cols-3 text-sm ${i < 4 ? "border-b border-gray-100" : ""}`}>
-                    <div className="px-5 py-3 text-gray-600">{feat}</div>
-                    <div className="px-5 py-3 text-center">
+                  <div key={i} className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100" : ""}`}>
+                    <div className="px-3 sm:px-5 py-3 text-gray-600">{feat}</div>
+                    <div className="px-2 sm:px-5 py-3 text-center">
                       <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     </div>
-                    <div className="px-5 py-3 text-center">
+                    <div className="px-2 sm:px-5 py-3 text-center">
                       <svg className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </div>
                   </div>
