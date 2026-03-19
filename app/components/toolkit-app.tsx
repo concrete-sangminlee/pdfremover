@@ -624,9 +624,10 @@ function Toast({
   };
   const icons = { success: "\u2713", error: "\u2715", warning: "\u26A0" };
 
+  const durations = { success: 3000, warning: 5000, error: 8000 };
   useEffect(() => {
     if (onDismiss) {
-      const timer = setTimeout(onDismiss, 5000);
+      const timer = setTimeout(onDismiss, durations[type]);
       return () => clearTimeout(timer);
     }
   }, [onDismiss]);
@@ -1509,6 +1510,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 })()}
               </div>
             )}
+
+            {/* Page count hint for single-file tools */}
+            {["split", "extract", "delete", "rotate"].includes(view) && files.length === 1 && (() => {
+              const pc = pageInfo[files[0].name + files[0].size + files[0].lastModified];
+              return pc > 0 ? (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 border border-gray-100 text-xs animate-fadeIn">
+                  <span className="text-gray-500">{lang === "ko" ? `이 PDF는 ${pc}페이지입니다` : `This PDF has ${pc} pages`}</span>
+                  <span className="text-gray-300">|</span>
+                  <span className="text-gray-400 font-mono">{fmtSize(files[0].size)}</span>
+                </div>
+              ) : null;
+            })()}
 
             {view === "split" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
