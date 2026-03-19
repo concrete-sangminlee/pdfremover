@@ -19,7 +19,8 @@ export type Tool =
   | "imgresize"
   | "html2pdf"
   | "imgconvert"
-  | "txt2pdf";
+  | "txt2pdf"
+  | "imgstitch";
 
 export type View = "home" | Tool;
 export type Lang = "ko" | "en";
@@ -53,6 +54,7 @@ export const TOOLS: ToolDef[] = [
   { id: "pdftext",   icon: "\uD83D\uDCCB",      labelKey: "pdftextLabel",   descKey: "pdftextDesc",   labelEn: "PDF Text",  hex: "#0891b2", tint: "#ecfeff" },
   { id: "imgcompress", icon: "\uD83D\uDDDC\uFE0F", labelKey: "imgcompressLabel", descKey: "imgcompressDesc", labelEn: "IMG Compress", hex: "#ca8a04", tint: "#fefce8", multi: true, accept: "image/*" },
   { id: "imgresize",  icon: "\uD83D\uDD0D",      labelKey: "imgresizeLabel",  descKey: "imgresizeDesc",  labelEn: "IMG Resize",  hex: "#6366f1", tint: "#eef2ff", multi: true, accept: "image/*" },
+  { id: "imgstitch", icon: "\uD83E\uDDE9",      labelKey: "imgstitchLabel", descKey: "imgstitchDesc", labelEn: "IMG Stitch", hex: "#7c3aed", tint: "#f5f3ff", multi: true, accept: "image/*" },
   { id: "txt2pdf",   icon: "\uD83D\uDCDD",      labelKey: "txt2pdfLabel",   descKey: "txt2pdfDesc",   labelEn: "Text to PDF", hex: "#475569", tint: "#f8fafc" },
   { id: "imgconvert", icon: "\uD83C\uDFA8",      labelKey: "imgconvertLabel", descKey: "imgconvertDesc", labelEn: "IMG Convert", hex: "#e11d48", tint: "#fff1f2", multi: true, accept: "image/*" },
   { id: "html2pdf",  icon: "\uD83C\uDF10",      labelKey: "html2pdfLabel",  descKey: "html2pdfDesc",  labelEn: "HTML to PDF", hex: "#0ea5e9", tint: "#f0f9ff", accept: ".html,.htm,text/html" },

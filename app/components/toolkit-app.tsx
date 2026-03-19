@@ -187,6 +187,11 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "이미지 리사이즈",
     imgresizeDesc: "이미지 크기를 원하는 비율로 조절합니다",
     imgScale: "크기 비율",
+    imgstitchLabel: "이미지 합치기",
+    imgstitchDesc: "여러 이미지를 하나로 합칩니다 (세로/가로)",
+    imgDirection: "합치기 방향",
+    imgVertical: "세로",
+    imgHorizontal: "가로",
     txt2pdfLabel: "텍스트 → PDF",
     txt2pdfDesc: "텍스트를 입력하여 PDF를 만듭니다",
     txtPlaceholder: "여기에 텍스트를 입력하세요...",
@@ -365,6 +370,11 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "Image Resize",
     imgresizeDesc: "Resize images to any scale",
     imgScale: "Scale",
+    imgstitchLabel: "Image Stitch",
+    imgstitchDesc: "Combine multiple images into one (vertical/horizontal)",
+    imgDirection: "Direction",
+    imgVertical: "Vertical",
+    imgHorizontal: "Horizontal",
     txt2pdfLabel: "Text to PDF",
     txt2pdfDesc: "Type text and create a PDF",
     txtPlaceholder: "Type or paste your text here...",
@@ -580,6 +590,30 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function stitchImages(imageFiles: File[], direction: "vertical" | "horizontal"): Promise<Uint8Array> {
+  const imgs = await Promise.all(imageFiles.map((f) => new Promise<HTMLImageElement>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.src = URL.createObjectURL(f);
+  })));
+  const canvas = document.createElement("canvas");
+  if (direction === "vertical") {
+    canvas.width = Math.max(...imgs.map((i) => i.width));
+    canvas.height = imgs.reduce((sum, i) => sum + i.height, 0);
+    const ctx = canvas.getContext("2d")!;
+    let y = 0;
+    for (const img of imgs) { ctx.drawImage(img, 0, y); y += img.height; }
+  } else {
+    canvas.width = imgs.reduce((sum, i) => sum + i.width, 0);
+    canvas.height = Math.max(...imgs.map((i) => i.height));
+    const ctx = canvas.getContext("2d")!;
+    let x = 0;
+    for (const img of imgs) { ctx.drawImage(img, x, 0); x += img.width; }
+  }
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+  return new Uint8Array(await blob.arrayBuffer());
 }
 
 async function convertImageFormat(file: File, format: "png" | "jpeg" | "webp"): Promise<{ name: string; data: Uint8Array }> {
@@ -1079,6 +1113,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [imgScale, setImgScale] = useState(0.5);
   const [imgOutputFormat, setImgOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [textInput, setTextInput] = useState("");
+  const [stitchDir, setStitchDir] = useState<"vertical" | "horizontal">("vertical");
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1176,7 +1211,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const handleFiles = async (newFiles: File[]) => {
     // Validate files based on current tool
     let validFiles: File[];
-    if (["img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view)) {
+    if (["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) {
       validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
@@ -1211,7 +1246,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
+    if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1370,6 +1405,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
           addHistory(toolLabel, files[0].name, true);
+          break;
+        }
+        case "imgstitch": {
+          if (files.length < 2) { setMessage({ type: "warning", text: lang === "ko" ? "2개 이상의 이미지를 업로드하세요." : "Upload 2 or more images." }); break; }
+          const data = await stitchImages(files, stitchDir);
+          setResultData(data);
+          setResultName(`stitched_${stitchDir}.png`);
+          setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 합치기 완료!" : " images stitched!"}` });
+          addHistory(toolLabel, `${files.length} images`, true);
           break;
         }
         case "txt2pdf": {
@@ -1876,10 +1920,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view)}
+              multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)}
               pageInfo={pageInfo}
               t={t}
-              acceptType={["img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view) ? "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
+              acceptType={["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view) ? "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
             />
             )}
 
@@ -1989,6 +2033,21 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     placeholder={t.rotPagesPlaceholder}
                     className="input-field" />
                 )}
+              </div>
+            )}
+
+            {view === "imgstitch" && files.length > 0 && (
+              <div className="animate-fadeIn">
+                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgDirection}</label>
+                <div className="flex gap-2">
+                  {(["vertical", "horizontal"] as const).map((d) => (
+                    <button key={d} onClick={() => setStitchDir(d)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
+                        ${stitchDir === d ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                      {d === "vertical" ? t.imgVertical : t.imgHorizontal}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -2267,7 +2326,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  imgconvert: ["imgcompress", "imgresize", "img2pdf", "pdf2img"],
+                  imgstitch: ["imgconvert", "imgresize", "img2pdf", "imgcompress"],
+                  imgconvert: ["imgstitch", "imgcompress", "imgresize", "img2pdf"],
                   imgresize: ["imgconvert", "imgcompress", "img2pdf", "merge"],
                   imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
                   pdftext: ["info", "pdf2img", "extract", "docx2html"],
