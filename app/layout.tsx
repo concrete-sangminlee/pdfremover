@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   creator: "PDF Toolkit Pro",
   publisher: "PDF Toolkit Pro",
   robots: { index: true, follow: true },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://pdftoolkit.pro"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://pdfcontrol.vercel.app"),
   openGraph: {
     type: "website",
     locale: "ko_KR",

@@ -15,7 +15,7 @@ No server uploads. No sign-ups. No limits. Just fast, secure PDF processing.
 [![Bundle Size](https://img.shields.io/badge/First_Load-104KB-green)](/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[**Live Demo**](https://pdftoolkit.pro) · [Report Bug](https://github.com/concrete-sangminlee/pdfremover/issues) · [Request Feature](https://github.com/concrete-sangminlee/pdfremover/issues)
+[**Live Demo**](https://pdfcontrol.vercel.app) · [Report Bug](https://github.com/concrete-sangminlee/pdfremover/issues) · [Request Feature](https://github.com/concrete-sangminlee/pdfremover/issues)
 
 </div>
 

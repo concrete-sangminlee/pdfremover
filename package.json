@@ -4,7 +4,7 @@
   "description": "Open-source, privacy-first PDF toolkit. 10 professional tools running 100% in your browser.",
   "private": false,
   "license": "MIT",
-  "homepage": "https://pdftoolkit.pro",
+  "homepage": "https://pdfcontrol.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/concrete-sangminlee/pdfremover.git"
