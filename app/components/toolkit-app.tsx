@@ -1129,11 +1129,25 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
       setProcessCount((c) => c + 1);
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : t.msgError;
+      let errMsg = t.msgError;
+      if (err instanceof Error) {
+        if (err.message.includes("encrypt") || err.message.includes("password")) {
+          errMsg = lang === "ko" ? "이 PDF는 열기 비밀번호가 설정되어 있습니다. 비밀번호를 알아야 처리할 수 있습니다." : "This PDF requires an open password. You need the password to process it.";
+        } else if (err.message.includes("invalid") || err.message.includes("Failed to parse")) {
+          errMsg = lang === "ko" ? "손상되었거나 유효하지 않은 PDF 파일입니다." : "This file is corrupted or not a valid PDF.";
+        } else {
+          errMsg = err.message;
+        }
+      }
       setMessage({ type: "error", text: errMsg });
       if (files[0]) addHistory(t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "", files[0].name, false);
     } finally {
       setProcessing(false);
+      // Scroll to results
+      setTimeout(() => {
+        const el = document.getElementById("results-area");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
     }
   };
 
@@ -1253,6 +1267,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               {TOOLS.map((td) => (
                 <button key={td.id} onClick={() => goTool(td.id)}
                   className="tool-card rounded-2xl p-6 text-left group relative overflow-hidden"
+                  aria-label={`${t[td.labelKey]} - ${t[td.descKey]}`}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${td.hex}30`)}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}>
                   <div
@@ -1644,6 +1659,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Messages */}
             {message && <Toast type={message.type} text={message.text} onDismiss={() => setMessage(null)} />}
+
+            <div id="results-area" />
 
             {/* Compression info */}
             {compressionInfo && (
