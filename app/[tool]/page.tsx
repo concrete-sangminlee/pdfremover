@@ -76,7 +76,7 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
   }
 
   return {
-    title: `${meta.titleEn} — PDF Toolkit Pro`,
+    title: meta.titleEn,
     description: meta.descEn,
     keywords: [
       `PDF ${params.tool}`,
