@@ -989,12 +989,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   };
 
   // ─── Execute ───
+  const [procTime, setProcTime] = useState<number | null>(null);
+
   const execute = async () => {
     if (files.length === 0) return;
+    const startTime = performance.now();
     setProcessing(true);
     setMessage(null);
     setResultData(null);
     setResultMulti([]);
+    setProcTime(null);
     setCompressionInfo(null);
 
     try {
@@ -1143,7 +1147,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       if (files[0]) addHistory(t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "", files[0].name, false);
     } finally {
       setProcessing(false);
-      // Scroll to results
+      setProcTime(Math.round(performance.now() - startTime));
       setTimeout(() => {
         const el = document.getElementById("results-area");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1692,6 +1696,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   {resultName} ({fmtSize(resultData.length)})
                 </button>
+                <div className="flex items-center justify-between">
+                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                    {lang === "ko" ? "다른 파일 처리하기" : "Process another file"}
+                  </button>
+                  {procTime !== null && <span className="text-[10px] text-gray-400">{procTime < 1000 ? `${procTime}ms` : `${(procTime / 1000).toFixed(1)}s`}</span>}
+                </div>
               </div>
             )}
 
@@ -1737,8 +1748,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       ))}
                     </div>
                     <div className="rounded-2xl border border-gray-200 overflow-hidden">
-                      <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                      <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-gray-500">{t.metadata}</h3>
+                        <button
+                          onClick={() => {
+                            const text = `Pages: ${pdfInfoResult.pages}\nSize: ${fmtSize(pdfInfoResult.size)}\nTitle: ${pdfInfoResult.title}\nAuthor: ${pdfInfoResult.author}\nCreator: ${pdfInfoResult.creator}\nProducer: ${pdfInfoResult.producer}`;
+                            navigator.clipboard.writeText(text);
+                            setMessage({ type: "success", text: lang === "ko" ? "클립보드에 복사됨" : "Copied to clipboard" });
+                          }}
+                          className="text-[10px] text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                        >{lang === "ko" ? "복사" : "Copy"}</button>
                       </div>
                       {[
                         [t.metaTitle, pdfInfoResult.title],
