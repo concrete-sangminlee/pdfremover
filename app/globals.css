@@ -81,8 +81,8 @@ html { scroll-behavior: smooth; }
 
 /* ━━━ Gradient Text ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .gradient-text {
-  background: linear-gradient(135deg, #2563eb, #7c3aed, #2563eb);
-  background-size: 300% auto;
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 30%, #ec4899 60%, #2563eb 100%);
+  background-size: 400% auto;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: gradientShift 5s ease infinite;

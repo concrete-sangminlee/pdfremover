@@ -57,6 +57,12 @@ const META: Record<string, { titleKo: string; titleEn: string; descKo: string; d
     descKo: "PDF에서 불필요한 페이지를 제거합니다. 무료 온라인 도구.",
     descEn: "Remove unwanted pages from PDF. Free online tool.",
   },
+  pdftext: {
+    titleKo: "PDF 텍스트 추출",
+    titleEn: "Extract PDF Text",
+    descKo: "PDF에서 텍스트를 추출합니다. 무료, 브라우저에서 처리.",
+    descEn: "Extract text content from PDF files. Free, browser-based.",
+  },
   docx2html: {
     titleKo: "DOCX 뷰어",
     titleEn: "DOCX Viewer",

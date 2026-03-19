@@ -179,6 +179,8 @@ export const T: Record<Lang, Record<string, string>> = {
     docx2htmlLabel: "DOCX 뷰어",
     docx2htmlDesc: "Word 문서를 브라우저에서 바로 확인합니다",
     docxPreview: "DOCX 미리보기",
+    pdftextLabel: "PDF 텍스트 추출",
+    pdftextDesc: "PDF에서 텍스트를 추출합니다",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -341,6 +343,8 @@ export const T: Record<Lang, Record<string, string>> = {
     docx2htmlLabel: "DOCX Viewer",
     docx2htmlDesc: "Preview Word documents in your browser",
     docxPreview: "DOCX Preview",
+    pdftextLabel: "Extract PDF Text",
+    pdftextDesc: "Extract text content from PDF files",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -548,6 +552,20 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function extractPdfText(data: ArrayBuffer): Promise<string> {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data), useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items.map((item: unknown) => (item as { str?: string }).str || "").join(" ");
+    pages.push(`--- Page ${i} ---\n${text}`);
+  }
+  return pages.join("\n\n");
 }
 
 async function docxToHtml(data: ArrayBuffer): Promise<string> {
@@ -1221,6 +1239,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           addHistory(toolLabel, files[0].name, true);
           break;
         }
+        case "pdftext": {
+          const buf = await files[0].arrayBuffer();
+          const text = await extractPdfText(buf);
+          setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${text.replace(/</g, "&lt;")}</pre>`);
+          setMessage({ type: "success", text: lang === "ko" ? "텍스트 추출 완료!" : "Text extracted!" });
+          addHistory(toolLabel, files[0].name, true);
+          break;
+        }
         case "docx2html": {
           const buf = await files[0].arrayBuffer();
           const html = await docxToHtml(buf);
@@ -1338,23 +1364,26 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="relative text-center mb-14 sm:mb-20 animate-fadeInUp">
               <div className="hero-gradient" />
               <div className="relative">
-                <span className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-semibold px-4 py-1.5 rounded-full uppercase tracking-[2px] mb-6">
+                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-violet-50 border border-blue-100 text-blue-600 text-[10px] font-semibold px-5 py-2 rounded-full uppercase tracking-[2px] mb-8 shadow-sm">
                   <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-pulse" />
                   {t.heroTag}
-                </span>
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]">
-                  {t.heroTitle1}<span className="gradient-text">{t.heroTitle2}</span>
+                </div>
+                <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95]">
+                  <span className="block text-gray-900">{t.heroTitle1}</span>
+                  <span className="gradient-text">{t.heroTitle2}</span>
                 </h1>
-                <p className="text-gray-500 text-base sm:text-lg mt-5 max-w-2xl mx-auto leading-relaxed">
+                <p className="text-gray-500 text-lg sm:text-xl mt-6 max-w-2xl mx-auto leading-relaxed font-light">
                   {t.heroSub}
                 </p>
-                <div className="flex justify-center gap-2 mt-3">
-                  {["PDF", "DOCX", "JPG", "PNG"].map((fmt, i) => (
-                    <span key={fmt} className="px-2.5 py-1 rounded-md bg-gray-100 text-[11px] font-mono font-semibold text-gray-500" style={{ animationDelay: `${i * 100}ms` }}>
-                      .{fmt.toLowerCase()}
+                <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
+                  {["PDF", "DOCX", "JPG", "PNG", "Word"].map((fmt) => (
+                    <span key={fmt} className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold text-gray-500 shadow-sm">
+                      {fmt}
                     </span>
                   ))}
-                  <span className="px-2.5 py-1 rounded-md bg-blue-50 text-[11px] font-mono font-semibold text-blue-500">+more</span>
+                  <span className="px-3 py-1.5 rounded-full bg-blue-600 text-[11px] font-semibold text-white shadow-sm shadow-blue-500/25">
+                    {lang === "ko" ? "+14 도구" : "+14 tools"}
+                  </span>
                 </div>
 
                 {/* CTA Buttons */}
@@ -1971,7 +2000,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  docx2html: ["img2pdf", "pdf2img", "merge", "compress"],
+                  pdftext: ["info", "pdf2img", "extract", "docx2html"],
+                  docx2html: ["pdftext", "img2pdf", "pdf2img", "merge"],
                   pdf2img: ["img2pdf", "docx2html", "extract", "split"],
                   img2pdf: ["pdf2img", "merge", "compress", "watermark"],
                   info: ["unlock", "compress", "merge", "img2pdf"],

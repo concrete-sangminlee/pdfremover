@@ -13,7 +13,8 @@ export type Tool =
   | "info"
   | "img2pdf"
   | "pdf2img"
-  | "docx2html";
+  | "docx2html"
+  | "pdftext";
 
 export type View = "home" | Tool;
 export type Lang = "ko" | "en";
@@ -44,6 +45,7 @@ export const TOOLS: ToolDef[] = [
   { id: "img2pdf",   icon: "\uD83D\uDDBC\uFE0F", labelKey: "img2pdfLabel",   descKey: "img2pdfDesc",   labelEn: "IMG to PDF", hex: "#059669", tint: "#ecfdf5", multi: true, accept: "image/*" },
   { id: "pdf2img",   icon: "\uD83D\uDCF7",      labelKey: "pdf2imgLabel",   descKey: "pdf2imgDesc",   labelEn: "PDF to IMG", hex: "#8b5cf6", tint: "#f5f3ff" },
   { id: "docx2html", icon: "\uD83D\uDCDD",      labelKey: "docx2htmlLabel", descKey: "docx2htmlDesc", labelEn: "DOCX View", hex: "#2563eb", tint: "#eff6ff", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  { id: "pdftext",   icon: "\uD83D\uDCCB",      labelKey: "pdftextLabel",   descKey: "pdftextDesc",   labelEn: "PDF Text",  hex: "#0891b2", tint: "#ecfeff" },
   { id: "info",      icon: "\u2139\uFE0F", labelKey: "infoLabel",      descKey: "infoDesc",      labelEn: "Info",      hex: "#64748b", tint: "#f8fafc" },
 ];
 
