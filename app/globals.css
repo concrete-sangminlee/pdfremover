@@ -93,6 +93,29 @@ html { scroll-behavior: smooth; }
   50% { background-position: 100% center; }
 }
 
+/* ━━━ Word Rotate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes wordRotate {
+  0%, 18% { transform: translateY(0); }
+  20%, 38% { transform: translateY(-100%); }
+  40%, 58% { transform: translateY(-200%); }
+  60%, 78% { transform: translateY(-300%); }
+  80%, 98% { transform: translateY(-400%); }
+  100% { transform: translateY(0); }
+}
+.word-rotate {
+  display: inline-flex;
+  flex-direction: column;
+  height: 1.15em;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+.word-rotate > span {
+  display: block;
+  height: 1.15em;
+  line-height: 1.15em;
+  animation: wordRotate 10s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+}
+
 /* ━━━ Keyframes ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }

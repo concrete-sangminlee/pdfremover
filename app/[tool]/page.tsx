@@ -57,6 +57,12 @@ const META: Record<string, { titleKo: string; titleEn: string; descKo: string; d
     descKo: "PDF에서 불필요한 페이지를 제거합니다. 무료 온라인 도구.",
     descEn: "Remove unwanted pages from PDF. Free online tool.",
   },
+  imgcompress: {
+    titleKo: "이미지 압축",
+    titleEn: "Image Compress",
+    descKo: "이미지를 압축하여 파일 크기를 줄입니다. 품질 조절 가능.",
+    descEn: "Compress images to reduce file size. Adjustable quality.",
+  },
   pdftext: {
     titleKo: "PDF 텍스트 추출",
     titleEn: "Extract PDF Text",

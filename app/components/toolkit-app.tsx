@@ -181,6 +181,9 @@ export const T: Record<Lang, Record<string, string>> = {
     docxPreview: "DOCX 미리보기",
     pdftextLabel: "PDF 텍스트 추출",
     pdftextDesc: "PDF에서 텍스트를 추출합니다",
+    imgcompressLabel: "이미지 압축",
+    imgcompressDesc: "이미지를 압축하여 파일 크기를 줄입니다",
+    imgQuality: "품질",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -345,6 +348,9 @@ export const T: Record<Lang, Record<string, string>> = {
     docxPreview: "DOCX Preview",
     pdftextLabel: "Extract PDF Text",
     pdftextDesc: "Extract text content from PDF files",
+    imgcompressLabel: "Image Compress",
+    imgcompressDesc: "Compress images to reduce file size",
+    imgQuality: "Quality",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -552,6 +558,26 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function compressImage(file: File, quality: number): Promise<{ name: string; data: Uint8Array; before: number; after: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(async (blob) => {
+        const data = new Uint8Array(await blob!.arrayBuffer());
+        const ext = quality < 1 ? ".jpg" : ".png";
+        const name = file.name.replace(/\.[^.]+$/, `_compressed${ext}`);
+        resolve({ name, data, before: file.size, after: data.length });
+      }, "image/jpeg", quality);
+    };
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 async function extractPdfText(data: ArrayBuffer): Promise<string> {
@@ -952,6 +978,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [pnFormat, setPnFormat] = useState<"simple" | "total">("total");
   const [pnPosition, setPnPosition] = useState("bottom-center");
   const [pnSize, setPnSize] = useState(11);
+  const [imgQuality, setImgQuality] = useState(0.7);
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1049,7 +1076,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const handleFiles = async (newFiles: File[]) => {
     // Validate files based on current tool
     let validFiles: File[];
-    if (view === "img2pdf") {
+    if (view === "img2pdf" || view === "imgcompress") {
       validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
@@ -1078,7 +1105,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    if (view !== "img2pdf" && view !== "docx2html") loadPageInfo(validFiles);
+    if (!["img2pdf", "imgcompress", "docx2html"].includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1239,6 +1266,27 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           addHistory(toolLabel, files[0].name, true);
           break;
         }
+        case "imgcompress": {
+          const results: { name: string; data: Uint8Array }[] = [];
+          let totalBefore = 0, totalAfter = 0;
+          for (const f of files) {
+            const r = await compressImage(f, imgQuality);
+            results.push({ name: r.name, data: r.data });
+            totalBefore += r.before;
+            totalAfter += r.after;
+          }
+          if (results.length === 1) {
+            setResultData(results[0].data);
+            setResultName(results[0].name);
+          } else {
+            setResultMulti(results);
+          }
+          setCompressionInfo({ before: totalBefore, after: totalAfter });
+          const pct = Math.round(((totalBefore - totalAfter) / totalBefore) * 100);
+          setMessage({ type: "success", text: `${fmtSize(totalBefore - totalAfter)} ${t.compressSaved} (${pct}% ${t.compressPercent})` });
+          addHistory(toolLabel, `${files.length} images`, true);
+          break;
+        }
         case "pdftext": {
           const buf = await files[0].arrayBuffer();
           const text = await extractPdfText(buf);
@@ -1369,10 +1417,21 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {t.heroTag}
                 </div>
                 <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95]">
-                  <span className="block text-gray-900">{t.heroTitle1}</span>
+                  <span className="text-gray-900">{t.heroTitle1}</span>
                   <span className="gradient-text">{t.heroTitle2}</span>
                 </h1>
-                <p className="text-gray-500 text-lg sm:text-xl mt-6 max-w-2xl mx-auto leading-relaxed font-light">
+                <p className="text-gray-900 text-xl sm:text-2xl mt-6 font-semibold">
+                  {lang === "ko" ? "문서를 " : "The easiest way to "}
+                  <span className="word-rotate gradient-text">
+                    <span>{lang === "ko" ? "변환하고" : "convert"}</span>
+                    <span>{lang === "ko" ? "병합하고" : "merge"}</span>
+                    <span>{lang === "ko" ? "분할하고" : "split"}</span>
+                    <span>{lang === "ko" ? "보호하고" : "protect"}</span>
+                    <span>{lang === "ko" ? "편집하는" : "edit"}</span>
+                  </span>
+                  {lang === "ko" ? " 가장 쉬운 방법" : " your documents"}
+                </p>
+                <p className="text-gray-400 text-sm sm:text-base mt-3 max-w-xl mx-auto">
                   {t.heroSub}
                 </p>
                 <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
@@ -1648,10 +1707,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={view === "merge" || view === "unlock" || view === "img2pdf"}
+              multiple={view === "merge" || view === "unlock" || view === "img2pdf" || view === "imgcompress"}
               pageInfo={pageInfo}
               t={t}
-              acceptType={view === "img2pdf" ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : ".pdf"}
+              acceptType={view === "img2pdf" || view === "imgcompress" ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : ".pdf"}
             />
 
             {/* Security callout */}
@@ -1760,6 +1819,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     placeholder={t.rotPagesPlaceholder}
                     className="input-field" />
                 )}
+              </div>
+            )}
+
+            {view === "imgcompress" && files.length > 0 && (
+              <div className="space-y-3 animate-fadeIn">
+                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
+                <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full accent-[#2563eb]" />
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>{lang === "ko" ? "최대 압축" : "Max compression"}</span>
+                  <span>{lang === "ko" ? "원본 품질" : "Original quality"}</span>
+                </div>
               </div>
             )}
 
@@ -2000,6 +2070,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
+                  imgcompress: ["img2pdf", "pdf2img", "merge", "compress"],
                   pdftext: ["info", "pdf2img", "extract", "docx2html"],
                   docx2html: ["pdftext", "img2pdf", "pdf2img", "merge"],
                   pdf2img: ["img2pdf", "docx2html", "extract", "split"],
