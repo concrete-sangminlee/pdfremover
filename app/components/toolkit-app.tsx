@@ -176,6 +176,9 @@ export const T: Record<Lang, Record<string, string>> = {
     img2pdfHint: "이미지 파일을 업로드하세요 (JPG, PNG)",
     pdf2imgLabel: "PDF → 이미지",
     pdf2imgDesc: "PDF 페이지를 JPG/PNG 이미지로 변환합니다",
+    docx2htmlLabel: "DOCX 뷰어",
+    docx2htmlDesc: "Word 문서를 브라우저에서 바로 확인합니다",
+    docxPreview: "DOCX 미리보기",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -335,6 +338,9 @@ export const T: Record<Lang, Record<string, string>> = {
     img2pdfHint: "Upload image files (JPG, PNG)",
     pdf2imgLabel: "PDF to Image",
     pdf2imgDesc: "Convert PDF pages to JPG/PNG images",
+    docx2htmlLabel: "DOCX Viewer",
+    docx2htmlDesc: "Preview Word documents in your browser",
+    docxPreview: "DOCX Preview",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -542,6 +548,12 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function docxToHtml(data: ArrayBuffer): Promise<string> {
+  const mammoth = await import("mammoth");
+  const result = await mammoth.convertToHtml({ arrayBuffer: data });
+  return result.value;
 }
 
 async function pdfToImages(data: ArrayBuffer): Promise<{ name: string; data: Uint8Array }[]> {
@@ -929,6 +941,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [resultMulti, setResultMulti] = useState<{ name: string; data: Uint8Array }[]>([]);
   const [pdfInfoResult, setPdfInfoResult] = useState<PdfInfo | null>(null);
   const [compressionInfo, setCompressionInfo] = useState<{ before: number; after: number } | null>(null);
+  const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
 
   const t = T[lang];
 
@@ -958,6 +971,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
+    setHtmlPreview(null);
     setRangeInput("");
     setPagesInput("");
     setRotatePagesInput("");
@@ -1024,6 +1038,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG)." : "Only image files are supported (JPG, PNG)." });
         return;
       }
+    } else if (view === "docx2html") {
+      validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".docx") || f.type.includes("wordprocessingml"));
+      if (validFiles.length === 0) {
+        setMessage({ type: "error", text: lang === "ko" ? "DOCX 파일만 업로드할 수 있습니다." : "Only DOCX files are supported." });
+        return;
+      }
     } else {
       validFiles = newFiles.filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
       const rejected = newFiles.length - validFiles.length;
@@ -1040,7 +1060,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    if (view !== "img2pdf") loadPageInfo(validFiles);
+    if (view !== "img2pdf" && view !== "docx2html") loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1198,6 +1218,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
+          addHistory(toolLabel, files[0].name, true);
+          break;
+        }
+        case "docx2html": {
+          const buf = await files[0].arrayBuffer();
+          const html = await docxToHtml(buf);
+          setHtmlPreview(html);
+          setMessage({ type: "success", text: lang === "ko" ? "DOCX 변환 완료!" : "DOCX converted!" });
           addHistory(toolLabel, files[0].name, true);
           break;
         }
@@ -1594,7 +1622,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               multiple={view === "merge" || view === "unlock" || view === "img2pdf"}
               pageInfo={pageInfo}
               t={t}
-              acceptType={view === "img2pdf" ? "image/jpeg,image/png,.jpg,.jpeg,.png" : ".pdf"}
+              acceptType={view === "img2pdf" ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : ".pdf"}
             />
 
             {/* Security callout */}
@@ -1863,6 +1891,19 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               </div>
             )}
 
+            {/* DOCX Preview */}
+            {htmlPreview && (
+              <div className="animate-fadeIn space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-700">{t.docxPreview}</h3>
+                  <button onClick={() => { const blob = new Blob([htmlPreview], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "preview.html"; a.click(); URL.revokeObjectURL(url); }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">HTML {t.download}</button>
+                </div>
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 max-h-[500px] overflow-y-auto prose prose-sm prose-gray max-w-none"
+                  dangerouslySetInnerHTML={{ __html: htmlPreview }} />
+              </div>
+            )}
+
             {/* PDF Info Result */}
             {view === "info" && pdfInfoResult && (
               <div className="space-y-4 animate-fadeIn">
@@ -1930,7 +1971,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  pdf2img: ["img2pdf", "extract", "split", "info"],
+                  docx2html: ["img2pdf", "pdf2img", "merge", "compress"],
+                  pdf2img: ["img2pdf", "docx2html", "extract", "split"],
                   img2pdf: ["pdf2img", "merge", "compress", "watermark"],
                   info: ["unlock", "compress", "merge", "img2pdf"],
                 };
