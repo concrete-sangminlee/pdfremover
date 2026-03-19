@@ -187,6 +187,9 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "이미지 리사이즈",
     imgresizeDesc: "이미지 크기를 원하는 비율로 조절합니다",
     imgScale: "크기 비율",
+    txt2pdfLabel: "텍스트 → PDF",
+    txt2pdfDesc: "텍스트를 입력하여 PDF를 만듭니다",
+    txtPlaceholder: "여기에 텍스트를 입력하세요...",
     imgconvertLabel: "이미지 변환",
     imgconvertDesc: "PNG↔JPG↔WebP 포맷을 변환합니다",
     imgFormat: "출력 형식",
@@ -362,6 +365,9 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "Image Resize",
     imgresizeDesc: "Resize images to any scale",
     imgScale: "Scale",
+    txt2pdfLabel: "Text to PDF",
+    txt2pdfDesc: "Type text and create a PDF",
+    txtPlaceholder: "Type or paste your text here...",
     imgconvertLabel: "Image Convert",
     imgconvertDesc: "Convert between PNG, JPG, and WebP",
     imgFormat: "Output format",
@@ -1072,6 +1078,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [imgQuality, setImgQuality] = useState(0.7);
   const [imgScale, setImgScale] = useState(0.5);
   const [imgOutputFormat, setImgOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [textInput, setTextInput] = useState("");
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1365,6 +1372,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           addHistory(toolLabel, files[0].name, true);
           break;
         }
+        case "txt2pdf": {
+          if (!textInput.trim()) { setMessage({ type: "warning", text: lang === "ko" ? "텍스트를 입력해주세요." : "Please enter some text." }); break; }
+          const data = await htmlToPdf(`<pre>${textInput}</pre>`);
+          setResultData(data);
+          setResultName("text.pdf");
+          setMessage({ type: "success", text: lang === "ko" ? "텍스트 → PDF 변환 완료!" : "Text converted to PDF!" });
+          addHistory(toolLabel, "text input", true);
+          break;
+        }
         case "imgconvert": {
           const results: { name: string; data: Uint8Array }[] = [];
           for (const f of files) {
@@ -1491,6 +1507,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   };
 
   const canExecute = (() => {
+    if (view === "txt2pdf") return !processing && textInput.trim().length > 0;
     if (files.length === 0 || processing) return false;
     if (view === "merge" && files.length < 2) return false;
     if (view === "split" && splitMode === "range" && !rangeInput.trim()) return false;
@@ -1843,7 +1860,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           {processing && <ProgressBar />}
 
           <div className="space-y-4 animate-fadeInUp" style={{ animationDelay: "100ms" }}>
-            {/* File Upload */}
+            {/* Text input for txt2pdf */}
+            {view === "txt2pdf" ? (
+              <textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder={t.txtPlaceholder}
+                className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
+                rows={10}
+              />
+            ) : (
+            /* File Upload */
             <FileDropzone
               files={files}
               onSelect={handleFiles}
@@ -1854,6 +1881,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               t={t}
               acceptType={["img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view) ? "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
             />
+            )}
 
             {/* Security callout */}
             {files.length === 0 && (
@@ -2080,7 +2108,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
 
             {/* Execute Button */}
-            {view !== "info" && files.length > 0 && (
+            {view !== "info" && (files.length > 0 || view === "txt2pdf") && (
               <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
                 {processing ? t.processing : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
               </AccentButton>
@@ -2243,7 +2271,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   imgresize: ["imgconvert", "imgcompress", "img2pdf", "merge"],
                   imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
                   pdftext: ["info", "pdf2img", "extract", "docx2html"],
-                  html2pdf: ["docx2html", "img2pdf", "pdftext", "merge"],
+                  txt2pdf: ["html2pdf", "img2pdf", "merge", "watermark"],
+                  html2pdf: ["txt2pdf", "docx2html", "img2pdf", "pdftext"],
                   docx2html: ["html2pdf", "pdftext", "img2pdf", "pdf2img"],
                   pdf2img: ["img2pdf", "docx2html", "extract", "split"],
                   img2pdf: ["pdf2img", "merge", "compress", "watermark"],

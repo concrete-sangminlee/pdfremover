@@ -93,6 +93,12 @@ const META: Record<string, { titleKo: string; titleEn: string; descKo: string; d
     descKo: "JPG, PNG 이미지를 하나의 PDF 파일로 변환합니다. 무료, 브라우저에서 처리.",
     descEn: "Convert JPG, PNG images into a single PDF file. Free, browser-based.",
   },
+  txt2pdf: {
+    titleKo: "텍스트 → PDF",
+    titleEn: "Text to PDF",
+    descKo: "텍스트를 입력하여 PDF 파일을 만듭니다.",
+    descEn: "Type or paste text to create a PDF file.",
+  },
   imgconvert: {
     titleKo: "이미지 포맷 변환",
     titleEn: "Image Format Convert",
