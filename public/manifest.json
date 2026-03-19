@@ -1,6 +1,6 @@
 {
-  "name": "Docify Pro",
-  "short_name": "Docify",
+  "name": "FileForge",
+  "short_name": "FileForge",
   "description": "All-in-one document toolkit. PDF, DOCX, images — unlock, merge, split, convert and more. 100% browser-based.",
   "start_url": "/",
   "display": "standalone",

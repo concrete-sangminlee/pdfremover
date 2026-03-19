@@ -31,18 +31,18 @@ interface PdfInfo {
 export const T: Record<Lang, Record<string, string>> = {
   ko: {
     heroTag: "All-in-One Document Solution",
-    heroTitle1: "Docify",
-    heroTitle2: "Pro",
+    heroTitle1: "File",
+    heroTitle2: "Forge",
     heroSub: "PDF, DOCX, 이미지 — 암호 해제, 병합, 분할, 변환까지\n브라우저에서 안전하고 빠르게 처리하세요",
     tools: "Tools",
     privacy: "Private",
     processed: "Processed",
-    whyTitle: "Why Docify Pro",
+    whyTitle: "Why FileForge",
     faqTitle: "FAQ",
     recentTitle: "Recent Activity",
     compareTitle: "다른 도구와 비교",
     compareFeature: "기능",
-    compareUs: "Docify Pro",
+    compareUs: "FileForge",
     compareOthers: "일반 PDF 도구",
     cmpPrivacy: "100% 브라우저 처리",
     cmpUpload: "서버 업로드 불필요",
@@ -187,6 +187,9 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "이미지 리사이즈",
     imgresizeDesc: "이미지 크기를 원하는 비율로 조절합니다",
     imgScale: "크기 비율",
+    imgconvertLabel: "이미지 변환",
+    imgconvertDesc: "PNG↔JPG↔WebP 포맷을 변환합니다",
+    imgFormat: "출력 형식",
     html2pdfLabel: "HTML → PDF",
     html2pdfDesc: "HTML 파일을 PDF로 변환합니다",
     infoLabel: "PDF 정보",
@@ -207,18 +210,18 @@ export const T: Record<Lang, Record<string, string>> = {
   },
   en: {
     heroTag: "All-in-One Document Solution",
-    heroTitle1: "Docify",
-    heroTitle2: "Pro",
+    heroTitle1: "File",
+    heroTitle2: "Forge",
     heroSub: "PDF, DOCX, Images — unlock, merge, split, convert and more\nAll processed safely in your browser",
     tools: "Tools",
     privacy: "Private",
     processed: "Processed",
-    whyTitle: "Why Docify Pro",
+    whyTitle: "Why FileForge",
     faqTitle: "FAQ",
     recentTitle: "Recent Activity",
     compareTitle: "Compare with others",
     compareFeature: "Feature",
-    compareUs: "Docify Pro",
+    compareUs: "FileForge",
     compareOthers: "Typical PDF tools",
     cmpPrivacy: "100% browser processing",
     cmpUpload: "No server upload needed",
@@ -359,6 +362,9 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "Image Resize",
     imgresizeDesc: "Resize images to any scale",
     imgScale: "Scale",
+    imgconvertLabel: "Image Convert",
+    imgconvertDesc: "Convert between PNG, JPG, and WebP",
+    imgFormat: "Output format",
     html2pdfLabel: "HTML to PDF",
     html2pdfDesc: "Convert HTML files to PDF",
     infoLabel: "PDF Info",
@@ -568,6 +574,26 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function convertImageFormat(file: File, format: "png" | "jpeg" | "webp"): Promise<{ name: string; data: Uint8Array }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const ext = format === "jpeg" ? "jpg" : format;
+      canvas.toBlob(async (blob) => {
+        const data = new Uint8Array(await blob!.arrayBuffer());
+        const name = file.name.replace(/\.[^.]+$/, `.${ext}`);
+        resolve({ name, data });
+      }, `image/${format}`, 0.92);
+    };
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
@@ -1045,6 +1071,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [pnSize, setPnSize] = useState(11);
   const [imgQuality, setImgQuality] = useState(0.7);
   const [imgScale, setImgScale] = useState(0.5);
+  const [imgOutputFormat, setImgOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1142,7 +1169,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const handleFiles = async (newFiles: File[]) => {
     // Validate files based on current tool
     let validFiles: File[];
-    if (["img2pdf", "imgcompress", "imgresize"].includes(view)) {
+    if (["img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view)) {
       validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
@@ -1177,7 +1204,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    if (!["img2pdf", "imgcompress", "imgresize", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
+    if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1338,6 +1365,21 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           addHistory(toolLabel, files[0].name, true);
           break;
         }
+        case "imgconvert": {
+          const results: { name: string; data: Uint8Array }[] = [];
+          for (const f of files) {
+            results.push(await convertImageFormat(f, imgOutputFormat));
+          }
+          if (results.length === 1) {
+            setResultData(results[0].data);
+            setResultName(results[0].name);
+          } else {
+            setResultMulti(results);
+          }
+          setMessage({ type: "success", text: `${results.length}${lang === "ko" ? `개 이미지 → ${imgOutputFormat.toUpperCase()} 변환 완료!` : ` images converted to ${imgOutputFormat.toUpperCase()}!`}` });
+          addHistory(toolLabel, `${files.length} images`, true);
+          break;
+        }
         case "html2pdf": {
           const text = await files[0].text();
           const data = await htmlToPdf(text);
@@ -1470,7 +1512,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#2563eb" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="#2563eb" strokeWidth="1" strokeLinecap="round" opacity="0.6"/></svg>
           </div>
           <span className="text-sm font-bold tracking-tight hidden sm:block">
-            Docify <span className="text-blue-600">Pro</span>
+            File<span className="text-blue-600">Forge</span>
           </span>
         </button>
         <div className="flex items-center gap-3">
@@ -1701,7 +1743,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="white" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.7"/></svg>
                     </div>
-                    <span className="text-sm font-bold text-gray-800">Docify <span className="text-blue-600">Pro</span></span>
+                    <span className="text-sm font-bold text-gray-800">File<span className="text-blue-600">Forge</span></span>
                   </div>
                   <p className="text-xs text-gray-400 leading-relaxed">{t.footer1}</p>
                 </div>
@@ -1734,7 +1776,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
               </div>
               <div className="border-t border-gray-200 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
-                <p className="text-[11px] text-gray-400">&copy; {new Date().getFullYear()} Docify Pro. {t.footer2}</p>
+                <p className="text-[11px] text-gray-400">&copy; {new Date().getFullYear()} FileForge. {t.footer2}</p>
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map((s) => (
                     <svg key={s} className="w-3 h-3" viewBox="0 0 20 20" fill="#f59e0b" opacity={s <= 4 ? 1 : 0.6}>
@@ -1782,7 +1824,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <button
                   onClick={() => {
                     if (navigator.share) {
-                      navigator.share({ title: `${t[activeTool.labelKey]} — Docify Pro`, url: window.location.href });
+                      navigator.share({ title: `${t[activeTool.labelKey]} — FileForge`, url: window.location.href });
                     } else {
                       navigator.clipboard.writeText(window.location.href);
                       setMessage({ type: "success", text: lang === "ko" ? "링크가 복사되었습니다" : "Link copied" });
@@ -1807,10 +1849,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize"].includes(view)}
+              multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view)}
               pageInfo={pageInfo}
               t={t}
-              acceptType={["img2pdf", "imgcompress", "imgresize"].includes(view) ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
+              acceptType={["img2pdf", "imgcompress", "imgresize", "imgconvert"].includes(view) ? "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
             />
 
             {/* Security callout */}
@@ -1919,6 +1961,21 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     placeholder={t.rotPagesPlaceholder}
                     className="input-field" />
                 )}
+              </div>
+            )}
+
+            {view === "imgconvert" && files.length > 0 && (
+              <div className="animate-fadeIn">
+                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgFormat}</label>
+                <div className="flex gap-2">
+                  {(["png", "jpeg", "webp"] as const).map((fmt) => (
+                    <button key={fmt} onClick={() => setImgOutputFormat(fmt)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all uppercase
+                        ${imgOutputFormat === fmt ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                      {fmt === "jpeg" ? "JPG" : fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -2182,7 +2239,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  imgresize: ["imgcompress", "img2pdf", "pdf2img", "merge"],
+                  imgconvert: ["imgcompress", "imgresize", "img2pdf", "pdf2img"],
+                  imgresize: ["imgconvert", "imgcompress", "img2pdf", "merge"],
                   imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
                   pdftext: ["info", "pdf2img", "extract", "docx2html"],
                   html2pdf: ["docx2html", "img2pdf", "pdftext", "merge"],

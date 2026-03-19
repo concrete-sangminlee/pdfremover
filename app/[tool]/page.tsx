@@ -93,6 +93,12 @@ const META: Record<string, { titleKo: string; titleEn: string; descKo: string; d
     descKo: "JPG, PNG 이미지를 하나의 PDF 파일로 변환합니다. 무료, 브라우저에서 처리.",
     descEn: "Convert JPG, PNG images into a single PDF file. Free, browser-based.",
   },
+  imgconvert: {
+    titleKo: "이미지 포맷 변환",
+    titleEn: "Image Format Convert",
+    descKo: "PNG, JPG, WebP 간 이미지 포맷을 변환합니다.",
+    descEn: "Convert between PNG, JPG, and WebP image formats.",
+  },
   html2pdf: {
     titleKo: "HTML → PDF 변환",
     titleEn: "HTML to PDF",
@@ -114,7 +120,7 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
   const meta = META[params.tool];
   if (!meta) {
-    return { title: "Docify Pro" };
+    return { title: "FileForge" };
   }
 
   return {
@@ -130,13 +136,13 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
     ],
     openGraph: {
       type: "website",
-      title: `${meta.titleEn} — Docify Pro`,
+      title: `${meta.titleEn} — FileForge`,
       description: meta.descEn,
-      siteName: "Docify Pro",
+      siteName: "FileForge",
     },
     twitter: {
       card: "summary",
-      title: `${meta.titleEn} — Docify Pro`,
+      title: `${meta.titleEn} — FileForge`,
       description: meta.descEn,
     },
     alternates: {
