@@ -11,7 +11,8 @@ export type Tool =
   | "pagenum"
   | "delete"
   | "info"
-  | "img2pdf";
+  | "img2pdf"
+  | "pdf2img";
 
 export type View = "home" | Tool;
 export type Lang = "ko" | "en";
@@ -40,6 +41,7 @@ export const TOOLS: ToolDef[] = [
   { id: "pagenum",   icon: "\uD83D\uDD22", labelKey: "pagenumLabel",   descKey: "pagenumDesc",   labelEn: "Numbers",   hex: "#d97706", tint: "#fffbeb" },
   { id: "delete",    icon: "\uD83D\uDDD1\uFE0F", labelKey: "deleteLabel",    descKey: "deleteDesc",    labelEn: "Delete",    hex: "#dc2626", tint: "#fef2f2" },
   { id: "img2pdf",   icon: "\uD83D\uDDBC\uFE0F", labelKey: "img2pdfLabel",   descKey: "img2pdfDesc",   labelEn: "IMG to PDF", hex: "#059669", tint: "#ecfdf5", multi: true, accept: "image/*" },
+  { id: "pdf2img",   icon: "\uD83D\uDCF7",      labelKey: "pdf2imgLabel",   descKey: "pdf2imgDesc",   labelEn: "PDF to IMG", hex: "#8b5cf6", tint: "#f5f3ff" },
   { id: "info",      icon: "\u2139\uFE0F", labelKey: "infoLabel",      descKey: "infoDesc",      labelEn: "Info",      hex: "#64748b", tint: "#f8fafc" },
 ];
 

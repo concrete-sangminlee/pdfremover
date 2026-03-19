@@ -57,6 +57,12 @@ const META: Record<string, { titleKo: string; titleEn: string; descKo: string; d
     descKo: "PDF에서 불필요한 페이지를 제거합니다. 무료 온라인 도구.",
     descEn: "Remove unwanted pages from PDF. Free online tool.",
   },
+  pdf2img: {
+    titleKo: "PDF를 이미지로 변환",
+    titleEn: "PDF to Image",
+    descKo: "PDF 페이지를 고화질 PNG 이미지로 변환합니다. 무료, 브라우저에서 처리.",
+    descEn: "Convert PDF pages to high-quality PNG images. Free, browser-based.",
+  },
   img2pdf: {
     titleKo: "이미지를 PDF로 변환",
     titleEn: "Image to PDF",

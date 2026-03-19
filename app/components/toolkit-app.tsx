@@ -174,6 +174,8 @@ export const T: Record<Lang, Record<string, string>> = {
     img2pdfLabel: "이미지 → PDF",
     img2pdfDesc: "JPG, PNG 이미지를 PDF로 변환합니다",
     img2pdfHint: "이미지 파일을 업로드하세요 (JPG, PNG)",
+    pdf2imgLabel: "PDF → 이미지",
+    pdf2imgDesc: "PDF 페이지를 JPG/PNG 이미지로 변환합니다",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -331,6 +333,8 @@ export const T: Record<Lang, Record<string, string>> = {
     img2pdfLabel: "Image to PDF",
     img2pdfDesc: "Convert JPG, PNG images to PDF",
     img2pdfHint: "Upload image files (JPG, PNG)",
+    pdf2imgLabel: "PDF to Image",
+    pdf2imgDesc: "Convert PDF pages to JPG/PNG images",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -538,6 +542,26 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function pdfToImages(data: ArrayBuffer): Promise<{ name: string; data: Uint8Array }[]> {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data), useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise;
+  const results: { name: string; data: Uint8Array }[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const scale = 2; // 2x for high quality
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport } as never).promise;
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+    results.push({ name: `page_${i}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+  }
+  return results;
 }
 
 async function imagesToPDF(imageFiles: File[]): Promise<Uint8Array> {
@@ -1177,6 +1201,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           addHistory(toolLabel, files[0].name, true);
           break;
         }
+        case "pdf2img": {
+          const buf = await files[0].arrayBuffer();
+          setMessage({ type: "warning", text: lang === "ko" ? "페이지를 이미지로 변환 중..." : "Converting pages to images..." });
+          const images = await pdfToImages(buf);
+          setResultMulti(images);
+          setMessage({ type: "success", text: `${images.length}${lang === "ko" ? "페이지 → 이미지 변환 완료!" : " pages converted to images!"}` });
+          addHistory(toolLabel, files[0].name, true);
+          break;
+        }
         case "img2pdf": {
           const data = await imagesToPDF(files);
           setResultData(data);
@@ -1281,12 +1314,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-pulse" />
                   {t.heroTag}
                 </span>
-                <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1]">
-                  {t.heroTitle1} <span className="gradient-text">{t.heroTitle2}</span>
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]">
+                  {t.heroTitle1}<span className="gradient-text">{t.heroTitle2}</span>
                 </h1>
-                <p className="text-gray-500 text-sm sm:text-base mt-4 max-w-xl mx-auto leading-relaxed whitespace-pre-line">
+                <p className="text-gray-500 text-base sm:text-lg mt-5 max-w-2xl mx-auto leading-relaxed">
                   {t.heroSub}
                 </p>
+                <div className="flex justify-center gap-2 mt-3">
+                  {["PDF", "DOCX", "JPG", "PNG"].map((fmt, i) => (
+                    <span key={fmt} className="px-2.5 py-1 rounded-md bg-gray-100 text-[11px] font-mono font-semibold text-gray-500" style={{ animationDelay: `${i * 100}ms` }}>
+                      .{fmt.toLowerCase()}
+                    </span>
+                  ))}
+                  <span className="px-2.5 py-1 rounded-md bg-blue-50 text-[11px] font-mono font-semibold text-blue-500">+more</span>
+                </div>
 
                 {/* CTA Buttons */}
                 <div className="flex justify-center gap-3 mt-8">
@@ -1804,7 +1845,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </button>
                 )}
                 {resultMulti.map((r, i) => (
-                  <button key={i} onClick={() => download(r.data, r.name)}
+                  <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : r.name.endsWith(".jpg") ? "image/jpeg" : "application/pdf")}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-blue-200 hover:bg-gray-100 transition-all text-left group">
                     <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                     <span className="text-gray-800 text-sm font-medium flex-1 truncate">{r.name}</span>
@@ -1889,7 +1930,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  img2pdf: ["merge", "compress", "watermark", "pagenum"],
+                  pdf2img: ["img2pdf", "extract", "split", "info"],
+                  img2pdf: ["pdf2img", "merge", "compress", "watermark"],
                   info: ["unlock", "compress", "merge", "img2pdf"],
                 };
                 const ids = related[view as string] || [];
