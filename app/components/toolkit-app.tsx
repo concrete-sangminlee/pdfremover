@@ -171,6 +171,9 @@ export const T: Record<Lang, Record<string, string>> = {
     pagenumDesc: "자동으로 페이지 번호를 삽입합니다",
     deleteLabel: "페이지 삭제",
     deleteDesc: "불필요한 페이지를 제거합니다",
+    img2pdfLabel: "이미지 → PDF",
+    img2pdfDesc: "JPG, PNG 이미지를 PDF로 변환합니다",
+    img2pdfHint: "이미지 파일을 업로드하세요 (JPG, PNG)",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -325,6 +328,9 @@ export const T: Record<Lang, Record<string, string>> = {
     pagenumDesc: "Insert automatic page numbering",
     deleteLabel: "Delete Pages",
     deleteDesc: "Remove unwanted pages",
+    img2pdfLabel: "Image to PDF",
+    img2pdfDesc: "Convert JPG, PNG images to PDF",
+    img2pdfHint: "Upload image files (JPG, PNG)",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -534,6 +540,27 @@ async function addWatermark(
   return doc.save();
 }
 
+async function imagesToPDF(imageFiles: File[]): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
+  const doc = await PDFDocument.create();
+  for (const file of imageFiles) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const isJpg = file.type === "image/jpeg" || file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg");
+    const isPng = file.type === "image/png" || file.name.toLowerCase().endsWith(".png");
+    let img;
+    if (isJpg) {
+      img = await doc.embedJpg(bytes);
+    } else if (isPng) {
+      img = await doc.embedPng(bytes);
+    } else {
+      continue; // skip unsupported formats
+    }
+    const page = doc.addPage([img.width, img.height]);
+    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+  }
+  return doc.save();
+}
+
 async function addPageNumbers(
   data: ArrayBuffer,
   format: "simple" | "total",
@@ -651,6 +678,7 @@ function FileDropzone({
   multiple = false,
   pageInfo,
   t,
+  acceptType = ".pdf",
 }: {
   files: File[];
   onSelect: (f: File[]) => void;
@@ -659,6 +687,7 @@ function FileDropzone({
   multiple?: boolean;
   pageInfo: Record<string, number>;
   t: Record<string, string>;
+  acceptType?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -682,7 +711,7 @@ function FileDropzone({
           onSelect(multiple ? [...files, ...dropped] : dropped.slice(0, 1));
         }}
       >
-        <input ref={ref} type="file" accept=".pdf" multiple={multiple} className="hidden"
+        <input ref={ref} type="file" accept={acceptType} multiple={multiple} className="hidden"
           onChange={(e) => {
             const nf = Array.from(e.target.files || []);
             onSelect(multiple ? [...files, ...nf] : nf);
@@ -962,23 +991,32 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   };
 
   const handleFiles = async (newFiles: File[]) => {
-    // Validate PDF files
-    const pdfFiles = newFiles.filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
-    const rejected = newFiles.length - pdfFiles.length;
-    if (rejected > 0 && pdfFiles.length === 0) {
-      setMessage({ type: "error", text: lang === "ko" ? "PDF 파일만 업로드할 수 있습니다." : "Only PDF files are supported." });
-      return;
+    // Validate files based on current tool
+    let validFiles: File[];
+    if (view === "img2pdf") {
+      validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
+      const rejected = newFiles.length - validFiles.length;
+      if (rejected > 0 && validFiles.length === 0) {
+        setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG)." : "Only image files are supported (JPG, PNG)." });
+        return;
+      }
+    } else {
+      validFiles = newFiles.filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+      const rejected = newFiles.length - validFiles.length;
+      if (rejected > 0 && validFiles.length === 0) {
+        setMessage({ type: "error", text: lang === "ko" ? "PDF 파일만 업로드할 수 있습니다." : "Only PDF files are supported." });
+        return;
+      }
+      if (rejected > 0) {
+        setMessage({ type: "warning", text: lang === "ko" ? `${rejected}개의 비PDF 파일이 제외되었습니다.` : `${rejected} non-PDF file(s) were excluded.` });
+      }
     }
-    if (rejected > 0) {
-      setMessage({ type: "warning", text: lang === "ko" ? `${rejected}개의 비PDF 파일이 제외되었습니다.` : `${rejected} non-PDF file(s) were excluded.` });
-    }
-    setFiles(pdfFiles);
+    setFiles(validFiles);
     setResultData(null);
     setResultMulti([]);
-    if (rejected === 0) setMessage(null);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    loadPageInfo(pdfFiles);
+    if (view !== "img2pdf") loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1137,6 +1175,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
           addHistory(toolLabel, files[0].name, true);
+          break;
+        }
+        case "img2pdf": {
+          const data = await imagesToPDF(files);
+          setResultData(data);
+          setResultName("images.pdf");
+          const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
+          setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 → PDF 변환 완료!" : " images converted to PDF!"} (${info.pages}p)` });
+          addHistory(toolLabel, `${files.length} images`, true);
           break;
         }
         case "info": {
@@ -1503,9 +1550,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={view === "merge" || view === "unlock"}
+              multiple={view === "merge" || view === "unlock" || view === "img2pdf"}
               pageInfo={pageInfo}
               t={t}
+              acceptType={view === "img2pdf" ? "image/jpeg,image/png,.jpg,.jpeg,.png" : ".pdf"}
             />
 
             {/* Security callout */}
@@ -1841,7 +1889,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  info: ["unlock", "compress", "merge", "split"],
+                  img2pdf: ["merge", "compress", "watermark", "pagenum"],
+                  info: ["unlock", "compress", "merge", "img2pdf"],
                 };
                 const ids = related[view as string] || [];
                 return ids.map((id) => TOOLS.find((td) => td.id === id)!).filter(Boolean);

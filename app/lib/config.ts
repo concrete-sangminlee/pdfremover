@@ -10,7 +10,8 @@ export type Tool =
   | "watermark"
   | "pagenum"
   | "delete"
-  | "info";
+  | "info"
+  | "img2pdf";
 
 export type View = "home" | Tool;
 export type Lang = "ko" | "en";
@@ -21,11 +22,11 @@ export interface ToolDef {
   labelKey: string;
   descKey: string;
   labelEn: string;
-  /** Solid hex color for icon bg, badges, borders */
   hex: string;
-  /** Light tint for card hover */
   tint: string;
   multi?: boolean;
+  /** Accept file types other than PDF */
+  accept?: string;
 }
 
 export const TOOLS: ToolDef[] = [
@@ -38,6 +39,7 @@ export const TOOLS: ToolDef[] = [
   { id: "watermark", icon: "\uD83D\uDCA7", labelKey: "watermarkLabel", descKey: "watermarkDesc", labelEn: "Watermark", hex: "#0284c7", tint: "#f0f9ff" },
   { id: "pagenum",   icon: "\uD83D\uDD22", labelKey: "pagenumLabel",   descKey: "pagenumDesc",   labelEn: "Numbers",   hex: "#d97706", tint: "#fffbeb" },
   { id: "delete",    icon: "\uD83D\uDDD1\uFE0F", labelKey: "deleteLabel",    descKey: "deleteDesc",    labelEn: "Delete",    hex: "#dc2626", tint: "#fef2f2" },
+  { id: "img2pdf",   icon: "\uD83D\uDDBC\uFE0F", labelKey: "img2pdfLabel",   descKey: "img2pdfDesc",   labelEn: "IMG to PDF", hex: "#059669", tint: "#ecfdf5", multi: true, accept: "image/*" },
   { id: "info",      icon: "\u2139\uFE0F", labelKey: "infoLabel",      descKey: "infoDesc",      labelEn: "Info",      hex: "#64748b", tint: "#f8fafc" },
 ];
 
