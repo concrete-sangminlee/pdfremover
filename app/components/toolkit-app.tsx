@@ -187,6 +187,8 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "이미지 리사이즈",
     imgresizeDesc: "이미지 크기를 원하는 비율로 조절합니다",
     imgScale: "크기 비율",
+    html2pdfLabel: "HTML → PDF",
+    html2pdfDesc: "HTML 파일을 PDF로 변환합니다",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -357,6 +359,8 @@ export const T: Record<Lang, Record<string, string>> = {
     imgresizeLabel: "Image Resize",
     imgresizeDesc: "Resize images to any scale",
     imgScale: "Scale",
+    html2pdfLabel: "HTML to PDF",
+    html2pdfDesc: "Convert HTML files to PDF",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -562,6 +566,39 @@ async function addWatermark(
       const x = (width - textW * Math.abs(Math.cos((rotation * Math.PI) / 180))) / 2;
       page.drawText(text, { x, y: height / 2, size: fontSize, font, color: rgb(0.6, 0.6, 0.6), opacity, rotate: degrees(rotation) });
     }
+  }
+  return doc.save();
+}
+
+async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await getPdfLib();
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  // Strip HTML tags to get plain text, then paginate
+  const div = document.createElement("div");
+  div.innerHTML = htmlContent;
+  const text = div.textContent || div.innerText || "";
+  const lines = text.split("\n").flatMap((line) => {
+    // Word-wrap at ~80 chars
+    const wrapped: string[] = [];
+    let remaining = line;
+    while (remaining.length > 80) {
+      const breakAt = remaining.lastIndexOf(" ", 80);
+      const idx = breakAt > 40 ? breakAt : 80;
+      wrapped.push(remaining.slice(0, idx));
+      remaining = remaining.slice(idx).trimStart();
+    }
+    wrapped.push(remaining);
+    return wrapped;
+  });
+  const linesPerPage = 50;
+  const fontSize = 11;
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    const page = doc.addPage([612, 792]); // US Letter
+    const pageLines = lines.slice(i, i + linesPerPage);
+    pageLines.forEach((line, j) => {
+      page.drawText(line, { x: 50, y: 742 - j * 14, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
+    });
   }
   return doc.save();
 }
@@ -1112,6 +1149,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG)." : "Only image files are supported (JPG, PNG)." });
         return;
       }
+    } else if (view === "html2pdf") {
+      validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html");
+      if (validFiles.length === 0) {
+        setMessage({ type: "error", text: lang === "ko" ? "HTML 파일만 업로드할 수 있습니다." : "Only HTML files are supported." });
+        return;
+      }
     } else if (view === "docx2html") {
       validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".docx") || f.type.includes("wordprocessingml"));
       if (validFiles.length === 0) {
@@ -1134,7 +1177,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    if (!["img2pdf", "imgcompress", "imgresize", "docx2html"].includes(view)) loadPageInfo(validFiles);
+    if (!["img2pdf", "imgcompress", "imgresize", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1292,6 +1335,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
+          addHistory(toolLabel, files[0].name, true);
+          break;
+        }
+        case "html2pdf": {
+          const text = await files[0].text();
+          const data = await htmlToPdf(text);
+          setResultData(data);
+          setResultName(files[0].name.replace(/\.(html?|htm)$/i, ".pdf"));
+          setMessage({ type: "success", text: lang === "ko" ? "HTML → PDF 변환 완료!" : "HTML converted to PDF!" });
           addHistory(toolLabel, files[0].name, true);
           break;
         }
@@ -1461,9 +1513,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-pulse" />
                   {t.heroTag}
                 </div>
-                <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95]">
+                <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] relative inline-block">
                   <span className="text-gray-900">{t.heroTitle1}</span>
-                  <span className="gradient-text">{t.heroTitle2}</span>
+                  <span className="relative">
+                    <span className="gradient-text">{t.heroTitle2}</span>
+                    <svg className="absolute -top-3 -right-6 w-6 h-6 text-amber-400 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z"/></svg>
+                  </span>
                 </h1>
                 <p className="text-gray-900 text-xl sm:text-2xl mt-6 font-semibold">
                   {lang === "ko" ? "문서를 " : "The easiest way to "}
@@ -1755,7 +1810,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize"].includes(view)}
               pageInfo={pageInfo}
               t={t}
-              acceptType={["img2pdf", "imgcompress", "imgresize"].includes(view) ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : ".pdf"}
+              acceptType={["img2pdf", "imgcompress", "imgresize"].includes(view) ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
             />
 
             {/* Security callout */}
@@ -2130,7 +2185,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   imgresize: ["imgcompress", "img2pdf", "pdf2img", "merge"],
                   imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
                   pdftext: ["info", "pdf2img", "extract", "docx2html"],
-                  docx2html: ["pdftext", "img2pdf", "pdf2img", "merge"],
+                  html2pdf: ["docx2html", "img2pdf", "pdftext", "merge"],
+                  docx2html: ["html2pdf", "pdftext", "img2pdf", "pdf2img"],
                   pdf2img: ["img2pdf", "docx2html", "extract", "split"],
                   img2pdf: ["pdf2img", "merge", "compress", "watermark"],
                   info: ["unlock", "compress", "merge", "img2pdf"],
