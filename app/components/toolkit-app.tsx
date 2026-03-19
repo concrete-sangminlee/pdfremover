@@ -1175,10 +1175,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   const activeTool = TOOLS.find((td) => td.id === view);
 
-  // ─── HEADER ───
-  const Header = () => (
+  // Header rendered inline (depends on goHome, view, t, lang, setLang)
+  const headerEl = (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <button onClick={goHome} className="flex items-center gap-2.5 group" aria-label="Go home">
           <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm group-hover:bg-blue-100 transition-colors">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#2563eb" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="#2563eb" strokeWidth="1" strokeLinecap="round" opacity="0.6"/></svg>
@@ -1216,7 +1216,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
     return (
       <>
-        <Header />
+        {headerEl}
         <div className="min-h-screen pt-14" key="home">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16 view-enter">
             {/* Hero */}
@@ -1443,7 +1443,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   // ─── TOOL VIEW ───
   return (
     <>
-      <Header />
+      {headerEl}
       <div className="min-h-screen pt-14" key={view}>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 view-enter">
           {/* Back + Header */}
@@ -1738,10 +1738,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <button key={i} onClick={() => download(r.data, r.name)}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-blue-200 hover:bg-gray-100 transition-all text-left group">
                     <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                    <span className="text-gray-800 text-sm font-medium flex-1">{r.name}</span>
-                    <span className="text-blue-600 text-xs font-semibold opacity-50 group-hover:opacity-100 transition-opacity">{t.download}</span>
+                    <span className="text-gray-800 text-sm font-medium flex-1 truncate">{r.name}</span>
+                    <span className="text-gray-400 text-[10px] font-mono flex-shrink-0">{fmtSize(r.data.length)}</span>
+                    <span className="text-blue-600 text-xs font-semibold opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">{t.download}</span>
                   </button>
                 ))}
+                <div className="flex items-center justify-between pt-1">
+                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                    {lang === "ko" ? "다른 파일 처리하기" : "Process another file"}
+                  </button>
+                  {procTime !== null && <span className="text-[10px] text-gray-400">{procTime < 1000 ? `${procTime}ms` : `${(procTime / 1000).toFixed(1)}s`}</span>}
+                </div>
               </div>
             )}
 
