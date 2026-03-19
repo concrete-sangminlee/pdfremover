@@ -15,7 +15,8 @@ export type Tool =
   | "pdf2img"
   | "docx2html"
   | "pdftext"
-  | "imgcompress";
+  | "imgcompress"
+  | "imgresize";
 
 export type View = "home" | Tool;
 export type Lang = "ko" | "en";
@@ -48,6 +49,7 @@ export const TOOLS: ToolDef[] = [
   { id: "docx2html", icon: "\uD83D\uDCDD",      labelKey: "docx2htmlLabel", descKey: "docx2htmlDesc", labelEn: "DOCX View", hex: "#2563eb", tint: "#eff6ff", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
   { id: "pdftext",   icon: "\uD83D\uDCCB",      labelKey: "pdftextLabel",   descKey: "pdftextDesc",   labelEn: "PDF Text",  hex: "#0891b2", tint: "#ecfeff" },
   { id: "imgcompress", icon: "\uD83D\uDDDC\uFE0F", labelKey: "imgcompressLabel", descKey: "imgcompressDesc", labelEn: "IMG Compress", hex: "#ca8a04", tint: "#fefce8", multi: true, accept: "image/*" },
+  { id: "imgresize",  icon: "\uD83D\uDD0D",      labelKey: "imgresizeLabel",  descKey: "imgresizeDesc",  labelEn: "IMG Resize",  hex: "#6366f1", tint: "#eef2ff", multi: true, accept: "image/*" },
   { id: "info",      icon: "\u2139\uFE0F", labelKey: "infoLabel",      descKey: "infoDesc",      labelEn: "Info",      hex: "#64748b", tint: "#f8fafc" },
 ];
 

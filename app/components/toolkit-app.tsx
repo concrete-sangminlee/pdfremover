@@ -184,6 +184,9 @@ export const T: Record<Lang, Record<string, string>> = {
     imgcompressLabel: "이미지 압축",
     imgcompressDesc: "이미지를 압축하여 파일 크기를 줄입니다",
     imgQuality: "품질",
+    imgresizeLabel: "이미지 리사이즈",
+    imgresizeDesc: "이미지 크기를 원하는 비율로 조절합니다",
+    imgScale: "크기 비율",
     infoLabel: "PDF 정보",
     infoDesc: "파일 메타데이터를 확인합니다",
     // Dynamic messages
@@ -351,6 +354,9 @@ export const T: Record<Lang, Record<string, string>> = {
     imgcompressLabel: "Image Compress",
     imgcompressDesc: "Compress images to reduce file size",
     imgQuality: "Quality",
+    imgresizeLabel: "Image Resize",
+    imgresizeDesc: "Resize images to any scale",
+    imgScale: "Scale",
     infoLabel: "PDF Info",
     infoDesc: "View file metadata details",
     msgUnlocked: "PDF unlocked successfully!",
@@ -558,6 +564,28 @@ async function addWatermark(
     }
   }
   return doc.save();
+}
+
+async function resizeImage(file: File, scale: number): Promise<{ name: string; data: Uint8Array; w: number; h: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const isPng = file.name.toLowerCase().endsWith(".png");
+      canvas.toBlob(async (blob) => {
+        const data = new Uint8Array(await blob!.arrayBuffer());
+        const name = file.name.replace(/\.[^.]+$/, `_${w}x${h}${isPng ? ".png" : ".jpg"}`);
+        resolve({ name, data, w, h });
+      }, isPng ? "image/png" : "image/jpeg", 0.92);
+    };
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 async function compressImage(file: File, quality: number): Promise<{ name: string; data: Uint8Array; before: number; after: number }> {
@@ -979,6 +1007,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [pnPosition, setPnPosition] = useState("bottom-center");
   const [pnSize, setPnSize] = useState(11);
   const [imgQuality, setImgQuality] = useState(0.7);
+  const [imgScale, setImgScale] = useState(0.5);
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1076,7 +1105,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const handleFiles = async (newFiles: File[]) => {
     // Validate files based on current tool
     let validFiles: File[];
-    if (view === "img2pdf" || view === "imgcompress") {
+    if (["img2pdf", "imgcompress", "imgresize"].includes(view)) {
       validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
@@ -1105,7 +1134,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    if (!["img2pdf", "imgcompress", "docx2html"].includes(view)) loadPageInfo(validFiles);
+    if (!["img2pdf", "imgcompress", "imgresize", "docx2html"].includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1264,6 +1293,22 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
           addHistory(toolLabel, files[0].name, true);
+          break;
+        }
+        case "imgresize": {
+          const results: { name: string; data: Uint8Array }[] = [];
+          for (const f of files) {
+            const r = await resizeImage(f, imgScale);
+            results.push({ name: r.name, data: r.data });
+          }
+          if (results.length === 1) {
+            setResultData(results[0].data);
+            setResultName(results[0].name);
+          } else {
+            setResultMulti(results);
+          }
+          setMessage({ type: "success", text: `${results.length}${lang === "ko" ? "개 이미지 리사이즈 완료!" : " images resized!"} (${Math.round(imgScale * 100)}%)` });
+          addHistory(toolLabel, `${files.length} images`, true);
           break;
         }
         case "imgcompress": {
@@ -1441,7 +1486,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     </span>
                   ))}
                   <span className="px-3 py-1.5 rounded-full bg-blue-600 text-[11px] font-semibold text-white shadow-sm shadow-blue-500/25">
-                    {lang === "ko" ? "+14 도구" : "+14 tools"}
+                    {lang === "ko" ? "+16 도구" : "+16 tools"}
                   </span>
                 </div>
 
@@ -1707,10 +1752,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={view === "merge" || view === "unlock" || view === "img2pdf" || view === "imgcompress"}
+              multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize"].includes(view)}
               pageInfo={pageInfo}
               t={t}
-              acceptType={view === "img2pdf" || view === "imgcompress" ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : ".pdf"}
+              acceptType={["img2pdf", "imgcompress", "imgresize"].includes(view) ? "image/jpeg,image/png,.jpg,.jpeg,.png" : view === "docx2html" ? ".docx" : ".pdf"}
             />
 
             {/* Security callout */}
@@ -1819,6 +1864,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     placeholder={t.rotPagesPlaceholder}
                     className="input-field" />
                 )}
+              </div>
+            )}
+
+            {view === "imgresize" && files.length > 0 && (
+              <div className="space-y-3 animate-fadeIn">
+                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
+                <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full accent-[#2563eb]" />
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>10%</span>
+                  <span>100%</span>
+                  <span>200%</span>
+                </div>
               </div>
             )}
 
@@ -2070,7 +2127,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   watermark: ["pagenum", "compress", "merge", "unlock"],
                   pagenum: ["watermark", "merge", "compress", "split"],
                   delete: ["extract", "split", "merge", "rotate"],
-                  imgcompress: ["img2pdf", "pdf2img", "merge", "compress"],
+                  imgresize: ["imgcompress", "img2pdf", "pdf2img", "merge"],
+                  imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
                   pdftext: ["info", "pdf2img", "extract", "docx2html"],
                   docx2html: ["pdftext", "img2pdf", "pdf2img", "merge"],
                   pdf2img: ["img2pdf", "docx2html", "extract", "split"],
