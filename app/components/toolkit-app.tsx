@@ -954,13 +954,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   };
 
   const handleFiles = async (newFiles: File[]) => {
-    setFiles(newFiles);
+    // Validate PDF files
+    const pdfFiles = newFiles.filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+    const rejected = newFiles.length - pdfFiles.length;
+    if (rejected > 0 && pdfFiles.length === 0) {
+      setMessage({ type: "error", text: lang === "ko" ? "PDF 파일만 업로드할 수 있습니다." : "Only PDF files are supported." });
+      return;
+    }
+    if (rejected > 0) {
+      setMessage({ type: "warning", text: lang === "ko" ? `${rejected}개의 비PDF 파일이 제외되었습니다.` : `${rejected} non-PDF file(s) were excluded.` });
+    }
+    setFiles(pdfFiles);
     setResultData(null);
     setResultMulti([]);
-    setMessage(null);
+    if (rejected === 0) setMessage(null);
     setPdfInfoResult(null);
     setCompressionInfo(null);
-    loadPageInfo(newFiles);
+    loadPageInfo(pdfFiles);
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -999,12 +1009,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setMessage({ type: "success", text: t.msgUnlocked });
             addHistory(toolLabel, files[0].name, true);
           } else {
-            // Batch unlock
+            // Batch unlock with progress
             const results: { name: string; data: Uint8Array }[] = [];
-            for (const f of files) {
-              const buf = await f.arrayBuffer();
+            for (let idx = 0; idx < files.length; idx++) {
+              setMessage({ type: "warning", text: `${lang === "ko" ? "처리 중" : "Processing"} ${idx + 1}/${files.length}...` });
+              const buf = await files[idx].arrayBuffer();
               const data = await unlockPDF(buf);
-              results.push({ name: f.name.replace(/\.pdf$/i, "_unlocked.pdf"), data });
+              results.push({ name: files[idx].name.replace(/\.pdf$/i, "_unlocked.pdf"), data });
             }
             setResultMulti(results);
             setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 파일 잠금해제 완료!" : " files unlocked!"}` });
@@ -1456,6 +1467,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 <span className="text-xs text-green-700">{t.securityNote}</span>
               </div>
+            )}
+
+            {/* Clear button */}
+            {files.length > 0 && !processing && !resultData && resultMulti.length === 0 && (
+              <button onClick={() => { setFiles([]); setMessage(null); setPageInfo({}); }}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors self-end">
+                {lang === "ko" ? "파일 초기화" : "Clear files"}
+              </button>
             )}
 
             {/* Tool-specific options */}
