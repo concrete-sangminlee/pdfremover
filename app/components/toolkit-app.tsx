@@ -999,6 +999,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setMessage(null);
     setResultData(null);
     setResultMulti([]);
+    // Pre-warm pdf-lib on first use (shows loading state)
+    if (!_pdfLib) {
+      setMessage({ type: "warning", text: lang === "ko" ? "PDF 엔진 로딩 중..." : "Loading PDF engine..." });
+      await getPdfLib();
+      setMessage(null);
+    }
     setProcTime(null);
     setCompressionInfo(null);
 
@@ -1794,7 +1800,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           <div className="mt-14 pt-8 border-t border-gray-100">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">{t.relatedTools}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {TOOLS.filter((td) => td.id !== view).slice(0, 4).map((td) => (
+              {(() => {
+                // Contextual suggestions based on current tool
+                const related: Record<string, Tool[]> = {
+                  unlock: ["merge", "compress", "info", "split"],
+                  merge: ["split", "compress", "pagenum", "unlock"],
+                  split: ["merge", "extract", "delete", "pagenum"],
+                  extract: ["split", "delete", "merge", "rotate"],
+                  rotate: ["extract", "split", "compress", "pagenum"],
+                  compress: ["unlock", "merge", "watermark", "info"],
+                  watermark: ["pagenum", "compress", "merge", "unlock"],
+                  pagenum: ["watermark", "merge", "compress", "split"],
+                  delete: ["extract", "split", "merge", "rotate"],
+                  info: ["unlock", "compress", "merge", "split"],
+                };
+                const ids = related[view as string] || [];
+                return ids.map((id) => TOOLS.find((td) => td.id === id)!).filter(Boolean);
+              })().map((td) => (
                 <button key={td.id} onClick={() => goTool(td.id)}
                   className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all text-left">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
