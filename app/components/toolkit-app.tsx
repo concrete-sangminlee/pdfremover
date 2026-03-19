@@ -889,6 +889,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
+  // Preload pdf-lib when entering a tool page
+  useEffect(() => {
+    if (view !== "home") getPdfLib();
+  }, [view]);
+
   const addHistory = useCallback((action: string, file: string, ok: boolean) => {
     setHistory((prev) => [{ time: fmtTime(), action, file, ok }, ...prev].slice(0, 30));
   }, []);
@@ -1458,18 +1463,32 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {activeTool && (
               <div className="flex items-center gap-4 mb-1">
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
                   style={{ background: `${activeTool.hex}15`, boxShadow: `0 0 0 1px ${activeTool.hex}25` }}
                 >
                   {activeTool.icon}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <h1 className="text-xl font-bold tracking-tight">{t[activeTool.labelKey]}</h1>
                     <span className="text-[10px] text-gray-300 uppercase tracking-wider font-medium">{activeTool.labelEn}</span>
                   </div>
                   <p className="text-sm text-gray-400">{t[activeTool.descKey]}</p>
                 </div>
+                <button
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: `${t[activeTool.labelKey]} — PDF Toolkit Pro`, url: window.location.href });
+                    } else {
+                      navigator.clipboard.writeText(window.location.href);
+                      setMessage({ type: "success", text: lang === "ko" ? "링크가 복사되었습니다" : "Link copied" });
+                    }
+                  }}
+                  className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-all flex-shrink-0"
+                  aria-label="Share"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                </button>
               </div>
             )}
             <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent my-5" />
