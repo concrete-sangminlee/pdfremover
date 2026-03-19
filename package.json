@@ -1,7 +1,26 @@
 {
   "name": "pdf-toolkit-pro",
-  "version": "2.0.0",
-  "private": true,
+  "version": "3.0.0",
+  "description": "Open-source, privacy-first PDF toolkit. 10 professional tools running 100% in your browser.",
+  "private": false,
+  "license": "MIT",
+  "homepage": "https://pdftoolkit.pro",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/concrete-sangminlee/pdfremover.git"
+  },
+  "keywords": [
+    "pdf",
+    "pdf-tools",
+    "pdf-editor",
+    "pdf-merge",
+    "pdf-split",
+    "pdf-unlock",
+    "browser-based",
+    "privacy",
+    "nextjs",
+    "react"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,5 +41,8 @@
     "tailwindcss": "^3.4.0",
     "postcss": "^8",
     "autoprefixer": "^10"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
