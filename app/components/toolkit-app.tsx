@@ -30,19 +30,19 @@ interface PdfInfo {
 // ━━━ i18n ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const T: Record<Lang, Record<string, string>> = {
   ko: {
-    heroTag: "All-in-One PDF Solution",
-    heroTitle1: "PDF Toolkit",
+    heroTag: "All-in-One Document Solution",
+    heroTitle1: "Docify",
     heroTitle2: "Pro",
-    heroSub: "암호 해제, 병합, 분할, 압축, 워터마크까지\n브라우저에서 안전하고 빠르게 처리하세요",
+    heroSub: "PDF, DOCX, 이미지 — 암호 해제, 병합, 분할, 변환까지\n브라우저에서 안전하고 빠르게 처리하세요",
     tools: "Tools",
     privacy: "Private",
     processed: "Processed",
-    whyTitle: "Why PDF Toolkit Pro",
+    whyTitle: "Why Docify Pro",
     faqTitle: "FAQ",
     recentTitle: "Recent Activity",
     compareTitle: "다른 도구와 비교",
     compareFeature: "기능",
-    compareUs: "PDF Toolkit Pro",
+    compareUs: "Docify Pro",
     compareOthers: "일반 PDF 도구",
     cmpPrivacy: "100% 브라우저 처리",
     cmpUpload: "서버 업로드 불필요",
@@ -188,19 +188,19 @@ export const T: Record<Lang, Record<string, string>> = {
     msgError: "처리 중 오류가 발생했습니다.",
   },
   en: {
-    heroTag: "All-in-One PDF Solution",
-    heroTitle1: "PDF Toolkit",
+    heroTag: "All-in-One Document Solution",
+    heroTitle1: "Docify",
     heroTitle2: "Pro",
-    heroSub: "Unlock, merge, split, compress, watermark and more\nSafely processed right in your browser",
+    heroSub: "PDF, DOCX, Images — unlock, merge, split, convert and more\nAll processed safely in your browser",
     tools: "Tools",
     privacy: "Private",
     processed: "Processed",
-    whyTitle: "Why PDF Toolkit Pro",
+    whyTitle: "Why Docify Pro",
     faqTitle: "FAQ",
     recentTitle: "Recent Activity",
     compareTitle: "Compare with others",
     compareFeature: "Feature",
-    compareUs: "PDF Toolkit Pro",
+    compareUs: "Docify Pro",
     compareOthers: "Typical PDF tools",
     cmpPrivacy: "100% browser processing",
     cmpUpload: "No server upload needed",
@@ -1191,7 +1191,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#2563eb" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="#2563eb" strokeWidth="1" strokeLinecap="round" opacity="0.6"/></svg>
           </div>
           <span className="text-sm font-bold tracking-tight hidden sm:block">
-            PDF Toolkit <span className="text-blue-600">Pro</span>
+            Docify <span className="text-blue-600">Pro</span>
           </span>
         </button>
         <div className="flex items-center gap-3">
@@ -1397,7 +1397,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="white" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.7"/></svg>
                     </div>
-                    <span className="text-sm font-bold text-gray-800">PDF Toolkit <span className="text-blue-600">Pro</span></span>
+                    <span className="text-sm font-bold text-gray-800">Docify <span className="text-blue-600">Pro</span></span>
                   </div>
                   <p className="text-xs text-gray-400 leading-relaxed">{t.footer1}</p>
                 </div>
@@ -1430,7 +1430,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
               </div>
               <div className="border-t border-gray-200 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
-                <p className="text-[11px] text-gray-400">&copy; {new Date().getFullYear()} PDF Toolkit Pro. {t.footer2}</p>
+                <p className="text-[11px] text-gray-400">&copy; {new Date().getFullYear()} Docify Pro. {t.footer2}</p>
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map((s) => (
                     <svg key={s} className="w-3 h-3" viewBox="0 0 20 20" fill="#f59e0b" opacity={s <= 4 ? 1 : 0.6}>
@@ -1478,7 +1478,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <button
                   onClick={() => {
                     if (navigator.share) {
-                      navigator.share({ title: `${t[activeTool.labelKey]} — PDF Toolkit Pro`, url: window.location.href });
+                      navigator.share({ title: `${t[activeTool.labelKey]} — Docify Pro`, url: window.location.href });
                     } else {
                       navigator.clipboard.writeText(window.location.href);
                       setMessage({ type: "success", text: lang === "ko" ? "링크가 복사되었습니다" : "Link copied" });

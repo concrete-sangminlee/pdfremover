@@ -1,7 +1,7 @@
 {
-  "name": "PDF Toolkit Pro",
-  "short_name": "PDF Toolkit",
-  "description": "All-in-one PDF solution. Unlock, merge, split, compress, watermark and more — safely in your browser.",
+  "name": "Docify Pro",
+  "short_name": "Docify",
+  "description": "All-in-one document toolkit. PDF, DOCX, images — unlock, merge, split, convert and more. 100% browser-based.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

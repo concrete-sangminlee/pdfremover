@@ -10,8 +10,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "PDF Toolkit Pro — Free Online PDF Tools",
-    template: "%s — PDF Toolkit Pro",
+    default: "Docify Pro — Free Online PDF Tools",
+    template: "%s — Docify Pro",
   },
   description:
     "Free online PDF tools. Unlock, merge, split, extract, rotate, compress, add watermarks and page numbers. 100% browser-based. No upload to servers.",
@@ -21,22 +21,22 @@ export const metadata: Metadata = {
     "PDF password remover", "free PDF tool", "online PDF editor",
     "무료 PDF", "PDF 암호 해제", "PDF 병합", "PDF 분할", "PDF 압축",
   ],
-  authors: [{ name: "PDF Toolkit Pro" }],
-  creator: "PDF Toolkit Pro",
-  publisher: "PDF Toolkit Pro",
+  authors: [{ name: "Docify Pro" }],
+  creator: "Docify Pro",
+  publisher: "Docify Pro",
   robots: { index: true, follow: true },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://pdfcontrol.vercel.app"),
   openGraph: {
     type: "website",
     locale: "ko_KR",
     alternateLocale: "en_US",
-    siteName: "PDF Toolkit Pro",
-    title: "PDF Toolkit Pro — Free Online PDF Tools",
+    siteName: "Docify Pro",
+    title: "Docify Pro — Free Online PDF Tools",
     description: "Free online PDF tools — unlock, merge, split, compress, watermark and more. 100% browser-based.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PDF Toolkit Pro",
+    title: "Docify Pro",
     description: "Free online PDF tools — processed safely in your browser",
   },
   icons: {
@@ -71,7 +71,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              name: "PDF Toolkit Pro",
+              name: "Docify Pro",
               applicationCategory: "UtilityApplication",
               operatingSystem: "Web Browser",
               description: "All-in-one PDF solution with 10 professional tools",

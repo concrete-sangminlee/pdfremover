@@ -15,7 +15,7 @@ export default function NotFound() {
           href="/"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all"
         >
-          Go to PDF Toolkit Pro
+          Go to Docify Pro
         </Link>
       </div>
     </div>

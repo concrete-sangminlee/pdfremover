@@ -72,7 +72,7 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
   const meta = META[params.tool];
   if (!meta) {
-    return { title: "PDF Toolkit Pro" };
+    return { title: "Docify Pro" };
   }
 
   return {
@@ -88,13 +88,13 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
     ],
     openGraph: {
       type: "website",
-      title: `${meta.titleEn} — PDF Toolkit Pro`,
+      title: `${meta.titleEn} — Docify Pro`,
       description: meta.descEn,
-      siteName: "PDF Toolkit Pro",
+      siteName: "Docify Pro",
     },
     twitter: {
       card: "summary",
-      title: `${meta.titleEn} — PDF Toolkit Pro`,
+      title: `${meta.titleEn} — Docify Pro`,
       description: meta.descEn,
     },
     alternates: {
