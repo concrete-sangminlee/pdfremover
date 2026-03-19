@@ -11,6 +11,7 @@ No server uploads. No sign-ups. No limits. Just fast, secure PDF processing.
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![CI](https://github.com/concrete-sangminlee/pdfremover/actions/workflows/ci.yml/badge.svg)](https://github.com/concrete-sangminlee/pdfremover/actions/workflows/ci.yml)
 [![Bundle Size](https://img.shields.io/badge/First_Load-104KB-green)](/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
