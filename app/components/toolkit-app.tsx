@@ -712,9 +712,9 @@ async function compressImage(file: File, quality: number): Promise<{ name: strin
 }
 
 async function extractPdfText(data: ArrayBuffer): Promise<string> {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data), useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise;
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
   const pages: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
@@ -732,19 +732,21 @@ async function docxToHtml(data: ArrayBuffer): Promise<string> {
 }
 
 async function pdfToImages(data: ArrayBuffer): Promise<{ name: string; data: Uint8Array }[]> {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data), useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true }).promise;
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
+  const doc = await loadingTask.promise;
   const results: { name: string; data: Uint8Array }[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
-    const scale = 2; // 2x for high quality
+    const scale = 2;
     const viewport = page.getViewport({ scale });
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d")!;
-    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport } as never).promise;
+    const renderContext = { canvasContext: ctx, viewport };
+    await page.render(renderContext as Parameters<typeof page.render>[0]).promise;
     const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
     results.push({ name: `page_${i}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
   }
