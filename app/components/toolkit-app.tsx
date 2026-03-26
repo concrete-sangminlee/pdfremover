@@ -987,12 +987,12 @@ function FileDropzone({
         />
         {files.length === 0 ? (
           <>
-            <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
+            <svg className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 32l8-8 4 4 8-8 12 12M8 32V12a4 4 0 014-4h24a4 4 0 014 4v20M8 32h32a4 4 0 004-4" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M24 22v12m0 0l-4-4m4 4l4-4" />
             </svg>
-            <p className="text-gray-500 text-sm font-medium">
-              {t.uploadHint} <span className="text-blue-600 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
+            <p className="text-gray-500 dark:text-slate-400 text-sm font-medium">
+              {t.uploadHint} <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
             </p>
             <button type="button" onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}
               className="mt-3 px-5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all">
@@ -2017,8 +2017,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <Toast type="warning" text={t.mergeWarn} />
             )}
             {view === "merge" && files.length >= 2 && (
-              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-100 text-sm animate-fadeIn">
-                <span className="text-blue-700 font-medium">{files.length} {lang === "ko" ? "개 파일 선택됨" : "files selected"}</span>
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 text-sm animate-fadeIn">
+                <span className="text-blue-700 dark:text-blue-400 font-medium">{files.length} {lang === "ko" ? "개 파일 선택됨" : "files selected"}</span>
                 {(() => {
                   const total = files.reduce((sum, f) => sum + (pageInfo[f.name + f.size + f.lastModified] || 0), 0);
                   return total > 0 ? <span className="text-blue-500 text-xs font-mono">{lang === "ko" ? `총 ${total}페이지` : `${total} pages total`}</span> : null;
@@ -2030,10 +2030,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {["split", "extract", "delete", "rotate"].includes(view) && files.length === 1 && (() => {
               const pc = pageInfo[files[0].name + files[0].size + files[0].lastModified];
               return pc > 0 ? (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 border border-gray-100 text-xs animate-fadeIn">
-                  <span className="text-gray-500">{lang === "ko" ? `이 PDF는 ${pc}페이지입니다` : `This PDF has ${pc} pages`}</span>
-                  <span className="text-gray-300">|</span>
-                  <span className="text-gray-400 font-mono">{fmtSize(files[0].size)}</span>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-xs animate-fadeIn">
+                  <span className="text-gray-500 dark:text-slate-400">{lang === "ko" ? `이 PDF는 ${pc}페이지입니다` : `This PDF has ${pc} pages`}</span>
+                  <span className="text-gray-300 dark:text-slate-600">|</span>
+                  <span className="text-gray-400 dark:text-slate-500 font-mono">{fmtSize(files[0].size)}</span>
                 </div>
               ) : null;
             })()}
@@ -2044,7 +2044,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {(["range", "all"] as const).map((m) => (
                     <button key={m} onClick={() => setSplitMode(m)}
                       className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all
-                        ${splitMode === m ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                        ${splitMode === m ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {m === "range" ? t.rangeMode : t.allPages}
                     </button>
                   ))}
@@ -2073,24 +2073,24 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.rotAngle}</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotAngle}</label>
                     <div className="flex gap-2">
                       {[90, 180, 270].map((d) => (
                         <button key={d} onClick={() => setRotateDeg(d)}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
-                            ${rotateDeg === d ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                            ${rotateDeg === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {d}°
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.rotScope}</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotScope}</label>
                     <div className="flex gap-2">
                       {(["all", "specific"] as const).map((s) => (
                         <button key={s} onClick={() => setRotateScope(s)}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
-                            ${rotateScope === s ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                            ${rotateScope === s ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {s === "all" ? t.rotAll : t.rotSpecific}
                         </button>
                       ))}
@@ -2107,12 +2107,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgstitch" && files.length > 0 && (
               <div className="animate-fadeIn">
-                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgDirection}</label>
+                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgDirection}</label>
                 <div className="flex gap-2">
                   {(["vertical", "horizontal"] as const).map((d) => (
                     <button key={d} onClick={() => setStitchDir(d)}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
-                        ${stitchDir === d ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                        ${stitchDir === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {d === "vertical" ? t.imgVertical : t.imgHorizontal}
                     </button>
                   ))}
@@ -2122,12 +2122,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgconvert" && files.length > 0 && (
               <div className="animate-fadeIn">
-                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgFormat}</label>
+                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgFormat}</label>
                 <div className="flex gap-2">
                   {(["png", "jpeg", "webp"] as const).map((fmt) => (
                     <button key={fmt} onClick={() => setImgOutputFormat(fmt)}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all uppercase
-                        ${imgOutputFormat === fmt ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                        ${imgOutputFormat === fmt ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {fmt === "jpeg" ? "JPG" : fmt.toUpperCase()}
                     </button>
                   ))}
@@ -2137,7 +2137,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgresize" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
+                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
                 <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full accent-[#2563eb]" />
                 <div className="flex justify-between text-[10px] text-gray-400">
                   <span>10%</span>
@@ -2149,7 +2149,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgcompress" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
+                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
                 <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full accent-[#2563eb]" />
                 <div className="flex justify-between text-[10px] text-gray-400">
                   <span>{lang === "ko" ? "최대 압축" : "Max compression"}</span>
@@ -2161,7 +2161,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "watermark" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.wmText}</label>
+                  <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
                   <input type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.wmText}
                     className="input-field" />
                   {/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(wmText) && (
@@ -2170,27 +2170,27 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.wmSize}</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmSize}</label>
                     <input type="number" value={wmSize} onChange={(e) => setWmSize(Math.min(120, Math.max(12, Number(e.target.value) || 12)))} min={12} max={120}
                       className="input-field" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
                     <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3 accent-[#2563eb]" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.wmAngle}</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
                     <input type="number" value={wmRotation} onChange={(e) => setWmRotation(Math.min(90, Math.max(-90, Number(e.target.value) || 0)))} min={-90} max={90}
                       className="input-field" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.wmLayout}</label>
+                  <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmLayout}</label>
                   <div className="flex gap-2">
                     {([["center", t.wmCenter], ["diagonal", t.wmDiagonal], ["tiled", t.wmTiled]] as const).map(([val, label]) => (
                       <button key={val} onClick={() => setWmPosition(val as "center" | "diagonal" | "tiled")}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
-                          ${wmPosition === val ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                          ${wmPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
                       </button>
                     ))}
@@ -2203,30 +2203,30 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.pnFormat}</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnFormat}</label>
                     <div className="flex gap-2">
                       {([["simple", "1, 2, 3"], ["total", "1/10"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setPnFormat(val as "simple" | "total")}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
-                            ${pnFormat === val ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                            ${pnFormat === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {label}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.pnSize}</label>
+                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnSize}</label>
                     <input type="number" value={pnSize} onChange={(e) => setPnSize(Math.min(24, Math.max(8, Number(e.target.value) || 11)))} min={8} max={24}
                       className="input-field" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block font-medium">{t.pnPosition}</label>
+                  <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnPosition}</label>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label]) => (
                       <button key={val} onClick={() => setPnPosition(val)}
                         className={`py-2 rounded-xl text-xs font-medium border transition-all
-                          ${pnPosition === val ? "bg-blue-50 border-blue-300 text-blue-600" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-500"}`}>
+                          ${pnPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
                       </button>
                     ))}
@@ -2255,9 +2255,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   { label: t.compressed, value: fmtSize(compressionInfo.after), accent: true },
                   { label: t.saved, value: compressionInfo.before > compressionInfo.after ? `-${Math.round(((compressionInfo.before - compressionInfo.after) / compressionInfo.before) * 100)}%` : "0%", accent: true },
                 ].map((item, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-                    <div className="text-[10px] text-gray-300 uppercase tracking-wider mb-1 font-semibold">{item.label}</div>
-                    <div className={`text-sm font-bold font-mono ${item.accent ? "text-blue-600" : "text-gray-500"}`}>{item.value}</div>
+                  <div key={i} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 text-center">
+                    <div className="text-[10px] text-gray-300 dark:text-slate-600 uppercase tracking-wider mb-1 font-semibold">{item.label}</div>
+                    <div className={`text-sm font-bold font-mono ${item.accent ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-slate-400"}`}>{item.value}</div>
                   </div>
                 ))}
               </div>
@@ -2267,10 +2267,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {resultData && (
               <div className="animate-scaleIn space-y-3">
                 <div className="flex items-center justify-center gap-2 py-2">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   </div>
-                  <span className="text-sm font-semibold text-green-700">{message?.text}</span>
+                  <span className="text-sm font-semibold text-green-700 dark:text-green-400">{message?.text}</span>
                 </div>
                 <button onClick={() => download(resultData, resultName)}
                   className="w-full py-3.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2">
@@ -2298,10 +2298,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 )}
                 {resultMulti.map((r, i) => (
                   <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : r.name.endsWith(".jpg") ? "image/jpeg" : "application/pdf")}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-blue-200 hover:bg-gray-100 transition-all text-left group">
-                    <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                    <span className="text-gray-800 text-sm font-medium flex-1 truncate">{r.name}</span>
-                    <span className="text-gray-400 text-[10px] font-mono flex-shrink-0">{fmtSize(r.data.length)}</span>
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-left group">
+                    <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                    <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{r.name}</span>
+                    <span className="text-gray-400 dark:text-slate-500 text-[10px] font-mono flex-shrink-0">{fmtSize(r.data.length)}</span>
                     <span className="text-blue-600 text-xs font-semibold opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0">{t.download}</span>
                   </button>
                 ))}
@@ -2319,11 +2319,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {htmlPreview && (
               <div className="animate-fadeIn space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-700">{t.docxPreview}</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">{t.docxPreview}</h3>
                   <button onClick={() => { const blob = new Blob([htmlPreview], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "preview.html"; a.click(); URL.revokeObjectURL(url); }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium">HTML {t.download}</button>
                 </div>
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 max-h-[500px] overflow-y-auto prose prose-sm prose-gray max-w-none"
+                <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 max-h-[500px] overflow-y-auto prose prose-sm prose-gray dark:prose-invert max-w-none"
                   dangerouslySetInnerHTML={{ __html: htmlPreview }} />
               </div>
             )}
@@ -2342,16 +2342,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         { icon: "\uD83D\uDD10", val: "No", label: t.infoEncrypted },
                         { icon: "\uD83D\uDCCA", val: fmtSize(Math.round(pdfInfoResult.size / Math.max(pdfInfoResult.pages, 1))), label: t.infoPerPage },
                       ].map((s, i) => (
-                        <div key={i} className="bg-white border border-gray-200 rounded-2xl p-4 text-center hover:border-blue-200 hover:-translate-y-0.5 transition-all">
+                        <div key={i} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 text-center hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-0.5 transition-all">
                           <div className="text-xl mb-1">{s.icon}</div>
-                          <div className="text-lg font-extrabold font-mono text-gray-900">{s.val}</div>
-                          <div className="text-[10px] text-gray-300 uppercase tracking-wider mt-1 font-semibold">{s.label}</div>
+                          <div className="text-lg font-extrabold font-mono text-gray-900 dark:text-white">{s.val}</div>
+                          <div className="text-[10px] text-gray-300 dark:text-slate-600 uppercase tracking-wider mt-1 font-semibold">{s.label}</div>
                         </div>
                       ))}
                     </div>
-                    <div className="rounded-2xl border border-gray-200 overflow-hidden">
-                      <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-gray-500">{t.metadata}</h3>
+                    <div className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                      <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-500 dark:text-slate-400">{t.metadata}</h3>
                         <button
                           onClick={() => {
                             const text = `Pages: ${pdfInfoResult.pages}\nSize: ${fmtSize(pdfInfoResult.size)}\nTitle: ${pdfInfoResult.title}\nAuthor: ${pdfInfoResult.author}\nCreator: ${pdfInfoResult.creator}\nProducer: ${pdfInfoResult.producer}`;
@@ -2367,9 +2367,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         [t.metaCreator, pdfInfoResult.creator],
                         [t.metaProducer, pdfInfoResult.producer],
                       ].map(([k, v], i) => (
-                        <div key={i} className={`flex px-5 py-3 text-sm hover:bg-gray-50 transition-colors ${i < 3 ? "border-b border-gray-200" : ""}`}>
-                          <span className="w-32 text-gray-400 font-medium flex-shrink-0">{k}</span>
-                          <span className="text-gray-700">{v}</span>
+                        <div key={i} className={`flex px-5 py-3 text-sm hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${i < 3 ? "border-b border-gray-200 dark:border-slate-700" : ""}`}>
+                          <span className="w-32 text-gray-400 dark:text-slate-500 font-medium flex-shrink-0">{k}</span>
+                          <span className="text-gray-700 dark:text-slate-300">{v}</span>
                         </div>
                       ))}
                     </div>

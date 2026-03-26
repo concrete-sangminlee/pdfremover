@@ -99,6 +99,7 @@ Most online document tools upload your files to remote servers. **FileForge proc
 
 ### User Experience
 - 🌐 **Bilingual** — Full Korean + English support with auto-detection from `navigator.language`
+- 🌙 **Dark mode** — System preference auto-detection + manual toggle, fully themed across all pages
 - 📱 **Mobile-first** — Fixed bottom CTA bar, responsive layout, touch-friendly 44px targets
 - ⌨️ **Keyboard shortcuts** — `Esc` to go home (guarded during processing)
 - 🔄 **Batch processing** — Upload multiple files for batch operations with progress indicator
@@ -108,13 +109,13 @@ Most online document tools upload your files to remote servers. **FileForge proc
 - 🖱️ **Drag & drop** — Full drag-and-drop support for all file types (PDF, images, DOCX, HTML)
 
 ### Technical
-- ⚡ **104KB First Load** — 67% smaller than initial build through dynamic imports
+- ⚡ **111KB First Load** — Optimized through dynamic imports and tree-shaking
 - 🏗️ **21 static pages** — Pre-rendered with `generateStaticParams`
 - 🔍 **Full SEO** — Sitemap, robots.txt, per-tool meta tags, JSON-LD structured data
 - 📲 **PWA ready** — Web app manifest, SVG favicon, Apple mobile web app support
-- ♿ **Accessible** — `aria-labels`, `focus-visible` rings, semantic HTML, WCAG AA contrast
+- ♿ **Accessible** — `aria-labels`, `focus-visible` rings, semantic HTML, WCAG AA contrast, `prefers-reduced-motion`
 - 🛡️ **Error boundaries** — Graceful error recovery with custom error and 404 pages
-- 💾 **Persistent state** — Language, history, and processed count stored in `localStorage`
+- 💾 **Persistent state** — Language, theme, history, and processed count stored in `localStorage`
 - 🔒 **Memory safe** — Proper cleanup of Object URLs to prevent memory leaks
 - 🔤 **Optimized fonts** — Self-hosted Inter via `next/font` (no external requests)
 
@@ -218,7 +219,7 @@ Contributions are welcome! Here are some ways you can help:
 
 ## Roadmap
 
-- [ ] Dark mode toggle
+- [x] ~~Dark mode~~ — Complete with system preference + manual toggle
 - [ ] PDF password protection (encryption)
 - [ ] More languages (Japanese, Chinese, Spanish)
 - [ ] Service worker for full offline support
