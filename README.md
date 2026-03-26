@@ -113,11 +113,12 @@ Most online document tools upload your files to remote servers. **FileForge proc
 - 🏗️ **21 static pages** — Pre-rendered with `generateStaticParams`
 - 🔍 **Full SEO** — Sitemap, robots.txt, per-tool meta tags, JSON-LD structured data
 - 📲 **PWA ready** — Web app manifest, SVG favicon, Apple mobile web app support
-- ♿ **Accessible** — `aria-labels`, `focus-visible` rings, semantic HTML, WCAG AA contrast, `prefers-reduced-motion`
-- 🛡️ **Error boundaries** — Graceful error recovery with custom error and 404 pages
+- ♿ **Accessible** — Skip-to-content, `aria-labels`, `focus-visible`, semantic HTML, WCAG AA, `prefers-reduced-motion`
+- 🛡️ **Security hardened** — XSS-safe (DOMParser), CSP headers, X-Frame-Options, no server-side data
 - 💾 **Persistent state** — Language, theme, history, and processed count stored in `localStorage`
 - 🔒 **Memory safe** — Proper cleanup of Object URLs to prevent memory leaks
 - 🔤 **Optimized fonts** — Self-hosted Inter via `next/font` (no external requests)
+- 📦 **Cache optimized** — Immutable cache headers for static assets (worker, favicon)
 
 ---
 

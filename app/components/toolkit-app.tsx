@@ -1255,6 +1255,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setRotatePagesInput("");
     setDeleteInput("");
     setPageInfo({});
+    setConfirmDelete(false);
+    setBatchProgress(-1);
   };
 
   const goTool = (tool: Tool) => {
@@ -1733,7 +1735,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     return (
       <>
         {headerEl}
-        <div className="min-h-screen pt-14" key="home">
+        <div id="main-content" className="min-h-screen pt-14" key="home">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16 view-enter">
             {/* Hero */}
             <div className="relative text-center mb-14 sm:mb-20 animate-fadeInUp">
@@ -2027,7 +2029,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   return (
     <>
       {headerEl}
-      <div className="min-h-screen pt-14" key={view}>
+      <div id="main-content" className="min-h-screen pt-14" key={view}>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 view-enter">
           {/* Back + Header */}
           <div>

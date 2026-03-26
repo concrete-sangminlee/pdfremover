@@ -139,12 +139,12 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
     title: meta.titleEn,
     description: meta.descEn,
     keywords: [
-      `PDF ${params.tool}`,
       meta.titleEn,
       meta.titleKo,
-      "PDF tool",
-      "free PDF",
-      "online PDF",
+      ...(params.tool.startsWith("img") ? ["image tool", "free image tool", "online image converter"] : []),
+      ...(["docx2html", "pdftext", "txt2pdf", "html2pdf"].includes(params.tool) ? ["document tool", "free document tool"] : []),
+      ...(!params.tool.startsWith("img") && !["docx2html", "txt2pdf", "html2pdf"].includes(params.tool) ? ["PDF tool", "free PDF", "online PDF"] : []),
+      "FileForge",
     ],
     openGraph: {
       type: "website",
