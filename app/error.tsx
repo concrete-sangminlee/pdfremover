@@ -8,13 +8,13 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-white dark:bg-slate-950">
       <div className="text-center max-w-md">
         <div className="text-5xl mb-4 opacity-30">&#9888;</div>
-        <h2 className="text-xl font-bold tracking-tight text-gray-900 mb-2">
+        <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">
           Something went wrong
         </h2>
-        <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+        <p className="text-gray-400 dark:text-slate-400 text-sm mb-6 leading-relaxed">
           {error.message || "An unexpected error occurred while processing your request."}
         </p>
         <div className="flex gap-3 justify-center">
@@ -26,7 +26,7 @@ export default function Error({
           </button>
           <a
             href="/"
-            className="px-5 py-2.5 rounded-xl bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200 transition-all"
+            className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 font-medium text-sm hover:bg-gray-200 dark:hover:bg-slate-700 transition-all"
           >
             Go home
           </a>

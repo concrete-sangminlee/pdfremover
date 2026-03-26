@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(git:*)",
+      "Bash(git-credential-manager.exe github:*)",
+      "WebFetch(domain:sangminpdf.streamlit.app)",
+      "WebFetch(domain:passlab.framer.website)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(npx next:*)"
+    ]
+  }
+}

@@ -1078,10 +1078,17 @@ function AccentButton({ children, onClick, disabled = false, loading = false }: 
   );
 }
 
-function ProgressBar() {
+function ProgressBar({ progress }: { progress?: number }) {
   return (
-    <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden mb-4">
-      <div className="progress-bar w-full h-full" />
+    <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4">
+      {progress !== undefined && progress >= 0 ? (
+        <div
+          className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
+      ) : (
+        <div className="progress-bar w-full h-full" />
+      )}
     </div>
   );
 }
@@ -1195,6 +1202,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [imgOutputFormat, setImgOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [textInput, setTextInput] = useState("");
   const [stitchDir, setStitchDir] = useState<"vertical" | "horizontal">("vertical");
+  const [batchProgress, setBatchProgress] = useState<number>(-1);
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1349,7 +1357,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [procTime, setProcTime] = useState<number | null>(null);
 
   const execute = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 && view !== "txt2pdf") return;
     const startTime = performance.now();
     setProcessing(true);
     setMessage(null);
@@ -1363,6 +1371,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
     setProcTime(null);
     setCompressionInfo(null);
+    setBatchProgress(-1);
 
     try {
       const toolLabel = t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "";
@@ -1379,11 +1388,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             // Batch unlock with progress
             const results: { name: string; data: Uint8Array }[] = [];
             for (let idx = 0; idx < files.length; idx++) {
+              setBatchProgress(Math.round((idx / files.length) * 100));
               setMessage({ type: "warning", text: `${lang === "ko" ? "처리 중" : "Processing"} ${idx + 1}/${files.length}...` });
               const buf = await files[idx].arrayBuffer();
               const data = await unlockPDF(buf);
               results.push({ name: files[idx].name.replace(/\.pdf$/i, "_unlocked.pdf"), data });
             }
+            setBatchProgress(100);
             setResultMulti(results);
             setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 파일 잠금해제 완료!" : " files unlocked!"}` });
             addHistory(toolLabel, `${files.length} files`, true);
@@ -1508,9 +1519,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
         case "imgconvert": {
           const results: { name: string; data: Uint8Array }[] = [];
-          for (const f of files) {
-            results.push(await convertImageFormat(f, imgOutputFormat));
+          for (let fi = 0; fi < files.length; fi++) {
+            setBatchProgress(Math.round((fi / files.length) * 100));
+            results.push(await convertImageFormat(files[fi], imgOutputFormat));
           }
+          setBatchProgress(100);
           if (results.length === 1) {
             setResultData(results[0].data);
             setResultName(results[0].name);
@@ -1532,10 +1545,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
         case "imgresize": {
           const results: { name: string; data: Uint8Array }[] = [];
-          for (const f of files) {
-            const r = await resizeImage(f, imgScale);
+          for (let fi = 0; fi < files.length; fi++) {
+            setBatchProgress(Math.round((fi / files.length) * 100));
+            const r = await resizeImage(files[fi], imgScale);
             results.push({ name: r.name, data: r.data });
           }
+          setBatchProgress(100);
           if (results.length === 1) {
             setResultData(results[0].data);
             setResultName(results[0].name);
@@ -1549,12 +1564,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "imgcompress": {
           const results: { name: string; data: Uint8Array }[] = [];
           let totalBefore = 0, totalAfter = 0;
-          for (const f of files) {
-            const r = await compressImage(f, imgQuality);
+          for (let fi = 0; fi < files.length; fi++) {
+            setBatchProgress(Math.round((fi / files.length) * 100));
+            const r = await compressImage(files[fi], imgQuality);
             results.push({ name: r.name, data: r.data });
             totalBefore += r.before;
             totalAfter += r.after;
           }
+          setBatchProgress(100);
           if (results.length === 1) {
             setResultData(results[0].data);
             setResultName(results[0].name);
@@ -1623,6 +1640,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       if (files[0]) addHistory(t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "", files[0].name, false);
     } finally {
       setProcessing(false);
+      setBatchProgress(-1);
       setProcTime(Math.round(performance.now() - startTime));
       setTimeout(() => {
         const el = document.getElementById("results-area");
@@ -1744,17 +1762,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
                 {/* Rating + Trust row */}
                 <div className="flex items-center justify-center gap-6 mt-8 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <div className="flex">
-                      {[1,2,3,4,5].map((s) => (
-                        <svg key={s} className="w-4 h-4" viewBox="0 0 20 20" fill="#f59e0b" opacity={s <= 4 ? 1 : 0.6}>
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-sm font-bold text-gray-700 dark:text-slate-200">{t.rating}</span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500">{t.ratingText}</span>
-                  </div>
+                  {processCount > 0 && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                          <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <span className="text-sm font-bold text-gray-700 dark:text-slate-200"><AnimatedCounter target={processCount} /></span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">{t.processed}</span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 hidden sm:block" />
+                    </>
+                  )}
                   <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 hidden sm:block" />
                   <div className="flex gap-4">
                     {[t.trust1, t.trust2, t.trust3].map((label) => (
@@ -1958,14 +1977,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               </div>
               <div className="border-t border-gray-200 dark:border-slate-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
                 <p className="text-[11px] text-gray-400 dark:text-slate-500">&copy; {new Date().getFullYear()} FileForge. {t.footer2}</p>
-                <div className="flex items-center gap-1">
-                  {[1,2,3,4,5].map((s) => (
-                    <svg key={s} className="w-3 h-3" viewBox="0 0 20 20" fill="#f59e0b" opacity={s <= 4 ? 1 : 0.6}>
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <span className="text-[11px] text-gray-400 ml-1">{t.rating} {t.ratingText}</span>
-                </div>
+                {processCount > 0 ? (
+                  <span className="text-[11px] text-gray-400 dark:text-slate-500">
+                    {processCount} {t.processed}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-gray-400 dark:text-slate-500">{t.privacy}</span>
+                )}
               </div>
             </div>
           </footer>
@@ -2021,7 +2039,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-slate-700 to-transparent my-5" />
           </div>
 
-          {processing && <ProgressBar />}
+          {processing && <ProgressBar progress={batchProgress >= 0 ? batchProgress : undefined} />}
 
           <div className="space-y-4 animate-fadeInUp" style={{ animationDelay: "100ms" }}>
             {/* Text input for txt2pdf */}
