@@ -15,6 +15,7 @@ interface HistoryItem {
   action: string;
   file: string;
   ok: boolean;
+  toolId?: string;
 }
 
 interface PdfInfo {
@@ -179,7 +180,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteDesc: "불필요한 페이지를 제거합니다",
     img2pdfLabel: "이미지 → PDF",
     img2pdfDesc: "JPG, PNG 이미지를 PDF로 변환합니다",
-    img2pdfHint: "이미지 파일을 업로드하세요 (JPG, PNG)",
+    img2pdfHint: "이미지 파일을 업로드하세요 (JPG, PNG, WebP)",
     pdf2imgLabel: "PDF → 이미지",
     pdf2imgDesc: "PDF 페이지를 JPG/PNG 이미지로 변환합니다",
     docx2htmlLabel: "DOCX 뷰어",
@@ -368,7 +369,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteDesc: "Remove unwanted pages",
     img2pdfLabel: "Image to PDF",
     img2pdfDesc: "Convert JPG, PNG images to PDF",
-    img2pdfHint: "Upload image files (JPG, PNG)",
+    img2pdfHint: "Upload image files (JPG, PNG, WebP)",
     pdf2imgLabel: "PDF to Image",
     pdf2imgDesc: "Convert PDF pages to JPG/PNG images",
     docx2htmlLabel: "DOCX Viewer",
@@ -443,7 +444,7 @@ async function downloadZip(files: { name: string; data: Uint8Array }[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "pdf_toolkit_output.zip";
+  a.download = "fileforge_output.zip";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1202,6 +1203,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [textInput, setTextInput] = useState("");
   const [stitchDir, setStitchDir] = useState<"vertical" | "horizontal">("vertical");
   const [batchProgress, setBatchProgress] = useState<number>(-1);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1236,8 +1238,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view !== "home") getPdfLib();
   }, [view]);
 
-  const addHistory = useCallback((action: string, file: string, ok: boolean) => {
-    setHistory((prev) => [{ time: fmtTime(), action, file, ok }, ...prev].slice(0, 30));
+  const addHistory = useCallback((action: string, file: string, ok: boolean, toolId?: string) => {
+    setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
   }, []);
 
   const resetState = () => {
@@ -1390,7 +1392,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultData(data);
             setResultName(files[0].name.replace(/\.pdf$/i, "_unlocked.pdf"));
             setMessage({ type: "success", text: t.msgUnlocked });
-            addHistory(toolLabel, files[0].name, true);
+            addHistory(toolLabel, files[0].name, true, view);
           } else {
             // Batch unlock with progress
             const results: { name: string; data: Uint8Array }[] = [];
@@ -1404,7 +1406,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setBatchProgress(100);
             setResultMulti(results);
             setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 파일 잠금해제 완료!" : " files unlocked!"}` });
-            addHistory(toolLabel, `${files.length} files`, true);
+            addHistory(toolLabel, `${files.length} files`, true, view);
           }
           break;
         }
@@ -1415,7 +1417,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName("merged.pdf");
           const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
           setMessage({ type: "success", text: `${files.length}${t.msgMerged} (${t.msgMergedPages.replace("{n}", String(info.pages))})` });
-          addHistory(toolLabel, `${files.length} files`, true);
+          addHistory(toolLabel, `${files.length} files`, true, view);
           break;
         }
         case "split": {
@@ -1427,7 +1429,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const results = await splitPDF(buf, ranges);
           setResultMulti(results);
           setMessage({ type: "success", text: `${results.length}${t.msgSplit}` });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "extract": {
@@ -1439,7 +1441,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_extracted.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgExtracted}` });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "rotate": {
@@ -1452,7 +1454,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_rotated.pdf"));
           setMessage({ type: "success", text: `${rotateDeg}°${t.msgRotated}` });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "compress": {
@@ -1467,7 +1469,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           } else {
             setMessage({ type: "warning", text: t.compressAlready });
           }
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "watermark": {
@@ -1476,7 +1478,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_watermarked.pdf"));
           setMessage({ type: "success", text: t.msgWatermarked });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "pagenum": {
@@ -1486,11 +1488,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(files[0].name.replace(/\.pdf$/i, "_numbered.pdf"));
           const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
           setMessage({ type: "success", text: `${info.pages}${t.msgNumbered}` });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "delete": {
-          if (!window.confirm(t.deleteConfirm)) break;
+          if (!confirmDelete) {
+            setConfirmDelete(true);
+            setMessage({ type: "warning", text: t.deleteConfirm });
+            setProcessing(false);
+            return;
+          }
+          setConfirmDelete(false);
           const buf = await files[0].arrayBuffer();
           const info = await getPdfInfo(buf, files[0].size);
           const pages = parsePageRanges(deleteInput, info.pages);
@@ -1503,7 +1511,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "imgstitch": {
@@ -1512,7 +1520,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(`stitched_${stitchDir}.png`);
           setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 합치기 완료!" : " images stitched!"}` });
-          addHistory(toolLabel, `${files.length} images`, true);
+          addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "txt2pdf": {
@@ -1521,7 +1529,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName("text.pdf");
           setMessage({ type: "success", text: lang === "ko" ? "텍스트 → PDF 변환 완료!" : "Text converted to PDF!" });
-          addHistory(toolLabel, "text input", true);
+          addHistory(toolLabel, "text input", true, view);
           break;
         }
         case "imgconvert": {
@@ -1538,7 +1546,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultMulti(results);
           }
           setMessage({ type: "success", text: `${results.length}${lang === "ko" ? `개 이미지 → ${imgOutputFormat.toUpperCase()} 변환 완료!` : ` images converted to ${imgOutputFormat.toUpperCase()}!`}` });
-          addHistory(toolLabel, `${files.length} images`, true);
+          addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "html2pdf": {
@@ -1547,7 +1555,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files[0].name.replace(/\.(html?|htm)$/i, ".pdf"));
           setMessage({ type: "success", text: lang === "ko" ? "HTML → PDF 변환 완료!" : "HTML converted to PDF!" });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "imgresize": {
@@ -1565,7 +1573,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultMulti(results);
           }
           setMessage({ type: "success", text: `${results.length}${lang === "ko" ? "개 이미지 리사이즈 완료!" : " images resized!"} (${Math.round(imgScale * 100)}%)` });
-          addHistory(toolLabel, `${files.length} images`, true);
+          addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "imgcompress": {
@@ -1588,7 +1596,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setCompressionInfo({ before: totalBefore, after: totalAfter });
           const pct = Math.round(((totalBefore - totalAfter) / totalBefore) * 100);
           setMessage({ type: "success", text: `${fmtSize(totalBefore - totalAfter)} ${t.compressSaved} (${pct}% ${t.compressPercent})` });
-          addHistory(toolLabel, `${files.length} images`, true);
+          addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "pdftext": {
@@ -1596,7 +1604,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const text = await extractPdfText(buf);
           setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${text.replace(/</g, "&lt;")}</pre>`);
           setMessage({ type: "success", text: lang === "ko" ? "텍스트 추출 완료!" : "Text extracted!" });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "docx2html": {
@@ -1604,7 +1612,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const html = await docxToHtml(buf);
           setHtmlPreview(html);
           setMessage({ type: "success", text: lang === "ko" ? "DOCX 변환 완료!" : "DOCX converted!" });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "pdf2img": {
@@ -1613,7 +1621,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const images = await pdfToImages(buf);
           setResultMulti(images);
           setMessage({ type: "success", text: `${images.length}${lang === "ko" ? "페이지 → 이미지 변환 완료!" : " pages converted to images!"}` });
-          addHistory(toolLabel, files[0].name, true);
+          addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "img2pdf": {
@@ -1622,7 +1630,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName("images.pdf");
           const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
           setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 → PDF 변환 완료!" : " images converted to PDF!"} (${info.pages}p)` });
-          addHistory(toolLabel, `${files.length} images`, true);
+          addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "info": {
@@ -1942,13 +1950,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-6">{t.recentTitle}</h2>
                 <div className="space-y-1">
                   {history.slice(0, 8).map((h, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                    <button key={i} onClick={() => h.toolId && VALID_TOOLS.includes(h.toolId as Tool) && goTool(h.toolId as Tool)}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors w-full text-left ${h.toolId ? "cursor-pointer" : "cursor-default"}`}>
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
-                      <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1">
+                      <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1 truncate">
                         <span className="text-gray-700 dark:text-slate-300">{h.action}</span> — {h.file}
                       </span>
-                      <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono">{h.time}</span>
-                    </div>
+                      <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono flex-shrink-0">{h.time}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -2330,7 +2339,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view !== "info" && (files.length > 0 || view === "txt2pdf") && (
               <div className="relative">
                 <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
-                  {processing ? t.processing : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+                  {processing ? t.processing : confirmDelete ? (lang === "ko" ? "삭제 확인" : "Confirm Delete") : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
                 </AccentButton>
                 {canExecute && !processing && (
                   <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 font-mono hidden sm:inline">Ctrl+Enter</kbd>
