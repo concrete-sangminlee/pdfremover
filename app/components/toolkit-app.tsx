@@ -658,10 +658,9 @@ async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
   const { PDFDocument, StandardFonts, rgb } = await getPdfLib();
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  // Strip HTML tags to get plain text, then paginate
-  const div = document.createElement("div");
-  div.innerHTML = htmlContent;
-  const text = div.textContent || div.innerText || "";
+  // Strip HTML tags safely using DOMParser (no script execution)
+  const parsed = new DOMParser().parseFromString(htmlContent, "text/html");
+  const text = parsed.body.textContent || "";
   const lines = text.split("\n").flatMap((line) => {
     // Word-wrap at ~80 chars
     const wrapped: string[] = [];
@@ -1214,15 +1213,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   const t = T[lang];
 
-  // Keyboard shortcuts
+  // Search ref for "/" shortcut
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Basic keyboard shortcuts (Escape, /)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
       if (e.key === "Escape" && view !== "home" && !processing) goHome();
+      if (e.key === "/" && view === "home" && !isInput) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
+  }, [view, processing]);
 
   // Preload pdf-lib when entering a tool page
   useEffect(() => {
@@ -1304,7 +1311,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
-        setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG)." : "Only image files are supported (JPG, PNG)." });
+        setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG, WebP)." : "Only image files are supported (JPG, PNG, WebP)." });
         return;
       }
     } else if (view === "html2pdf") {
@@ -1663,6 +1670,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   const activeTool = TOOLS.find((td) => td.id === view);
 
+  // Ctrl+Enter to execute (must be after canExecute/execute are defined)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && view !== "home" && canExecute && !processing) {
+        e.preventDefault();
+        execute();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [view, canExecute, processing]);
+
   // Header rendered inline (depends on goHome, view, t, lang, setLang)
   const headerEl = (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800">
@@ -1793,14 +1812,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="relative mb-6">
               <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
+                ref={searchRef}
                 type="text"
                 value={toolSearch}
                 onChange={(e) => setToolSearch(e.target.value)}
                 placeholder={t.searchPlaceholder}
-                className="input-field pl-11 py-3"
+                className="input-field pl-11 pr-16 py-3"
               />
-              {toolSearch && (
+              {toolSearch ? (
                 <button onClick={() => setToolSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xs">{"\u2715"}</button>
+              ) : (
+                <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-300 dark:text-slate-600 font-mono border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5">/</kbd>
               )}
             </div>
             {/* Categorized Grid */}
@@ -2207,7 +2229,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgresize" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
-                <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full accent-[#2563eb]" />
+                <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full" />
                 <div className="flex justify-between text-[10px] text-gray-400">
                   <span>10%</span>
                   <span>100%</span>
@@ -2219,7 +2241,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgcompress" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
-                <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full accent-[#2563eb]" />
+                <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full" />
                 <div className="flex justify-between text-[10px] text-gray-400">
                   <span>{lang === "ko" ? "최대 압축" : "Max compression"}</span>
                   <span>{lang === "ko" ? "원본 품질" : "Original quality"}</span>
@@ -2306,9 +2328,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Execute Button */}
             {view !== "info" && (files.length > 0 || view === "txt2pdf") && (
-              <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
-                {processing ? t.processing : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
-              </AccentButton>
+              <div className="relative">
+                <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
+                  {processing ? t.processing : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+                </AccentButton>
+                {canExecute && !processing && (
+                  <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 font-mono hidden sm:inline">Ctrl+Enter</kbd>
+                )}
+              </div>
             )}
 
             {/* Messages */}
