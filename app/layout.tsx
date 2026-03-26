@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -14,12 +22,15 @@ export const metadata: Metadata = {
     template: "%s — FileForge",
   },
   description:
-    "Free online PDF tools. Unlock, merge, split, extract, rotate, compress, add watermarks and page numbers. 100% browser-based. No upload to servers.",
+    "Free online document toolkit with 20+ tools. PDF unlock, merge, split, compress, watermark. Image convert, resize, compress, stitch. DOCX viewer, text extraction. 100% browser-based, no server uploads.",
   keywords: [
     "PDF", "PDF tool", "PDF editor", "PDF unlock", "PDF merge",
     "PDF split", "PDF compress", "PDF watermark", "PDF page numbers",
     "PDF password remover", "free PDF tool", "online PDF editor",
+    "image converter", "image compress", "image resize", "WebP converter",
+    "DOCX viewer", "HTML to PDF", "text to PDF", "document toolkit",
     "무료 PDF", "PDF 암호 해제", "PDF 병합", "PDF 분할", "PDF 압축",
+    "이미지 변환", "이미지 압축", "문서 도구",
   ],
   authors: [{ name: "FileForge" }],
   creator: "FileForge",
@@ -31,13 +42,13 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     alternateLocale: "en_US",
     siteName: "FileForge",
-    title: "FileForge — Free Online PDF Tools",
-    description: "Free online PDF tools — unlock, merge, split, compress, watermark and more. 100% browser-based.",
+    title: "FileForge — Free Online Document Toolkit",
+    description: "20+ free tools for PDF, images & documents. Unlock, merge, split, convert — all in your browser.",
   },
   twitter: {
     card: "summary_large_image",
     title: "FileForge",
-    description: "Free online PDF tools — processed safely in your browser",
+    description: "20+ free document tools — PDF, images & more. 100% browser-based, zero uploads.",
   },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
@@ -47,7 +58,7 @@ export const metadata: Metadata = {
   other: {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "PDF Toolkit",
+    "apple-mobile-web-app-title": "FileForge",
   },
 };
 
@@ -57,14 +68,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -74,14 +79,20 @@ export default function RootLayout({
               name: "FileForge",
               applicationCategory: "UtilityApplication",
               operatingSystem: "Web Browser",
-              description: "All-in-one PDF solution with 10 professional tools",
+              description: "All-in-one document solution with 20+ professional tools for PDF, image, and document processing",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-              featureList: ["PDF Unlock", "PDF Merge", "PDF Split", "Page Extraction", "Page Rotation", "PDF Optimization", "Text Watermark", "Page Numbers", "Page Deletion", "PDF Info"],
+              featureList: [
+                "PDF Unlock", "PDF Merge", "PDF Split", "Page Extraction", "Page Rotation",
+                "PDF Optimization", "Text Watermark", "Page Numbers", "Page Deletion", "PDF Info",
+                "Image to PDF", "PDF to Image", "DOCX Viewer", "PDF Text Extraction",
+                "Image Compress", "Image Resize", "Image Stitch", "Image Convert",
+                "Text to PDF", "HTML to PDF"
+              ],
             }),
           }}
         />
       </head>
-      <body className="bg-white text-gray-900 antialiased" style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
+      <body className={`${inter.className} bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-100 antialiased`}>
         {children}
       </body>
     </html>

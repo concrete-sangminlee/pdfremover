@@ -1,17 +1,14 @@
 <div align="center">
 
-<img src="docs/hero.svg" alt="PDF Toolkit Pro" width="100%" />
+# FileForge
 
-# PDF Toolkit Pro
+**The open-source, privacy-first document toolkit that runs entirely in your browser.**
 
-**The open-source, privacy-first PDF toolkit that runs entirely in your browser.**
-
-No server uploads. No sign-ups. No limits. Just fast, secure PDF processing.
+No server uploads. No sign-ups. No limits. Just fast, secure document processing.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![CI](https://github.com/concrete-sangminlee/pdfremover/actions/workflows/ci.yml/badge.svg)](https://github.com/concrete-sangminlee/pdfremover/actions/workflows/ci.yml)
 [![Bundle Size](https://img.shields.io/badge/First_Load-104KB-green)](/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -21,11 +18,11 @@ No server uploads. No sign-ups. No limits. Just fast, secure PDF processing.
 
 ---
 
-## Why PDF Toolkit Pro?
+## Why FileForge?
 
-Most online PDF tools upload your files to remote servers. **PDF Toolkit Pro processes everything locally in your browser** using WebAssembly-powered [pdf-lib](https://pdf-lib.js.org/). Your files never leave your device.
+Most online document tools upload your files to remote servers. **FileForge processes everything locally in your browser** using WebAssembly-powered libraries. Your files never leave your device.
 
-| | PDF Toolkit Pro | iLovePDF / SmallPDF |
+| | FileForge | iLovePDF / SmallPDF |
 |---|:---:|:---:|
 | **100% Browser Processing** | ✅ | ❌ |
 | **No Server Upload** | ✅ | ❌ |
@@ -37,7 +34,9 @@ Most online PDF tools upload your files to remote servers. **PDF Toolkit Pro pro
 
 ---
 
-## 10 Professional Tools
+## 20 Professional Tools
+
+### PDF Tools (10)
 
 <table>
 <tr>
@@ -56,16 +55,41 @@ Most online PDF tools upload your files to remote servers. **PDF Toolkit Pro pro
 </tr>
 </table>
 
+### Image Tools (6)
+
+<table>
+<tr>
+<td align="center" width="25%">🖼️<br><b>Image → PDF</b><br><sub>JPG/PNG to PDF<br>Batch support</sub></td>
+<td align="center" width="25%">📷<br><b>PDF → Image</b><br><sub>Pages to PNG<br>High-quality 2x render</sub></td>
+<td align="center" width="25%">🗜️<br><b>Image Compress</b><br><sub>Reduce file size<br>Quality control</sub></td>
+<td align="center" width="25%">🔍<br><b>Image Resize</b><br><sub>Scale 10%–200%<br>Batch support</sub></td>
+</tr>
+<tr>
+<td align="center">🧩<br><b>Image Stitch</b><br><sub>Combine images<br>Vertical / Horizontal</sub></td>
+<td align="center">🎨<br><b>Image Convert</b><br><sub>PNG ↔ JPG ↔ WebP<br>Batch support</sub></td>
+<td align="center" colspan="2"></td>
+</tr>
+</table>
+
+### Document & Text Tools (4)
+
+<table>
+<tr>
+<td align="center" width="25%">📝<br><b>DOCX Viewer</b><br><sub>Preview Word docs<br>in browser</sub></td>
+<td align="center" width="25%">📋<br><b>PDF Text</b><br><sub>Extract text content<br>from PDF files</sub></td>
+<td align="center" width="25%">📝<br><b>Text → PDF</b><br><sub>Type text, create PDF<br>Instant conversion</sub></td>
+<td align="center" width="25%">🌐<br><b>HTML → PDF</b><br><sub>Convert HTML files<br>to PDF documents</sub></td>
+</tr>
+</table>
+
 ---
 
 ## Architecture
 
-<img src="docs/architecture.svg" alt="Architecture" width="100%" />
-
 **Key design decisions:**
 
-- **Dynamic imports** — `pdf-lib` (225KB) and `jszip` (100KB) are lazy-loaded only when a tool is actually used, keeping the initial bundle at just **104KB**
-- **Static Site Generation** — All 16 pages are pre-rendered at build time for instant loading
+- **Dynamic imports** — `pdf-lib` (225KB), `pdfjs-dist`, `jszip` (100KB), and `mammoth` are lazy-loaded only when a tool is actually used, keeping the initial bundle at just **104KB**
+- **Static Site Generation** — All 21 pages are pre-rendered at build time for instant loading
 - **Zero backend** — No API routes, no database, no server-side processing. Deploy anywhere that serves static files
 - **SEO-first routing** — Each tool has its own URL (`/unlock`, `/merge`, etc.) with dedicated meta tags, Open Graph, and structured data
 
@@ -75,21 +99,24 @@ Most online PDF tools upload your files to remote servers. **PDF Toolkit Pro pro
 
 ### User Experience
 - 🌐 **Bilingual** — Full Korean + English support with auto-detection from `navigator.language`
-- 📱 **Mobile-first** — Fixed bottom CTA bar, responsive comparison table, touch-friendly 44px targets
+- 📱 **Mobile-first** — Fixed bottom CTA bar, responsive layout, touch-friendly 44px targets
 - ⌨️ **Keyboard shortcuts** — `Esc` to go home (guarded during processing)
-- 🔄 **Batch processing** — Upload multiple PDFs for batch unlock with progress indicator
+- 🔄 **Batch processing** — Upload multiple files for batch operations with progress indicator
 - 📊 **Smart context** — Page count hints, file size warnings (>50MB), processing time display
 - 🔗 **Share** — Native share API on mobile, clipboard fallback on desktop
 - 🎯 **Contextual suggestions** — Related tools based on what you just used
+- 🖱️ **Drag & drop** — Full drag-and-drop support for all file types (PDF, images, DOCX, HTML)
 
 ### Technical
 - ⚡ **104KB First Load** — 67% smaller than initial build through dynamic imports
-- 🏗️ **16 static pages** — Pre-rendered with `generateStaticParams`
+- 🏗️ **21 static pages** — Pre-rendered with `generateStaticParams`
 - 🔍 **Full SEO** — Sitemap, robots.txt, per-tool meta tags, JSON-LD structured data
 - 📲 **PWA ready** — Web app manifest, SVG favicon, Apple mobile web app support
 - ♿ **Accessible** — `aria-labels`, `focus-visible` rings, semantic HTML, WCAG AA contrast
 - 🛡️ **Error boundaries** — Graceful error recovery with custom error and 404 pages
 - 💾 **Persistent state** — Language, history, and processed count stored in `localStorage`
+- 🔒 **Memory safe** — Proper cleanup of Object URLs to prevent memory leaks
+- 🔤 **Optimized fonts** — Self-hosted Inter via `next/font` (no external requests)
 
 ---
 
@@ -141,7 +168,7 @@ app/
 │   └── toolkit-app.tsx      # Main client component (all UI + logic)
 ├── lib/
 │   └── config.ts            # Shared types, tool definitions, colors
-├── layout.tsx               # Root layout, meta tags, fonts
+├── layout.tsx               # Root layout, meta tags, next/font
 ├── globals.css              # Design system (Tailwind + custom)
 ├── sitemap.ts               # Dynamic sitemap generation
 ├── robots.ts                # Robots.txt generation
@@ -149,6 +176,7 @@ app/
 └── not-found.tsx            # 404 page
 public/
 ├── manifest.json            # PWA manifest
+├── pdf.worker.min.mjs       # PDF.js web worker
 └── icon.svg                 # SVG favicon
 ```
 
@@ -161,6 +189,8 @@ public/
 | [TypeScript 5](https://typescriptlang.org) | Type safety |
 | [Tailwind CSS 3](https://tailwindcss.com) | Styling |
 | [pdf-lib](https://pdf-lib.js.org) | PDF processing (client-side) |
+| [pdfjs-dist](https://mozilla.github.io/pdf.js/) | PDF rendering & text extraction |
+| [mammoth](https://github.com/mwilliamson/mammoth.js) | DOCX to HTML conversion |
 | [JSZip](https://stuk.github.io/jszip/) | ZIP packaging for batch downloads |
 
 ---
@@ -177,24 +207,26 @@ Contributions are welcome! Here are some ways you can help:
 
 ### Development Guidelines
 
-1. **No server-side processing** — All PDF operations must run in the browser
+1. **No server-side processing** — All document operations must run in the browser
 2. **Keep bundle small** — Use dynamic imports for heavy libraries
 3. **Bilingual** — All user-facing strings must be in both Korean and English
 4. **Accessible** — Follow WCAG AA guidelines
 5. **Mobile-first** — Test on mobile viewports
+6. **Memory safe** — Always revoke Object URLs after use
 
 ---
 
 ## Roadmap
 
-- [ ] PDF to Images conversion (using canvas/pdfjs)
-- [ ] Image to PDF conversion
-- [ ] PDF password protection (encryption)
 - [ ] Dark mode toggle
+- [ ] PDF password protection (encryption)
 - [ ] More languages (Japanese, Chinese, Spanish)
-- [ ] Service worker for offline support
-- [ ] Unit tests for PDF operations
+- [ ] Service worker for full offline support
+- [ ] PDF preview before processing
+- [ ] Unit tests for all tools
 - [ ] Performance benchmarks vs competitors
+- [ ] PDF form filling
+- [ ] PDF annotation tools
 
 ---
 
@@ -206,8 +238,8 @@ This project is licensed under the [MIT License](LICENSE).
 
 <div align="center">
 
-**Built with ❤️ for privacy-conscious users worldwide.**
+**Built with privacy in mind for users worldwide.**
 
-If you find this useful, please consider giving it a ⭐
+If you find this useful, please consider giving it a star.
 
 </div>

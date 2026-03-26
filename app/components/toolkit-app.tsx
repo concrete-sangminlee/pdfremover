@@ -593,10 +593,13 @@ async function addWatermark(
 }
 
 async function stitchImages(imageFiles: File[], direction: "vertical" | "horizontal"): Promise<Uint8Array> {
+  const urls: string[] = [];
   const imgs = await Promise.all(imageFiles.map((f) => new Promise<HTMLImageElement>((resolve) => {
     const img = new Image();
+    const url = URL.createObjectURL(f);
+    urls.push(url);
     img.onload = () => resolve(img);
-    img.src = URL.createObjectURL(f);
+    img.src = url;
   })));
   const canvas = document.createElement("canvas");
   if (direction === "vertical") {
@@ -612,6 +615,7 @@ async function stitchImages(imageFiles: File[], direction: "vertical" | "horizon
     let x = 0;
     for (const img of imgs) { ctx.drawImage(img, x, 0); x += img.width; }
   }
+  urls.forEach((u) => URL.revokeObjectURL(u));
   const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
   return new Uint8Array(await blob.arrayBuffer());
 }
@@ -619,7 +623,9 @@ async function stitchImages(imageFiles: File[], direction: "vertical" | "horizon
 async function convertImageFormat(file: File, format: "png" | "jpeg" | "webp"): Promise<{ name: string; data: Uint8Array }> {
   return new Promise((resolve) => {
     const img = new Image();
+    const url = URL.createObjectURL(file);
     img.onload = () => {
+      URL.revokeObjectURL(url);
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
       canvas.height = img.height;
@@ -632,7 +638,7 @@ async function convertImageFormat(file: File, format: "png" | "jpeg" | "webp"): 
         resolve({ name, data });
       }, `image/${format}`, 0.92);
     };
-    img.src = URL.createObjectURL(file);
+    img.src = url;
   });
 }
 
@@ -672,7 +678,9 @@ async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
 async function resizeImage(file: File, scale: number): Promise<{ name: string; data: Uint8Array; w: number; h: number }> {
   return new Promise((resolve) => {
     const img = new Image();
+    const url = URL.createObjectURL(file);
     img.onload = () => {
+      URL.revokeObjectURL(url);
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
       const canvas = document.createElement("canvas");
@@ -687,14 +695,16 @@ async function resizeImage(file: File, scale: number): Promise<{ name: string; d
         resolve({ name, data, w, h });
       }, isPng ? "image/png" : "image/jpeg", 0.92);
     };
-    img.src = URL.createObjectURL(file);
+    img.src = url;
   });
 }
 
 async function compressImage(file: File, quality: number): Promise<{ name: string; data: Uint8Array; before: number; after: number }> {
   return new Promise((resolve) => {
     const img = new Image();
+    const url = URL.createObjectURL(file);
     img.onload = () => {
+      URL.revokeObjectURL(url);
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
       canvas.height = img.height;
@@ -707,7 +717,7 @@ async function compressImage(file: File, quality: number): Promise<{ name: strin
         resolve({ name, data, before: file.size, after: data.length });
       }, "image/jpeg", quality);
     };
-    img.src = URL.createObjectURL(file);
+    img.src = url;
   });
 }
 
@@ -760,11 +770,30 @@ async function imagesToPDF(imageFiles: File[]): Promise<Uint8Array> {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const isJpg = file.type === "image/jpeg" || file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg");
     const isPng = file.type === "image/png" || file.name.toLowerCase().endsWith(".png");
+    const isWebP = file.type === "image/webp" || file.name.toLowerCase().endsWith(".webp");
     let img;
     if (isJpg) {
       img = await doc.embedJpg(bytes);
     } else if (isPng) {
       img = await doc.embedPng(bytes);
+    } else if (isWebP) {
+      // Convert WebP to PNG via canvas, then embed
+      const pngBytes = await new Promise<Uint8Array>((resolve) => {
+        const image = new Image();
+        const url = URL.createObjectURL(file);
+        image.onload = () => {
+          URL.revokeObjectURL(url);
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
+          canvas.getContext("2d")!.drawImage(image, 0, 0);
+          canvas.toBlob((blob) => {
+            blob!.arrayBuffer().then((buf) => resolve(new Uint8Array(buf)));
+          }, "image/png");
+        };
+        image.src = url;
+      });
+      img = await doc.embedPng(pngBytes);
     } else {
       continue; // skip unsupported formats
     }
@@ -838,12 +867,28 @@ function LangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void 
   return (
     <button
       onClick={() => setLang(lang === "ko" ? "en" : "ko")}
-      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all text-xs font-medium text-gray-500 hover:text-gray-700"
+      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
       aria-label="Toggle language"
     >
-      <span className={lang === "ko" ? "text-blue-600" : "text-gray-400"}>KR</span>
-      <span className="text-gray-300">/</span>
-      <span className={lang === "en" ? "text-blue-600" : "text-gray-400"}>EN</span>
+      <span className={lang === "ko" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-slate-500"}>KR</span>
+      <span className="text-gray-300 dark:text-slate-600">/</span>
+      <span className={lang === "en" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-slate-500"}>EN</span>
+    </button>
+  );
+}
+
+function DarkModeToggle({ dark, setDark }: { dark: boolean; setDark: (d: boolean) => void }) {
+  return (
+    <button
+      onClick={() => setDark(!dark)}
+      className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-700 flex items-center justify-center transition-all text-sm"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      {dark ? (
+        <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd"/></svg>
+      ) : (
+        <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+      )}
     </button>
   );
 }
@@ -858,9 +903,9 @@ function Toast({
   onDismiss?: () => void;
 }) {
   const styles = {
-    success: "bg-green-50 border-green-200 text-green-700",
-    error: "bg-red-50 border-red-200 text-red-700",
-    warning: "bg-amber-50 border-amber-200 text-amber-700",
+    success: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400",
+    error: "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400",
+    warning: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400",
   };
   const icons = { success: "\u2713", error: "\u2715", warning: "\u26A0" };
 
@@ -918,9 +963,18 @@ function FileDropzone({
           e.preventDefault();
           setDragging(false);
           if (dragIdx !== null) return;
-          const dropped = Array.from(e.dataTransfer.files).filter(
-            (f) => f.type === "application/pdf" || f.name.endsWith(".pdf")
-          );
+          const dropped = Array.from(e.dataTransfer.files).filter((f) => {
+            if (acceptType.includes("image/") || acceptType.includes(".jpg") || acceptType.includes(".png") || acceptType.includes(".webp")) {
+              return f.type.startsWith("image/");
+            }
+            if (acceptType.includes(".docx")) {
+              return f.name.toLowerCase().endsWith(".docx") || f.type.includes("wordprocessingml");
+            }
+            if (acceptType.includes(".html")) {
+              return f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html";
+            }
+            return f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+          });
           onSelect(multiple ? [...files, ...dropped] : dropped.slice(0, 1));
         }}
       >
@@ -957,7 +1011,7 @@ function FileDropzone({
                 onDragEnd={() => { if (dragIdx !== null && dropIdx !== null && dragIdx !== dropIdx && onReorder) onReorder(dragIdx, dropIdx); setDragIdx(null); setDropIdx(null); }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border group transition-all
                   ${dragIdx === i ? "opacity-40 scale-[0.98]" : ""}
-                  ${dropIdx === i && dragIdx !== null && dragIdx !== i ? "border-blue-300 bg-blue-50" : "bg-gray-50 border-gray-200"}
+                  ${dropIdx === i && dragIdx !== null && dragIdx !== i ? "border-blue-300 bg-blue-50 dark:bg-blue-950" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700"}
                   ${onReorder ? "cursor-grab active:cursor-grabbing" : ""}`}
               >
                 {multiple && (
@@ -966,7 +1020,7 @@ function FileDropzone({
                   </span>
                 )}
                 {onReorder && <span className="text-gray-400 text-xs flex-shrink-0 select-none">⠿</span>}
-                <span className="text-gray-800 text-sm font-medium flex-1 truncate">{f.name}</span>
+                <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{f.name}</span>
                 {pageInfo[f.name + f.size + f.lastModified] > 0 && (
                   <span className="text-blue-400 text-[10px] font-mono flex-shrink-0">{pageInfo[f.name + f.size + f.lastModified]}p</span>
                 )}
@@ -998,7 +1052,7 @@ function AccentButton({ children, onClick, disabled = false, loading = false }: 
     <button onClick={onClick} disabled={disabled || loading}
       className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-tight transition-all duration-300
         ${disabled || loading
-          ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+          ? "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
           : "bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0"
         }`}
     >
@@ -1023,14 +1077,14 @@ function ProgressBar() {
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
+    <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors">
-        <span className="text-sm font-semibold text-gray-800">{q}</span>
-        <span className={`text-gray-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`}>&#9662;</span>
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+        <span className="text-sm font-semibold text-gray-800 dark:text-slate-200">{q}</span>
+        <span className={`text-gray-400 dark:text-slate-500 transition-transform duration-300 ${open ? "rotate-180" : ""}`}>&#9662;</span>
       </button>
       <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}>
-        <p className="px-5 pb-4 text-sm text-gray-400 leading-relaxed">{a}</p>
+        <p className="px-5 pb-4 text-sm text-gray-400 dark:text-slate-400 leading-relaxed">{a}</p>
       </div>
     </div>
   );
@@ -1076,6 +1130,7 @@ function detectLang(): Lang {
 export default function ToolkitApp({ initialTool = "home" }: { initialTool?: View }) {
   const [view, setView] = useState<View>(initialTool);
   const [lang, setLang] = useState<Lang>("ko");
+  const [dark, setDark] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -1088,12 +1143,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setLang(detectLang());
     setHistory(loadStorage<HistoryItem[]>("pdftk_history", []));
     setProcessCount(loadStorage<number>("pdftk_count", 0));
+    // Dark mode: check stored preference or system preference
+    const storedDark = localStorage.getItem("pdftk_dark");
+    if (storedDark !== null) {
+      setDark(storedDark === "true");
+    } else {
+      setDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
+    }
   }, []);
 
-  // Persist lang, history, count
+  // Persist lang, history, count, dark mode
   useEffect(() => { saveStorage("pdftk_lang", lang); document.documentElement.lang = lang === "ko" ? "ko" : "en"; }, [lang]);
   useEffect(() => { if (history.length > 0) saveStorage("pdftk_history", history); }, [history]);
   useEffect(() => { if (processCount > 0) saveStorage("pdftk_count", processCount); }, [processCount]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("pdftk_dark", String(dark));
+  }, [dark]);
 
   // Tool-specific state
   const [rangeInput, setRangeInput] = useState("");
@@ -1568,22 +1634,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Header rendered inline (depends on goHome, view, t, lang, setLang)
   const headerEl = (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <button onClick={goHome} className="flex items-center gap-2.5 group" aria-label="Go home">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-sm group-hover:bg-blue-100 transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-sm group-hover:bg-blue-100 dark:group-hover:bg-blue-900 transition-colors">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#2563eb" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="#2563eb" strokeWidth="1" strokeLinecap="round" opacity="0.6"/></svg>
           </div>
-          <span className="text-sm font-bold tracking-tight hidden sm:block">
-            File<span className="text-blue-600">Forge</span>
+          <span className="text-sm font-bold tracking-tight hidden sm:block dark:text-slate-100">
+            File<span className="text-blue-600 dark:text-blue-400">Forge</span>
           </span>
         </button>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {view !== "home" && (
-            <button onClick={goHome} className="text-xs text-gray-400 hover:text-gray-500 transition-colors hidden sm:block">
+            <button onClick={goHome} className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300 transition-colors hidden sm:block">
               {t.allTools}
             </button>
           )}
+          <DarkModeToggle dark={dark} setDark={setDark} />
           <LangToggle lang={lang} setLang={setLang} />
         </div>
       </div>
@@ -1614,18 +1681,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="relative text-center mb-14 sm:mb-20 animate-fadeInUp">
               <div className="hero-gradient" />
               <div className="relative">
-                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-violet-50 border border-blue-100 text-blue-600 text-[10px] font-semibold px-5 py-2 rounded-full uppercase tracking-[2px] mb-8 shadow-sm">
-                  <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-pulse" />
+                <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-violet-50 dark:from-blue-950 dark:to-violet-950 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-[10px] font-semibold px-5 py-2 rounded-full uppercase tracking-[2px] mb-8 shadow-sm">
+                  <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-pulse" />
                   {t.heroTag}
                 </div>
                 <h1 className="text-5xl sm:text-6xl lg:text-[5.5rem] font-black tracking-[-0.03em] leading-[0.95] relative inline-block">
-                  <span className="text-gray-900">{t.heroTitle1}</span>
+                  <span className="text-gray-900 dark:text-white">{t.heroTitle1}</span>
                   <span className="relative">
                     <span className="gradient-text">{t.heroTitle2}</span>
                     <svg className="absolute -top-3 -right-6 w-6 h-6 text-amber-400 animate-pulse" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 16.4 5.7 21l2.3-7L2 9.4h7.6z"/></svg>
                   </span>
                 </h1>
-                <p className="text-gray-900 text-xl sm:text-2xl mt-6 font-semibold">
+                <p className="text-gray-900 dark:text-slate-100 text-xl sm:text-2xl mt-6 font-semibold">
                   {lang === "ko" ? "문서를 " : "The easiest way to "}
                   <span className="word-rotate gradient-text">
                     <span>{lang === "ko" ? "변환하고" : "convert"}</span>
@@ -1636,17 +1703,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </span>
                   {lang === "ko" ? " 가장 쉬운 방법" : " your documents"}
                 </p>
-                <p className="text-gray-400 text-sm sm:text-base mt-3 max-w-xl mx-auto">
+                <p className="text-gray-400 dark:text-slate-400 text-sm sm:text-base mt-3 max-w-xl mx-auto">
                   {t.heroSub}
                 </p>
                 <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
-                  {["PDF", "DOCX", "JPG", "PNG", "Word"].map((fmt) => (
-                    <span key={fmt} className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold text-gray-500 shadow-sm">
+                  {["PDF", "DOCX", "JPG", "PNG", "WebP"].map((fmt) => (
+                    <span key={fmt} className="px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[11px] font-semibold text-gray-500 dark:text-slate-400 shadow-sm">
                       {fmt}
                     </span>
                   ))}
                   <span className="px-3 py-1.5 rounded-full bg-blue-600 text-[11px] font-semibold text-white shadow-sm shadow-blue-500/25">
-                    {lang === "ko" ? "+16 도구" : "+16 tools"}
+                    {lang === "ko" ? `${TOOLS.length}개 도구` : `${TOOLS.length} tools`}
                   </span>
                 </div>
 
@@ -1657,7 +1724,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     {t.heroCta}
                   </button>
                   <button onClick={() => { const el = document.getElementById("tool-grid"); el?.scrollIntoView({ behavior: "smooth" }); }}
-                    className="px-6 py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm hover:bg-gray-200 transition-all">
+                    className="px-6 py-3 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 font-semibold text-sm hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">
                     {t.heroCtaSub} &darr;
                   </button>
                 </div>
@@ -1672,10 +1739,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         </svg>
                       ))}
                     </div>
-                    <span className="text-sm font-bold text-gray-700">{t.rating}</span>
-                    <span className="text-xs text-gray-400">{t.ratingText}</span>
+                    <span className="text-sm font-bold text-gray-700 dark:text-slate-200">{t.rating}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{t.ratingText}</span>
                   </div>
-                  <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+                  <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 hidden sm:block" />
                   <div className="flex gap-4">
                     {[t.trust1, t.trust2, t.trust3].map((label) => (
                       <span key={label} className="flex items-center gap-1.5 text-gray-400 text-xs">
@@ -1703,9 +1770,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   >
                     {td.icon}
                   </div>
-                  <h3 className="text-sm font-bold tracking-tight text-gray-900 mb-0.5">{t[td.labelKey]}</h3>
+                  <h3 className="text-sm font-bold tracking-tight text-gray-900 dark:text-slate-100 mb-0.5">{t[td.labelKey]}</h3>
                   <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${td.hex}80` }}>{td.labelEn}</span>
-                  <p className="text-xs text-gray-400 leading-relaxed mt-2 hidden sm:block">{t[td.descKey]}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed mt-2 hidden sm:block">{t[td.descKey]}</p>
                   {/* Hover glow */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                     style={{ background: `radial-gradient(circle at 30% 20%, ${td.hex}08 0%, transparent 60%)` }} />
@@ -1715,7 +1782,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* How It Works */}
             <div className="mt-20 sm:mt-24">
-              <h2 className="text-center text-xs font-semibold text-gray-400 uppercase tracking-[3px] mb-10">{t.howTitle}</h2>
+              <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.howTitle}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
                 {[
                   { num: "1", icon: "\u2B06\uFE0F", title: t.how1, desc: t.how1Desc },
@@ -1724,9 +1791,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 ].map((step, i) => (
                   <div key={i} className="text-center relative">
                     <div className="w-12 h-12 rounded-full bg-blue-600 text-white font-bold text-lg flex items-center justify-center mx-auto mb-4">{step.num}</div>
-                    {i < 2 && <div className="hidden sm:block absolute top-6 left-[60%] w-[80%] h-px bg-gray-200" />}
-                    <h3 className="text-sm font-bold text-gray-800 mb-1">{step.title}</h3>
-                    <p className="text-xs text-gray-400">{step.desc}</p>
+                    {i < 2 && <div className="hidden sm:block absolute top-6 left-[60%] w-[80%] h-px bg-gray-200 dark:bg-slate-700" />}
+                    <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200 mb-1">{step.title}</h3>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">{step.desc}</p>
                   </div>
                 ))}
               </div>
@@ -1734,13 +1801,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Features */}
             <div className="mt-20 sm:mt-24 section-alt -mx-4 sm:-mx-6 px-4 sm:px-6 py-16 rounded-3xl">
-              <h2 className="text-center text-xs font-semibold text-gray-400 uppercase tracking-[3px] mb-10">{t.whyTitle}</h2>
+              <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.whyTitle}</h2>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
                 {features.map((f, i) => (
-                  <div key={i} className="text-center p-6 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-2xl mx-auto mb-4">{f.icon}</div>
-                    <h3 className="text-sm font-bold text-gray-800 mb-1.5">{f.title}</h3>
-                    <p className="text-xs text-gray-400 leading-relaxed">{f.desc}</p>
+                  <div key={i} className="text-center p-6 rounded-2xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-2xl mx-auto mb-4">{f.icon}</div>
+                    <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200 mb-1.5">{f.title}</h3>
+                    <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed">{f.desc}</p>
                   </div>
                 ))}
               </div>
@@ -1748,16 +1815,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Comparison */}
             <div className="mt-20 sm:mt-24 max-w-2xl mx-auto">
-              <h2 className="text-center text-xs font-semibold text-gray-400 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
-              <div className="rounded-2xl border border-gray-200 overflow-hidden">
-                <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 border-b border-gray-200 text-[11px] sm:text-xs font-semibold">
-                  <div className="px-3 sm:px-5 py-3 text-gray-500">{t.compareFeature}</div>
-                  <div className="px-2 sm:px-5 py-3 text-blue-600 text-center truncate">{t.compareUs}</div>
-                  <div className="px-2 sm:px-5 py-3 text-gray-400 text-center truncate">{t.compareOthers}</div>
+              <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
+              <div className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold">
+                  <div className="px-3 sm:px-5 py-3 text-gray-500 dark:text-slate-400">{t.compareFeature}</div>
+                  <div className="px-2 sm:px-5 py-3 text-blue-600 dark:text-blue-400 text-center truncate">{t.compareUs}</div>
+                  <div className="px-2 sm:px-5 py-3 text-gray-400 dark:text-slate-500 text-center truncate">{t.compareOthers}</div>
                 </div>
                 {[t.cmpPrivacy, t.cmpUpload, t.cmpFree, t.cmpSignup, t.cmpSpeed].map((feat, i) => (
-                  <div key={i} className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100" : ""}`}>
-                    <div className="px-3 sm:px-5 py-3 text-gray-600">{feat}</div>
+                  <div key={i} className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100 dark:border-slate-800" : ""}`}>
+                    <div className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
                     <div className="px-2 sm:px-5 py-3 text-center">
                       <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     </div>
@@ -1771,7 +1838,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* FAQ */}
             <div className="mt-20 sm:mt-24 max-w-2xl mx-auto">
-              <h2 className="text-center text-xs font-semibold text-gray-400 uppercase tracking-[3px] mb-10">{t.faqTitle}</h2>
+              <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.faqTitle}</h2>
               <div className="space-y-2">
                 {faqs.map((item, i) => <FaqItem key={i} q={item.q} a={item.a} />)}
               </div>
@@ -1780,15 +1847,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* History */}
             {history.length > 0 && (
               <div className="mt-16 max-w-2xl mx-auto">
-                <h2 className="text-center text-xs font-semibold text-gray-400 uppercase tracking-[3px] mb-6">{t.recentTitle}</h2>
+                <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-6">{t.recentTitle}</h2>
                 <div className="space-y-1">
                   {history.slice(0, 8).map((h, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
-                      <span className="text-sm text-gray-500 font-medium flex-1">
-                        <span className="text-gray-700">{h.action}</span> — {h.file}
+                      <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1">
+                        <span className="text-gray-700 dark:text-slate-300">{h.action}</span> — {h.file}
                       </span>
-                      <span className="text-[10px] text-gray-300 font-mono">{h.time}</span>
+                      <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono">{h.time}</span>
                     </div>
                   ))}
                 </div>
@@ -1797,7 +1864,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           </div>
 
           {/* Footer */}
-          <footer className="border-t border-gray-100 bg-gray-50 mt-20">
+          <footer className="border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 mt-20">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
                 {/* Brand */}
@@ -1806,40 +1873,40 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="white" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.7"/></svg>
                     </div>
-                    <span className="text-sm font-bold text-gray-800">File<span className="text-blue-600">Forge</span></span>
+                    <span className="text-sm font-bold text-gray-800 dark:text-slate-200">File<span className="text-blue-600 dark:text-blue-400">Forge</span></span>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed">{t.footer1}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed">{t.footer1}</p>
                 </div>
                 {/* Tools */}
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-800 uppercase tracking-wider mb-3">{t.footerTools}</h4>
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{t.footerTools}</h4>
                   <ul className="space-y-2">
-                    {TOOLS.slice(0, 5).map((td) => (
-                      <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 hover:text-blue-600 transition-colors">{t[td.labelKey]}</button></li>
+                    {TOOLS.slice(0, 10).map((td) => (
+                      <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t[td.labelKey]}</button></li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-800 uppercase tracking-wider mb-3">&nbsp;</h4>
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">&nbsp;</h4>
                   <ul className="space-y-2">
-                    {TOOLS.slice(5).map((td) => (
-                      <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 hover:text-blue-600 transition-colors">{t[td.labelKey]}</button></li>
+                    {TOOLS.slice(10).map((td) => (
+                      <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t[td.labelKey]}</button></li>
                     ))}
                   </ul>
                 </div>
                 {/* Resources */}
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-800 uppercase tracking-wider mb-3">{t.footerResources}</h4>
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{t.footerResources}</h4>
                   <ul className="space-y-2">
-                    <li><button onClick={() => goHome()} className="text-xs text-gray-400 hover:text-blue-600 transition-colors">{t.footerAbout}</button></li>
-                    <li><button onClick={() => goHome()} className="text-xs text-gray-400 hover:text-blue-600 transition-colors">{t.footerFaq}</button></li>
-                    <li><span className="text-xs text-gray-300">{t.footerPrivacy}</span></li>
-                    <li><span className="text-xs text-gray-300">{t.footerTerms}</span></li>
+                    <li><button onClick={() => goHome()} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t.footerAbout}</button></li>
+                    <li><button onClick={() => goHome()} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t.footerFaq}</button></li>
+                    <li><span className="text-xs text-gray-300 dark:text-slate-600">{t.footerPrivacy}</span></li>
+                    <li><span className="text-xs text-gray-300 dark:text-slate-600">{t.footerTerms}</span></li>
                   </ul>
                 </div>
               </div>
-              <div className="border-t border-gray-200 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
-                <p className="text-[11px] text-gray-400">&copy; {new Date().getFullYear()} FileForge. {t.footer2}</p>
+              <div className="border-t border-gray-200 dark:border-slate-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <p className="text-[11px] text-gray-400 dark:text-slate-500">&copy; {new Date().getFullYear()} FileForge. {t.footer2}</p>
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map((s) => (
                     <svg key={s} className="w-3 h-3" viewBox="0 0 20 20" fill="#f59e0b" opacity={s <= 4 ? 1 : 0.6}>
@@ -1865,9 +1932,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           {/* Back + Header */}
           <div>
             <button onClick={goHome}
-              className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-500 transition-colors mb-6 group">
+              className="inline-flex items-center gap-2 text-sm text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300 transition-colors mb-6 group">
               <span className="group-hover:-translate-x-1 transition-transform">&larr;</span>
-              {t.allTools} <span className="text-gray-400 text-xs ml-1">(Esc)</span>
+              {t.allTools} <span className="text-gray-400 dark:text-slate-600 text-xs ml-1">(Esc)</span>
             </button>
             {activeTool && (
               <div className="flex items-center gap-4 mb-1">
@@ -1879,10 +1946,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <h1 className="text-xl font-bold tracking-tight">{t[activeTool.labelKey]}</h1>
-                    <span className="text-[10px] text-gray-300 uppercase tracking-wider font-medium">{activeTool.labelEn}</span>
+                    <h1 className="text-xl font-bold tracking-tight dark:text-white">{t[activeTool.labelKey]}</h1>
+                    <span className="text-[10px] text-gray-300 dark:text-slate-600 uppercase tracking-wider font-medium">{activeTool.labelEn}</span>
                   </div>
-                  <p className="text-sm text-gray-400">{t[activeTool.descKey]}</p>
+                  <p className="text-sm text-gray-400 dark:text-slate-400">{t[activeTool.descKey]}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -1893,14 +1960,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       setMessage({ type: "success", text: lang === "ko" ? "링크가 복사되었습니다" : "Link copied" });
                     }
                   }}
-                  className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 transition-all flex-shrink-0"
+                  className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all flex-shrink-0"
                   aria-label="Share"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                 </button>
               </div>
             )}
-            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent my-5" />
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-slate-700 to-transparent my-5" />
           </div>
 
           {processing && <ProgressBar />}
@@ -1931,9 +1998,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Security callout */}
             {files.length === 0 && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 border border-green-100">
-                <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                <span className="text-xs text-green-700">{t.securityNote}</span>
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-100 dark:border-green-900">
+                <svg className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <span className="text-xs text-green-700 dark:text-green-400">{t.securityNote}</span>
               </div>
             )}
 
@@ -2313,8 +2380,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           </div>
 
           {/* Related Tools */}
-          <div className="mt-14 pt-8 border-t border-gray-100">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">{t.relatedTools}</h3>
+          <div className="mt-14 pt-8 border-t border-gray-100 dark:border-slate-800">
+            <h3 className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">{t.relatedTools}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(() => {
                 // Contextual suggestions based on current tool
@@ -2344,12 +2411,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 return ids.map((id) => TOOLS.find((td) => td.id === id)!).filter(Boolean);
               })().map((td) => (
                 <button key={td.id} onClick={() => goTool(td.id)}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all text-left">
+                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-slate-800 hover:border-gray-200 dark:hover:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all text-left">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
                     style={{ background: `${td.hex}10` }}>
                     {td.icon}
                   </div>
-                  <span className="text-xs font-medium text-gray-600">{t[td.labelKey]}</span>
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400">{t[td.labelKey]}</span>
                 </button>
               ))}
             </div>
@@ -2357,21 +2424,21 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
           {/* Footer */}
           <div className="mt-10 pt-6 pb-20 sm:pb-6 text-center">
-            <p className="text-[11px] text-gray-400">{t.footer1}</p>
+            <p className="text-[11px] text-gray-400 dark:text-slate-500">{t.footer1}</p>
           </div>
         </div>
       </div>
 
       {/* Mobile fixed CTA bar */}
       {view !== "info" && files.length > 0 && !resultData && !resultMulti.length && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-3 sm:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 p-3 sm:hidden">
           <button
             onClick={canExecute ? execute : undefined}
             disabled={!canExecute}
             className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
               canExecute
                 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                : "bg-gray-100 text-gray-300 cursor-not-allowed"
+                : "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
             }`}
           >
             {processing ? t.processing : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
@@ -2381,7 +2448,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
       {/* Mobile fixed download bar */}
       {resultData && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-gray-200 p-3 sm:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 p-3 sm:hidden">
           <button
             onClick={() => download(resultData, resultName)}
             className="w-full py-3 rounded-xl font-bold text-sm bg-green-600 text-white shadow-lg shadow-green-500/20"
