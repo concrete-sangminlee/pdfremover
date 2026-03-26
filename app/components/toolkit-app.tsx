@@ -51,6 +51,12 @@ export const T: Record<Lang, Record<string, string>> = {
     cmpSpeed: "오프라인에서도 작동",
     deleteConfirm: "정말 선택한 페이지를 삭제하시겠습니까?",
     allTools: "모든 도구",
+    searchPlaceholder: "도구 검색...",
+    catPdf: "PDF 도구",
+    catImage: "이미지 도구",
+    catDocument: "문서 도구",
+    copyText: "텍스트 복사",
+    copied: "클립보드에 복사됨",
     execute: "실행",
     processing: "처리 중...",
     download: "다운로드",
@@ -238,6 +244,12 @@ export const T: Record<Lang, Record<string, string>> = {
     cmpSpeed: "Works offline too",
     deleteConfirm: "Are you sure you want to delete the selected pages?",
     allTools: "All Tools",
+    searchPlaceholder: "Search tools...",
+    catPdf: "PDF Tools",
+    catImage: "Image Tools",
+    catDocument: "Document Tools",
+    copyText: "Copy text",
+    copied: "Copied to clipboard",
     execute: "Execute",
     processing: "Processing...",
     download: "Download",
@@ -1133,6 +1145,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [dark, setDark] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [toolSearch, setToolSearch] = useState("");
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "warning"; text: string } | null>(null);
   const [processCount, setProcessCount] = useState(0);
@@ -1757,8 +1770,38 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Tool Grid */}
             <div id="tool-grid" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 stagger-children">
-              {TOOLS.map((td) => (
+            {/* Search */}
+            <div className="relative mb-6">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                type="text"
+                value={toolSearch}
+                onChange={(e) => setToolSearch(e.target.value)}
+                placeholder={t.searchPlaceholder}
+                className="input-field pl-11 py-3"
+              />
+              {toolSearch && (
+                <button onClick={() => setToolSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xs">{"\u2715"}</button>
+              )}
+            </div>
+            {/* Categorized Grid */}
+            {(["pdf", "image", "document"] as const).map((cat) => {
+              const catTools = TOOLS.filter((td) => td.category === cat && (
+                !toolSearch ||
+                t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) ||
+                td.labelEn.toLowerCase().includes(toolSearch.toLowerCase()) ||
+                t[td.descKey].toLowerCase().includes(toolSearch.toLowerCase())
+              ));
+              if (catTools.length === 0) return null;
+              const catLabel = cat === "pdf" ? t.catPdf : cat === "image" ? t.catImage : t.catDocument;
+              return (
+                <div key={cat} className="mb-8">
+                  <h2 className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[2px] mb-4 flex items-center gap-2">
+                    <span>{catLabel}</span>
+                    <span className="text-[10px] font-mono text-gray-300 dark:text-slate-600">{catTools.length}</span>
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 stagger-children">
+                    {catTools.map((td) => (
                 <button key={td.id} onClick={() => goTool(td.id)}
                   className="tool-card rounded-2xl p-6 text-left group relative overflow-hidden"
                   aria-label={`${t[td.labelKey]} - ${t[td.descKey]}`}
@@ -1777,8 +1820,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                     style={{ background: `radial-gradient(circle at 30% 20%, ${td.hex}08 0%, transparent 60%)` }} />
                 </button>
-              ))}
-            </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {toolSearch && TOOLS.filter((td) => t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) || td.labelEn.toLowerCase().includes(toolSearch.toLowerCase()) || t[td.descKey].toLowerCase().includes(toolSearch.toLowerCase())).length === 0 && (
+              <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">
+                {lang === "ko" ? "검색 결과가 없습니다" : "No tools found"}
+              </div>
+            )}
 
             {/* How It Works */}
             <div className="mt-20 sm:mt-24">
@@ -2319,9 +2370,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {htmlPreview && (
               <div className="animate-fadeIn space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">{t.docxPreview}</h3>
-                  <button onClick={() => { const blob = new Blob([htmlPreview], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "preview.html"; a.click(); URL.revokeObjectURL(url); }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">HTML {t.download}</button>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">{view === "pdftext" ? t.pdftextLabel : t.docxPreview}</h3>
+                  <div className="flex items-center gap-3">
+                    {view === "pdftext" && (
+                      <button onClick={() => {
+                        const div = document.createElement("div");
+                        div.innerHTML = htmlPreview || "";
+                        const text = div.textContent || "";
+                        navigator.clipboard.writeText(text);
+                        setMessage({ type: "success", text: t.copied });
+                      }} className="text-xs text-blue-600 hover:text-blue-700 font-medium">{t.copyText}</button>
+                    )}
+                    <button onClick={() => { const blob = new Blob([htmlPreview || ""], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "preview.html"; a.click(); URL.revokeObjectURL(url); }}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium">HTML {t.download}</button>
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 max-h-[500px] overflow-y-auto prose prose-sm prose-gray dark:prose-invert max-w-none"
                   dangerouslySetInnerHTML={{ __html: htmlPreview }} />
