@@ -1032,6 +1032,11 @@ function FileDropzone({
                   </span>
                 )}
                 {onReorder && <span className="text-gray-400 text-xs flex-shrink-0 select-none">⠿</span>}
+                <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${
+                  f.type === "application/pdf" ? "bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400" :
+                  f.type.startsWith("image/") ? "bg-violet-50 dark:bg-violet-950/30 text-violet-500 dark:text-violet-400" :
+                  "bg-blue-50 dark:bg-blue-950/30 text-blue-500 dark:text-blue-400"
+                }`}>{f.name.split(".").pop()?.toUpperCase().slice(0, 4) || "FILE"}</span>
                 <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{f.name}</span>
                 {pageInfo[f.name + f.size + f.lastModified] > 0 && (
                   <span className="text-blue-400 text-[10px] font-mono flex-shrink-0">{pageInfo[f.name + f.size + f.lastModified]}p</span>
@@ -2072,6 +2077,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-slate-700 to-transparent my-5" />
           </div>
 
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {processing ? (batchProgress >= 0 ? `Processing ${batchProgress}%` : "Processing...") : message?.text || ""}
+          </div>
           {processing && <ProgressBar progress={batchProgress >= 0 ? batchProgress : undefined} />}
 
           <div className="space-y-4 animate-fadeInUp" style={{ animationDelay: "100ms" }}>
@@ -2385,7 +2393,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {resultName} ({fmtSize(resultData.length)})
                 </button>
                 <div className="flex items-center justify-between">
-                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); }}
+                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); setCompressionInfo(null); setHtmlPreview(null); setConfirmDelete(false); setBatchProgress(-1); }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
                     {lang === "ko" ? "다른 파일 처리하기" : "Process another file"}
                   </button>
@@ -2404,7 +2412,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </button>
                 )}
                 {resultMulti.map((r, i) => (
-                  <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : r.name.endsWith(".jpg") ? "image/jpeg" : "application/pdf")}
+                  <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : r.name.endsWith(".jpg") ? "image/jpeg" : r.name.endsWith(".webp") ? "image/webp" : "application/pdf")}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-left group">
                     <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                     <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{r.name}</span>
@@ -2413,7 +2421,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </button>
                 ))}
                 <div className="flex items-center justify-between pt-1">
-                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); }}
+                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); setCompressionInfo(null); setHtmlPreview(null); setConfirmDelete(false); setBatchProgress(-1); }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
                     {lang === "ko" ? "다른 파일 처리하기" : "Process another file"}
                   </button>
@@ -2430,9 +2438,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div className="flex items-center gap-3">
                     {view === "pdftext" && (
                       <button onClick={() => {
-                        const div = document.createElement("div");
-                        div.innerHTML = htmlPreview || "";
-                        const text = div.textContent || "";
+                        const parsed = new DOMParser().parseFromString(htmlPreview || "", "text/html");
+                        const text = parsed.body.textContent || "";
                         navigator.clipboard.writeText(text);
                         setMessage({ type: "success", text: t.copied });
                       }} className="text-xs text-blue-600 hover:text-blue-700 font-medium">{t.copyText}</button>
