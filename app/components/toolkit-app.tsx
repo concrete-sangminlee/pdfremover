@@ -240,6 +240,19 @@ export const T: Record<Lang, Record<string, string>> = {
     copyBtn: "복사",
     infoYes: "예",
     infoNo: "아니오",
+    msgBatchProcess: "처리 중",
+    msgBatchUnlocked: "개 파일 잠금해제 완료!",
+    msgStitched: "개 이미지 합치기 완료!",
+    msgTxtDone: "텍스트 → PDF 변환 완료!",
+    msgHtmlDone: "HTML → PDF 변환 완료!",
+    msgEmptyTxt: "텍스트를 입력해주세요.",
+    msgEmptyHtml: "HTML 파일이 비어있습니다.",
+    msgNeedImages: "2개 이상의 이미지를 업로드하세요.",
+    msgPdfToImg: "페이지를 이미지로 변환 중...",
+    msgTextExtracted: "텍스트 추출 완료!",
+    msgDocxDone: "DOCX 변환 완료!",
+    warnExcludedImg: "개의 비이미지 파일이 제외되었습니다.",
+    warnExcludedPdf: "개의 비PDF 파일이 제외되었습니다.",
     errImgOnly: "이미지 파일만 업로드할 수 있습니다 (JPG, PNG, WebP).",
     errHtmlOnly: "HTML 파일만 업로드할 수 있습니다.",
     errDocxOnly: "DOCX 파일만 업로드할 수 있습니다.",
@@ -445,6 +458,19 @@ export const T: Record<Lang, Record<string, string>> = {
     copyBtn: "Copy",
     infoYes: "Yes",
     infoNo: "No",
+    msgBatchProcess: "Processing",
+    msgBatchUnlocked: " files unlocked!",
+    msgStitched: " images stitched!",
+    msgTxtDone: "Text converted to PDF!",
+    msgHtmlDone: "HTML converted to PDF!",
+    msgEmptyTxt: "Please enter some text.",
+    msgEmptyHtml: "HTML file is empty.",
+    msgNeedImages: "Upload 2 or more images.",
+    msgPdfToImg: "Converting pages to images...",
+    msgTextExtracted: "Text extracted!",
+    msgDocxDone: "DOCX converted!",
+    warnExcludedImg: " non-image file(s) were excluded.",
+    warnExcludedPdf: " non-PDF file(s) were excluded.",
     errImgOnly: "Only image files are supported (JPG, PNG, WebP).",
     errHtmlOnly: "Only HTML files are supported.",
     errDocxOnly: "Only DOCX files are supported.",
@@ -1465,7 +1491,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         return;
       }
       if (rejected > 0) {
-        setMessage({ type: "warning", text: lang === "ko" ? `${rejected}개의 비이미지 파일이 제외되었습니다.` : `${rejected} non-image file(s) were excluded.` });
+        setMessage({ type: "warning", text: `${rejected}${t.warnExcludedImg}` });
       }
     } else if (view === "html2pdf") {
       validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html");
@@ -1487,7 +1513,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         return;
       }
       if (rejected > 0) {
-        setMessage({ type: "warning", text: lang === "ko" ? `${rejected}개의 비PDF 파일이 제외되었습니다.` : `${rejected} non-PDF file(s) were excluded.` });
+        setMessage({ type: "warning", text: `${rejected}${t.warnExcludedPdf}` });
       }
     }
     setFiles(validFiles);
@@ -1572,14 +1598,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             const results: { name: string; data: Uint8Array }[] = [];
             for (let idx = 0; idx < files.length; idx++) {
               setBatchProgress(Math.round((idx / files.length) * 100));
-              setMessage({ type: "warning", text: `${lang === "ko" ? "처리 중" : "Processing"} ${idx + 1}/${files.length}...` });
+              setMessage({ type: "warning", text: `${t.msgBatchProcess} ${idx + 1}/${files.length}...` });
               const buf = await files[idx].arrayBuffer();
               const data = await unlockPDF(buf);
               results.push({ name: files[idx].name.replace(/\.pdf$/i, "_unlocked.pdf"), data });
             }
             setBatchProgress(100);
             setResultMulti(results);
-            setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 파일 잠금해제 완료!" : " files unlocked!"}` });
+            setMessage({ type: "success", text: `${files.length}${t.msgBatchUnlocked}` });
             addHistory(toolLabel, `${files.length} files`, true, view);
           }
           break;
@@ -1691,20 +1717,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgstitch": {
-          if (files.length < 2) { setMessage({ type: "warning", text: lang === "ko" ? "2개 이상의 이미지를 업로드하세요." : "Upload 2 or more images." }); break; }
+          if (files.length < 2) { setMessage({ type: "warning", text: t.msgNeedImages }); break; }
           const data = await stitchImages(files, stitchDir);
           setResultData(data);
           setResultName(`stitched_${stitchDir}.png`);
-          setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 합치기 완료!" : " images stitched!"}` });
+          setMessage({ type: "success", text: `${files.length}${t.msgStitched}` });
           addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "txt2pdf": {
-          if (!textInput.trim()) { setMessage({ type: "warning", text: lang === "ko" ? "텍스트를 입력해주세요." : "Please enter some text." }); break; }
+          if (!textInput.trim()) { setMessage({ type: "warning", text: t.msgEmptyTxt }); break; }
           const data = await htmlToPdf(`<pre>${textInput}</pre>`);
           setResultData(data);
           setResultName("text.pdf");
-          setMessage({ type: "success", text: lang === "ko" ? "텍스트 → PDF 변환 완료!" : "Text converted to PDF!" });
+          setMessage({ type: "success", text: t.msgTxtDone });
           addHistory(toolLabel, "text input", true, view);
           break;
         }
@@ -1727,11 +1753,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
         case "html2pdf": {
           const text = await files[0].text();
-          if (!text.trim()) { setMessage({ type: "warning", text: lang === "ko" ? "HTML 파일이 비어있습니다." : "HTML file is empty." }); break; }
+          if (!text.trim()) { setMessage({ type: "warning", text: t.msgEmptyHtml }); break; }
           const data = await htmlToPdf(text);
           setResultData(data);
           setResultName(files[0].name.replace(/\.(html?|htm)$/i, ".pdf"));
-          setMessage({ type: "success", text: lang === "ko" ? "HTML → PDF 변환 완료!" : "HTML converted to PDF!" });
+          setMessage({ type: "success", text: t.msgHtmlDone });
           addHistory(toolLabel, files[0].name, true, view);
           break;
         }
@@ -1780,7 +1806,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           const text = await extractPdfText(buf);
           setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${text.replace(/</g, "&lt;")}</pre>`);
-          setMessage({ type: "success", text: lang === "ko" ? "텍스트 추출 완료!" : "Text extracted!" });
+          setMessage({ type: "success", text: t.msgTextExtracted });
           addHistory(toolLabel, files[0].name, true, view);
           break;
         }
@@ -1788,13 +1814,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           const html = await docxToHtml(buf);
           setHtmlPreview(html);
-          setMessage({ type: "success", text: lang === "ko" ? "DOCX 변환 완료!" : "DOCX converted!" });
+          setMessage({ type: "success", text: t.msgDocxDone });
           addHistory(toolLabel, files[0].name, true, view);
           break;
         }
         case "pdf2img": {
           const buf = await files[0].arrayBuffer();
-          setMessage({ type: "warning", text: lang === "ko" ? "페이지를 이미지로 변환 중..." : "Converting pages to images..." });
+          setMessage({ type: "warning", text: t.msgPdfToImg });
           const images = await pdfToImages(buf, (pct) => setBatchProgress(pct));
           setResultMulti(images);
           setMessage({ type: "success", text: `${images.length}${lang === "ko" ? "페이지 → 이미지 변환 완료!" : " pages converted to images!"}` });
