@@ -37,7 +37,7 @@ interface PdfInfo {
 // ━━━ i18n ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const T: Record<Lang, Record<string, string>> = {
   ko: {
-    heroTag: "All-in-One Document Solution",
+    heroTag: "올인원 문서 솔루션",
     heroTitle1: "File",
     heroTitle2: "Forge",
     heroSub: "PDF, DOCX, 이미지 — 암호 해제, 병합, 분할, 변환까지\n브라우저에서 안전하고 빠르게 처리하세요",

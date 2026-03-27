@@ -1,7 +1,7 @@
 {
-  "name": "docify-pro",
-  "version": "4.0.0",
-  "description": "Open-source, privacy-first document toolkit. PDF, DOCX, images — all processed 100% in your browser.",
+  "name": "fileforge",
+  "version": "5.0.0",
+  "description": "Open-source, privacy-first document toolkit with 20+ tools. PDF, DOCX, images — all processed 100% in your browser. Dark mode, bilingual, zero uploads.",
   "private": false,
   "license": "MIT",
   "homepage": "https://pdfcontrol.vercel.app",
@@ -16,10 +16,18 @@
     "pdf-merge",
     "pdf-split",
     "pdf-unlock",
+    "pdf-compress",
+    "image-converter",
+    "image-compress",
+    "image-resize",
+    "docx-viewer",
+    "document-toolkit",
     "browser-based",
-    "privacy",
+    "privacy-first",
+    "dark-mode",
     "nextjs",
-    "react"
+    "react",
+    "typescript"
   ],
   "scripts": {
     "dev": "next dev",
