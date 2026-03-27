@@ -423,7 +423,8 @@ export const T: Record<Lang, Record<string, string>> = {
 function fmtSize(b: number) {
   if (b < 1024) return `${b} B`;
   if (b < 1024 ** 2) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / 1024 ** 2).toFixed(1)} MB`;
+  if (b < 1024 ** 3) return `${(b / 1024 ** 2).toFixed(1)} MB`;
+  return `${(b / 1024 ** 3).toFixed(2)} GB`;
 }
 
 function fmtTime() {
@@ -561,13 +562,16 @@ async function rotatePages(
 async function compressPDF(data: ArrayBuffer): Promise<Uint8Array> {
   const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.load(data, { ignoreEncryption: true });
+  // Strip all metadata for maximum size reduction
   doc.setTitle("");
   doc.setAuthor("");
   doc.setSubject("");
   doc.setKeywords([]);
   doc.setCreator("");
   doc.setProducer("");
-  return doc.save({ useObjectStreams: true });
+  doc.setCreationDate(new Date(0));
+  doc.setModificationDate(new Date(0));
+  return doc.save({ useObjectStreams: true, addDefaultPage: false });
 }
 
 async function deletePagesFromPDF(data: ArrayBuffer, pageNums: number[]): Promise<Uint8Array> {
@@ -688,11 +692,18 @@ async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
     wrapped.push(remaining);
     return wrapped;
   });
+  // Collapse consecutive empty lines to max 2
+  const filtered: string[] = [];
+  let emptyCount = 0;
+  for (const line of lines) {
+    if (line.trim() === "") { emptyCount++; if (emptyCount <= 2) filtered.push(line); }
+    else { emptyCount = 0; filtered.push(line); }
+  }
   const linesPerPage = 50;
   const fontSize = 11;
-  for (let i = 0; i < lines.length; i += linesPerPage) {
+  for (let i = 0; i < filtered.length; i += linesPerPage) {
     const page = doc.addPage([612, 792]); // US Letter
-    const pageLines = lines.slice(i, i + linesPerPage);
+    const pageLines = filtered.slice(i, i + linesPerPage);
     pageLines.forEach((line, j) => {
       page.drawText(line, { x: 50, y: 742 - j * 14, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
     });
@@ -1935,6 +1946,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 type="text"
                 value={toolSearch}
                 onChange={(e) => setToolSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && toolSearch) {
+                    const match = TOOLS.find((td) =>
+                      t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) ||
+                      td.labelEn.toLowerCase().includes(toolSearch.toLowerCase())
+                    );
+                    if (match) { goTool(match.id); setToolSearch(""); }
+                  }
+                  if (e.key === "Escape") { setToolSearch(""); searchRef.current?.blur(); }
+                }}
                 placeholder={t.searchPlaceholder}
                 className="input-field pl-11 pr-16 py-3"
               />
