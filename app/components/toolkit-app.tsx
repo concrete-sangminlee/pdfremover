@@ -1310,12 +1310,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Get page count for uploaded files
   const loadPageInfo = async (fileList: File[]) => {
-    const newEntries: Record<string, number> = {};
-    for (const f of fileList) {
-      const key = f.name + f.size + f.lastModified;
-      newEntries[key] = await getPageCount(f);
-    }
-    setPageInfo((prev) => ({ ...prev, ...newEntries }));
+    const entries = await Promise.all(
+      fileList.map(async (f) => {
+        const key = f.name + f.size + f.lastModified;
+        return [key, await getPageCount(f)] as const;
+      })
+    );
+    setPageInfo((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
   };
 
   const handleFiles = async (newFiles: File[]) => {
@@ -1563,6 +1564,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
         case "html2pdf": {
           const text = await files[0].text();
+          if (!text.trim()) { setMessage({ type: "warning", text: lang === "ko" ? "HTML 파일이 비어있습니다." : "HTML file is empty." }); break; }
           const data = await htmlToPdf(text);
           setResultData(data);
           setResultName(files[0].name.replace(/\.(html?|htm)$/i, ".pdf"));
@@ -1863,24 +1865,21 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 stagger-children">
                     {catTools.map((td) => (
-                <button key={td.id} onClick={() => goTool(td.id)}
-                  className="tool-card rounded-2xl p-6 text-left group relative overflow-hidden"
-                  aria-label={`${t[td.labelKey]} - ${t[td.descKey]}`}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${td.hex}30`)}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}>
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform duration-300"
-                    style={{ background: `${td.hex}15`, boxShadow: `0 0 0 1px ${td.hex}20` }}
-                  >
-                    {td.icon}
-                  </div>
-                  <h3 className="text-sm font-bold tracking-tight text-gray-900 dark:text-slate-100 mb-0.5">{t[td.labelKey]}</h3>
-                  <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${td.hex}80` }}>{td.labelEn}</span>
-                  <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed mt-2 hidden sm:block">{t[td.descKey]}</p>
-                  {/* Hover glow */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                    style={{ background: `radial-gradient(circle at 30% 20%, ${td.hex}08 0%, transparent 60%)` }} />
-                </button>
+                      <button key={td.id} onClick={() => goTool(td.id)}
+                        className="tool-card rounded-2xl p-6 text-left group relative overflow-hidden"
+                        aria-label={`${t[td.labelKey]} - ${t[td.descKey]}`}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${td.hex}30`)}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform duration-300"
+                          style={{ background: `${td.hex}15`, boxShadow: `0 0 0 1px ${td.hex}20` }}>
+                          {td.icon}
+                        </div>
+                        <h3 className="text-sm font-bold tracking-tight text-gray-900 dark:text-slate-100 mb-0.5">{t[td.labelKey]}</h3>
+                        <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${td.hex}80` }}>{td.labelEn}</span>
+                        <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed mt-2 hidden sm:block">{t[td.descKey]}</p>
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                          style={{ background: `radial-gradient(circle at 30% 20%, ${td.hex}08 0%, transparent 60%)` }} />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1892,8 +1891,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               </div>
             )}
 
-            {/* How It Works */}
-            <div className="mt-20 sm:mt-24">
+            {/* How It Works — hidden during search */}
+            {!toolSearch && <div className="mt-20 sm:mt-24">
               <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.howTitle}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
                 {[
@@ -1909,9 +1908,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                 ))}
               </div>
-            </div>
+            </div>}
 
-            {/* Features */}
+            {/* Features — hidden during search */}
+            {!toolSearch && <>
             <div className="mt-20 sm:mt-24 section-alt -mx-4 sm:-mx-6 px-4 sm:px-6 py-16 rounded-3xl">
               <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.whyTitle}</h2>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
@@ -1955,6 +1955,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 {faqs.map((item, i) => <FaqItem key={i} q={item.q} a={item.a} />)}
               </div>
             </div>
+            </>}
 
             {/* History */}
             {history.length > 0 && (
