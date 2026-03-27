@@ -436,13 +436,17 @@ function download(data: Uint8Array, filename: string, mime = "application/pdf") 
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.style.display = "none";
   document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Use setTimeout for Safari compatibility
+  setTimeout(() => {
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 0);
 }
 
-async function downloadZip(files: { name: string; data: Uint8Array }[]) {
+async function downloadZip(files: { name: string; data: Uint8Array }[], zipName = "fileforge_output.zip") {
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
   files.forEach((f) => zip.file(f.name, f.data));
@@ -450,7 +454,7 @@ async function downloadZip(files: { name: string; data: Uint8Array }[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "fileforge_output.zip";
+  a.download = zipName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1729,7 +1733,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
       }
       setMessage({ type: "error", text: errMsg });
-      if (files[0]) addHistory(t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "", files[0].name, false);
+      if (files[0]) addHistory(t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "", files[0].name, false, view);
     } finally {
       setProcessing(false);
       setBatchProgress(-1);
@@ -1745,6 +1749,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view === "txt2pdf") return !processing && textInput.trim().length > 0;
     if (files.length === 0 || processing) return false;
     if (view === "merge" && files.length < 2) return false;
+    if (view === "imgstitch" && files.length < 2) return false;
     if (view === "split" && splitMode === "range" && !rangeInput.trim()) return false;
     if (view === "extract" && !pagesInput.trim()) return false;
     if (view === "delete" && !deleteInput.trim()) return false;
@@ -2309,6 +2314,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               </div>
             )}
 
+            {view === "imgstitch" && files.length > 0 && files.length < 2 && (
+              <Toast type="warning" text={lang === "ko" ? "2개 이상의 이미지를 업로드해주세요." : "Please upload 2 or more images."} />
+            )}
             {view === "imgstitch" && files.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgDirection}</label>
@@ -2500,7 +2508,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {resultMulti.length > 0 && (
               <div className="space-y-2 animate-fadeIn">
                 {resultMulti.length > 1 && (
-                  <button onClick={() => downloadZip(resultMulti)}
+                  <button onClick={() => downloadZip(resultMulti, `fileforge_${view}.zip`)}
                     className="w-full py-3.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
                     {resultMulti.length}{t.downloadZip}
                   </button>
