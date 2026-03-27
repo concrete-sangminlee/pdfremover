@@ -100,13 +100,15 @@ Most online document tools upload your files to remote servers. **FileForge proc
 ### User Experience
 - 🌐 **Bilingual** — Full Korean + English support with auto-detection from `navigator.language`
 - 🌙 **Dark mode** — System preference auto-detection + manual toggle, fully themed across all pages
+- 🔍 **Tool search** — Instant search with `/` shortcut, categorized grid (PDF / Image / Document)
 - 📱 **Mobile-first** — Fixed bottom CTA bar, responsive layout, touch-friendly 44px targets
 - ⌨️ **Keyboard shortcuts** — `Esc` to go home, `/` to search tools, `Ctrl+Enter` to execute
-- 🔄 **Batch processing** — Upload multiple files for batch operations with progress indicator
-- 📊 **Smart context** — Page count hints, file size warnings (>50MB), processing time display
+- 🔄 **Batch processing** — Upload multiple files with real progress bar, image thumbnails, file summaries
+- 📊 **Smart context** — Page count hints, file size warnings, processing time, character/line/page count
 - 🔗 **Share** — Native share API on mobile, clipboard fallback on desktop
 - 🎯 **Contextual suggestions** — Related tools based on what you just used
 - 🖱️ **Drag & drop** — Full drag-and-drop support for all file types (PDF, images, DOCX, HTML)
+- 🖼️ **Image previews** — Upload thumbnails and result grid preview for image operations
 
 ### Technical
 - ⚡ **112KB First Load** — Optimized through dynamic imports and tree-shaking

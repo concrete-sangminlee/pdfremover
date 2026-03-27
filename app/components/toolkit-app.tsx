@@ -6,7 +6,13 @@ import { TOOLS, VALID_TOOLS, type Tool, type View, type Lang } from "../lib/conf
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
 let _pdfLib: typeof import("pdf-lib") | null = null;
 async function getPdfLib() {
-  if (!_pdfLib) _pdfLib = await import("pdf-lib");
+  if (!_pdfLib) {
+    try {
+      _pdfLib = await import("pdf-lib");
+    } catch (err) {
+      throw new Error("Failed to load PDF engine. Please reload the page.");
+    }
+  }
   return _pdfLib;
 }
 
@@ -1247,6 +1253,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+    // goHome is stable in behavior but recreated each render — safe to omit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, processing]);
 
@@ -1302,6 +1309,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+    // Mount-only: popstate listener for browser back/forward
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1483,10 +1491,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const saved = files[0].size - data.length;
           setResultData(data);
           setResultName(files[0].name.replace(/\.pdf$/i, "_compressed.pdf"));
-          setCompressionInfo({ before: files[0].size, after: data.length });
           if (saved > 0) {
+            setCompressionInfo({ before: files[0].size, after: data.length });
             setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${Math.round((saved / files[0].size) * 100)}% ${t.compressPercent})` });
           } else {
+            // No savings — return original to avoid making file larger
+            setResultData(new Uint8Array(buf));
+            setResultName(files[0].name);
             setMessage({ type: "warning", text: t.compressAlready });
           }
           addHistory(toolLabel, files[0].name, true, view);
@@ -2162,6 +2173,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   const total = files.reduce((sum, f) => sum + (pageInfo[f.name + f.size + f.lastModified] || 0), 0);
                   return total > 0 ? <span className="text-blue-500 text-xs font-mono">{lang === "ko" ? `총 ${total}페이지` : `${total} pages total`}</span> : null;
                 })()}
+              </div>
+            )}
+
+            {/* Multi-image summary */}
+            {["imgcompress", "imgresize", "imgconvert", "imgstitch", "img2pdf"].includes(view) && files.length >= 2 && (
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900 text-sm animate-fadeIn">
+                <span className="text-violet-700 dark:text-violet-400 font-medium">{files.length} {lang === "ko" ? "개 이미지 선택됨" : "images selected"}</span>
+                <span className="text-violet-500 dark:text-violet-400 text-xs font-mono">{fmtSize(files.reduce((sum, f) => sum + f.size, 0))}</span>
               </div>
             )}
 
