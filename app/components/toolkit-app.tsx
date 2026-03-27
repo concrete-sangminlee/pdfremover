@@ -240,6 +240,11 @@ export const T: Record<Lang, Record<string, string>> = {
     copyBtn: "복사",
     infoYes: "예",
     infoNo: "아니오",
+    errImgOnly: "이미지 파일만 업로드할 수 있습니다 (JPG, PNG, WebP).",
+    errHtmlOnly: "HTML 파일만 업로드할 수 있습니다.",
+    errDocxOnly: "DOCX 파일만 업로드할 수 있습니다.",
+    errPdfOnly: "PDF 파일만 업로드할 수 있습니다.",
+    warnLargeFile: "대용량 파일은 처리 시간이 길어질 수 있습니다.",
   },
   en: {
     heroTag: "All-in-One Document Solution",
@@ -440,6 +445,11 @@ export const T: Record<Lang, Record<string, string>> = {
     copyBtn: "Copy",
     infoYes: "Yes",
     infoNo: "No",
+    errImgOnly: "Only image files are supported (JPG, PNG, WebP).",
+    errHtmlOnly: "Only HTML files are supported.",
+    errDocxOnly: "Only DOCX files are supported.",
+    errPdfOnly: "Only PDF files are supported.",
+    warnLargeFile: "Large files may take longer to process.",
   },
 };
 
@@ -1432,8 +1442,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Get page count for uploaded files
   const loadPageInfo = async (fileList: File[]) => {
+    // Only compute page count for files not already cached
+    const uncached = fileList.filter((f) => !pageInfo[f.name + f.size + f.lastModified]);
+    if (uncached.length === 0) return;
     const entries = await Promise.all(
-      fileList.map(async (f) => {
+      uncached.map(async (f) => {
         const key = f.name + f.size + f.lastModified;
         return [key, await getPageCount(f)] as const;
       })
@@ -1448,7 +1461,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
-        setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG, WebP)." : "Only image files are supported (JPG, PNG, WebP)." });
+        setMessage({ type: "error", text: t.errImgOnly });
         return;
       }
       if (rejected > 0) {
@@ -1457,20 +1470,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     } else if (view === "html2pdf") {
       validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html");
       if (validFiles.length === 0) {
-        setMessage({ type: "error", text: lang === "ko" ? "HTML 파일만 업로드할 수 있습니다." : "Only HTML files are supported." });
+        setMessage({ type: "error", text: t.errHtmlOnly });
         return;
       }
     } else if (view === "docx2html") {
       validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".docx") || f.type.includes("wordprocessingml"));
       if (validFiles.length === 0) {
-        setMessage({ type: "error", text: lang === "ko" ? "DOCX 파일만 업로드할 수 있습니다." : "Only DOCX files are supported." });
+        setMessage({ type: "error", text: t.errDocxOnly });
         return;
       }
     } else {
       validFiles = newFiles.filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
-        setMessage({ type: "error", text: lang === "ko" ? "PDF 파일만 업로드할 수 있습니다." : "Only PDF files are supported." });
+        setMessage({ type: "error", text: t.errPdfOnly });
         return;
       }
       if (rejected > 0) {
@@ -1486,9 +1499,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     // Large file warning
     const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
-      setMessage({ type: "warning", text: lang === "ko"
-        ? `총 ${fmtSize(totalSize)} — 대용량 파일은 처리 시간이 길어질 수 있습니다.`
-        : `Total ${fmtSize(totalSize)} — Large files may take longer to process.` });
+      setMessage({ type: "warning", text: `${fmtSize(totalSize)} — ${t.warnLargeFile}` });
     }
     if (view === "info" && newFiles.length > 0) {
       try {
