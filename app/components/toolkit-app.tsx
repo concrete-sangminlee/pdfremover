@@ -1027,7 +1027,7 @@ function FileDropzone({
               className="mt-3 px-5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all">
               {t.uploadClick}
             </button>
-            {multiple && <p className="text-gray-400 text-xs mt-3">{t.multiHint}</p>}
+            {multiple && <p className="text-gray-400 dark:text-slate-500 text-xs mt-3">{t.multiHint}{acceptType.includes("image/") ? " · Ctrl+V" : ""}</p>}
           </>
         ) : (
           <div className="text-left space-y-1.5" onClick={(e) => e.stopPropagation()}>
@@ -1262,6 +1262,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view !== "home") getPdfLib();
   }, [view]);
 
+  // Clipboard paste support — moved after handleFiles definition
+
   const addHistory = useCallback((action: string, file: string, ok: boolean, toolId?: string) => {
     setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
   }, []);
@@ -1389,6 +1391,28 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
     }
   };
+
+  // Clipboard paste support for image tools
+  useEffect(() => {
+    if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) return;
+    const handler = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFiles([...files, ...imageFiles]);
+      }
+    };
+    window.addEventListener("paste", handler);
+    return () => window.removeEventListener("paste", handler);
+  }, [view, files]);
 
   // ─── Execute ───
   const [procTime, setProcTime] = useState<number | null>(null);
@@ -1881,9 +1905,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <span>{catLabel}</span>
                     <span className="text-[10px] font-mono text-gray-300 dark:text-slate-600">{catTools.length}</span>
                   </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 stagger-children">
-                    {catTools.map((td) => (
+                  <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 ${!toolSearch ? "stagger-children" : ""}`}>
+                    {catTools.map((td, idx) => (
                       <button key={td.id} onClick={() => goTool(td.id)}
+                        style={!toolSearch ? { "--stagger-i": idx } as React.CSSProperties : undefined}
                         className="tool-card rounded-2xl p-6 text-left group relative overflow-hidden"
                         aria-label={`${t[td.labelKey]} - ${t[td.descKey]}`}
                         onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${td.hex}30`)}
