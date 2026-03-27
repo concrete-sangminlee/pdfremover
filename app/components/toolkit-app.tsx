@@ -926,13 +926,13 @@ function Toast({
   };
   const icons = { success: "\u2713", error: "\u2715", warning: "\u26A0" };
 
-  const durations = { success: 3000, warning: 5000, error: 8000 };
+  const duration = type === "error" ? 8000 : type === "warning" ? 5000 : 3000;
   useEffect(() => {
     if (onDismiss) {
-      const timer = setTimeout(onDismiss, durations[type]);
+      const timer = setTimeout(onDismiss, duration);
       return () => clearTimeout(timer);
     }
-  }, [onDismiss]);
+  }, [onDismiss, duration]);
 
   return (
     <div className={`${styles[type]} border rounded-xl px-4 py-3 flex items-center gap-3 animate-toastIn text-sm font-medium`}>
@@ -1037,6 +1037,9 @@ function FileDropzone({
                   </span>
                 )}
                 {onReorder && <span className="text-gray-400 text-xs flex-shrink-0 select-none">⠿</span>}
+                {f.type.startsWith("image/") && (
+                  <img src={URL.createObjectURL(f)} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)} />
+                )}
                 <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${
                   f.type === "application/pdf" ? "bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400" :
                   f.type.startsWith("image/") ? "bg-violet-50 dark:bg-violet-950/30 text-violet-500 dark:text-violet-400" :
@@ -1978,7 +1981,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           </div>
 
           {/* Footer */}
-          <footer className="border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 mt-20">
+          {/* Scroll to top */}
+          <div className="flex justify-center mt-12">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="group flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <svg className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
+              {lang === "ko" ? "맨 위로" : "Back to top"}
+            </button>
+          </div>
+
+          <footer className="border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 mt-12">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
                 {/* Brand */}
@@ -2091,13 +2103,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           <div className="space-y-4 animate-fadeInUp" style={{ animationDelay: "100ms" }}>
             {/* Text input for txt2pdf */}
             {view === "txt2pdf" ? (
-              <textarea
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder={t.txtPlaceholder}
-                className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
-                rows={10}
-              />
+              <div className="space-y-1">
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder={t.txtPlaceholder}
+                  className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
+                  rows={10}
+                />
+                <div className="flex justify-end gap-3 text-[10px] text-gray-400 dark:text-slate-600 font-mono">
+                  <span>{textInput.length} {lang === "ko" ? "자" : "chars"}</span>
+                  <span>{textInput.split("\n").length} {lang === "ko" ? "줄" : "lines"}</span>
+                  <span>~{Math.max(1, Math.ceil(textInput.split("\n").length / 50))} {lang === "ko" ? "페이지" : "pages"}</span>
+                </div>
+              </div>
             ) : (
             /* File Upload */
             <FileDropzone
@@ -2572,7 +2591,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 : "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
             }`}
           >
-            {processing ? t.processing : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+            {processing ? t.processing : confirmDelete ? (lang === "ko" ? "삭제 확인" : "Confirm Delete") : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
           </button>
         </div>
       )}
