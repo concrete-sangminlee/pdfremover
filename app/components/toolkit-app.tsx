@@ -1193,6 +1193,30 @@ function detectLang(): Lang {
   return nav.startsWith("ko") ? "ko" : "en";
 }
 
+// ━━━ Related tools map (extracted from render for performance) ━━━
+const RELATED_TOOLS: Record<string, Tool[]> = {
+  unlock: ["merge", "compress", "info", "split"],
+  merge: ["split", "compress", "pagenum", "unlock"],
+  split: ["merge", "extract", "delete", "pagenum"],
+  extract: ["split", "delete", "merge", "rotate"],
+  rotate: ["extract", "split", "compress", "pagenum"],
+  compress: ["unlock", "merge", "watermark", "info"],
+  watermark: ["pagenum", "compress", "merge", "unlock"],
+  pagenum: ["watermark", "merge", "compress", "split"],
+  delete: ["extract", "split", "merge", "rotate"],
+  imgstitch: ["imgconvert", "imgresize", "img2pdf", "imgcompress"],
+  imgconvert: ["imgstitch", "imgcompress", "imgresize", "img2pdf"],
+  imgresize: ["imgconvert", "imgcompress", "img2pdf", "merge"],
+  imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
+  pdftext: ["info", "pdf2img", "extract", "docx2html"],
+  txt2pdf: ["html2pdf", "img2pdf", "merge", "watermark"],
+  html2pdf: ["txt2pdf", "docx2html", "img2pdf", "pdftext"],
+  docx2html: ["html2pdf", "pdftext", "img2pdf", "pdf2img"],
+  pdf2img: ["img2pdf", "docx2html", "extract", "split"],
+  img2pdf: ["pdf2img", "merge", "compress", "watermark"],
+  info: ["unlock", "compress", "merge", "img2pdf"],
+};
+
 // ━━━ Main Page ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export default function ToolkitApp({ initialTool = "home" }: { initialTool?: View }) {
   const [view, setView] = useState<View>(initialTool);
@@ -1371,6 +1395,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         setMessage({ type: "error", text: lang === "ko" ? "이미지 파일만 업로드할 수 있습니다 (JPG, PNG, WebP)." : "Only image files are supported (JPG, PNG, WebP)." });
         return;
       }
+      if (rejected > 0) {
+        setMessage({ type: "warning", text: lang === "ko" ? `${rejected}개의 비이미지 파일이 제외되었습니다.` : `${rejected} non-image file(s) were excluded.` });
+      }
     } else if (view === "html2pdf") {
       validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html");
       if (validFiles.length === 0) {
@@ -1417,7 +1444,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
   };
 
-  // Clipboard paste support for image tools
+  // Clipboard paste support for image tools (uses refs to avoid stale closures)
+  const filesRef = useRef(files);
+  filesRef.current = files;
   useEffect(() => {
     if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) return;
     const handler = (e: ClipboardEvent) => {
@@ -1432,12 +1461,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
       if (imageFiles.length > 0) {
         e.preventDefault();
-        handleFiles([...files, ...imageFiles]);
+        handleFiles([...filesRef.current, ...imageFiles]);
       }
     };
     window.addEventListener("paste", handler);
     return () => window.removeEventListener("paste", handler);
-  }, [view, files]);
+  }, [view]);
 
   // ─── Execute ───
   const [procTime, setProcTime] = useState<number | null>(null);
@@ -2634,33 +2663,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           <div className="mt-14 pt-8 border-t border-gray-100 dark:border-slate-800">
             <h3 className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">{t.relatedTools}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {(() => {
-                // Contextual suggestions based on current tool
-                const related: Record<string, Tool[]> = {
-                  unlock: ["merge", "compress", "info", "split"],
-                  merge: ["split", "compress", "pagenum", "unlock"],
-                  split: ["merge", "extract", "delete", "pagenum"],
-                  extract: ["split", "delete", "merge", "rotate"],
-                  rotate: ["extract", "split", "compress", "pagenum"],
-                  compress: ["unlock", "merge", "watermark", "info"],
-                  watermark: ["pagenum", "compress", "merge", "unlock"],
-                  pagenum: ["watermark", "merge", "compress", "split"],
-                  delete: ["extract", "split", "merge", "rotate"],
-                  imgstitch: ["imgconvert", "imgresize", "img2pdf", "imgcompress"],
-                  imgconvert: ["imgstitch", "imgcompress", "imgresize", "img2pdf"],
-                  imgresize: ["imgconvert", "imgcompress", "img2pdf", "merge"],
-                  imgcompress: ["imgresize", "img2pdf", "pdf2img", "compress"],
-                  pdftext: ["info", "pdf2img", "extract", "docx2html"],
-                  txt2pdf: ["html2pdf", "img2pdf", "merge", "watermark"],
-                  html2pdf: ["txt2pdf", "docx2html", "img2pdf", "pdftext"],
-                  docx2html: ["html2pdf", "pdftext", "img2pdf", "pdf2img"],
-                  pdf2img: ["img2pdf", "docx2html", "extract", "split"],
-                  img2pdf: ["pdf2img", "merge", "compress", "watermark"],
-                  info: ["unlock", "compress", "merge", "img2pdf"],
-                };
-                const ids = related[view as string] || [];
-                return ids.map((id) => TOOLS.find((td) => td.id === id)!).filter(Boolean);
-              })().map((td) => (
+              {RELATED_TOOLS[view as string]?.map((id) => TOOLS.find((td) => td.id === id)!).filter(Boolean).map((td) => (
                 <button key={td.id} onClick={() => goTool(td.id)}
                   className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-slate-800 hover:border-gray-200 dark:hover:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all text-left">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
