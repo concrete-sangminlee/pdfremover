@@ -179,7 +179,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteLabel: "페이지 삭제",
     deleteDesc: "불필요한 페이지를 제거합니다",
     img2pdfLabel: "이미지 → PDF",
-    img2pdfDesc: "JPG, PNG 이미지를 PDF로 변환합니다",
+    img2pdfDesc: "JPG, PNG, WebP 이미지를 PDF로 변환합니다",
     img2pdfHint: "이미지 파일을 업로드하세요 (JPG, PNG, WebP)",
     pdf2imgLabel: "PDF → 이미지",
     pdf2imgDesc: "PDF 페이지를 JPG/PNG 이미지로 변환합니다",
@@ -368,7 +368,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteLabel: "Delete Pages",
     deleteDesc: "Remove unwanted pages",
     img2pdfLabel: "Image to PDF",
-    img2pdfDesc: "Convert JPG, PNG images to PDF",
+    img2pdfDesc: "Convert JPG, PNG, WebP images to PDF",
     img2pdfHint: "Upload image files (JPG, PNG, WebP)",
     pdf2imgLabel: "PDF to Image",
     pdf2imgDesc: "Convert PDF pages to JPG/PNG images",
@@ -598,8 +598,11 @@ async function addWatermark(
       }
     } else {
       const textW = font.widthOfTextAtSize(text, fontSize);
-      const x = (width - textW * Math.abs(Math.cos((rotation * Math.PI) / 180))) / 2;
-      page.drawText(text, { x, y: height / 2, size: fontSize, font, color: rgb(0.6, 0.6, 0.6), opacity, rotate: degrees(rotation) });
+      const textH = font.heightAtSize(fontSize);
+      const rad = (rotation * Math.PI) / 180;
+      const x = (width - textW * Math.abs(Math.cos(rad))) / 2;
+      const y = (height - textH) / 2;
+      page.drawText(text, { x, y, size: fontSize, font, color: rgb(0.6, 0.6, 0.6), opacity, rotate: degrees(rotation) });
     }
   }
   return doc.save();
@@ -753,13 +756,14 @@ async function docxToHtml(data: ArrayBuffer): Promise<string> {
   return result.value;
 }
 
-async function pdfToImages(data: ArrayBuffer): Promise<{ name: string; data: Uint8Array }[]> {
+async function pdfToImages(data: ArrayBuffer, onProgress?: (pct: number) => void): Promise<{ name: string; data: Uint8Array }[]> {
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
   const doc = await loadingTask.promise;
   const results: { name: string; data: Uint8Array }[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
+    onProgress?.(Math.round(((i - 1) / doc.numPages) * 100));
     const page = await doc.getPage(i);
     const scale = 2;
     const viewport = page.getViewport({ scale });
@@ -772,6 +776,7 @@ async function pdfToImages(data: ArrayBuffer): Promise<{ name: string; data: Uin
     const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
     results.push({ name: `page_${i}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
   }
+  onProgress?.(100);
   return results;
 }
 
@@ -1625,7 +1630,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "pdf2img": {
           const buf = await files[0].arrayBuffer();
           setMessage({ type: "warning", text: lang === "ko" ? "페이지를 이미지로 변환 중..." : "Converting pages to images..." });
-          const images = await pdfToImages(buf);
+          const images = await pdfToImages(buf, (pct) => setBatchProgress(pct));
           setResultMulti(images);
           setMessage({ type: "success", text: `${images.length}${lang === "ko" ? "페이지 → 이미지 변환 완료!" : " pages converted to images!"}` });
           addHistory(toolLabel, files[0].name, true, view);
