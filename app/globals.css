@@ -116,6 +116,9 @@ html { scroll-behavior: smooth; }
   overflow: hidden;
   vertical-align: bottom;
 }
+.word-rotate.gradient-text {
+  text-decoration: none;
+}
 .word-rotate > span {
   display: block;
   height: 1.15em;

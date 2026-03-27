@@ -1363,12 +1363,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const goTool = (tool: Tool) => {
     setView(tool);
     resetState();
+    setToolSearch("");
     window.history.pushState(null, "", `/${tool}`);
     window.scrollTo(0, 0);
   };
   const goHome = () => {
     setView("home");
     resetState();
+    setToolSearch("");
     window.history.pushState(null, "", "/");
     window.scrollTo(0, 0);
   };
@@ -1383,6 +1385,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         setView("home");
       }
       resetState();
+      setToolSearch("");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -1763,7 +1766,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "img2pdf": {
           const data = await imagesToPDF(files);
           setResultData(data);
-          setResultName("images.pdf");
+          setResultName(files.length === 1 ? files[0].name.replace(/\.[^.]+$/, ".pdf") : `${files.length}_images.pdf`);
           const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
           setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 → PDF 변환 완료!" : " images converted to PDF!"} (${info.pages}p)` });
           addHistory(toolLabel, `${files.length} images`, true, view);
@@ -1775,7 +1778,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
       }
-      setProcessCount((c) => c + 1);
+      if (view !== "info") setProcessCount((c) => c + 1);
     } catch (err: unknown) {
       let errMsg = t.msgError;
       if (err instanceof Error) {
