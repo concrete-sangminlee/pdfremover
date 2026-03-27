@@ -64,6 +64,9 @@ export const T: Record<Lang, Record<string, string>> = {
     catDocument: "문서 도구",
     copyText: "텍스트 복사",
     copied: "클립보드에 복사됨",
+    processAnother: "다른 파일 처리하기",
+    clearFiles: "파일 초기화",
+    backToTop: "맨 위로",
     execute: "실행",
     processing: "처리 중...",
     download: "다운로드",
@@ -257,6 +260,9 @@ export const T: Record<Lang, Record<string, string>> = {
     catDocument: "Document Tools",
     copyText: "Copy text",
     copied: "Copied to clipboard",
+    processAnother: "Process another file",
+    clearFiles: "Clear files",
+    backToTop: "Back to top",
     execute: "Execute",
     processing: "Processing...",
     download: "Download",
@@ -1578,13 +1584,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           const data = await compressPDF(buf);
           const saved = files[0].size - data.length;
-          setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_compressed.pdf"));
           if (saved > 0) {
+            setResultData(data);
+            setResultName(files[0].name.replace(/\.pdf$/i, "_compressed.pdf"));
             setCompressionInfo({ before: files[0].size, after: data.length });
             setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${Math.round((saved / files[0].size) * 100)}% ${t.compressPercent})` });
           } else {
-            // No savings — return original to avoid making file larger
             setResultData(new Uint8Array(buf));
             setResultName(files[0].name);
             setMessage({ type: "warning", text: t.compressAlready });
@@ -1793,7 +1798,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view === "split" && splitMode === "range" && !rangeInput.trim()) return false;
     if (view === "extract" && !pagesInput.trim()) return false;
     if (view === "delete" && !deleteInput.trim()) return false;
-    if (view === "watermark" && !wmText.trim()) return false;
+    if (view === "watermark" && (!wmText.trim() || /[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText))) return false;
     if (view === "info") return false;
     return true;
   })();
@@ -2102,7 +2107,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="group flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               <svg className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
-              {lang === "ko" ? "맨 위로" : "Back to top"}
+              {t.backToTop}
             </button>
           </div>
 
@@ -2259,7 +2264,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {files.length > 0 && !processing && !resultData && resultMulti.length === 0 && (
               <button onClick={() => { setFiles([]); setMessage(null); setPageInfo({}); }}
                 className="text-xs text-gray-400 hover:text-red-500 transition-colors self-end">
-                {lang === "ko" ? "파일 초기화" : "Clear files"}
+                {t.clearFiles}
               </button>
             )}
 
@@ -2426,8 +2431,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
                   <input type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.wmText}
                     className="input-field" />
-                  {/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(wmText) && (
-                    <p className="text-xs text-amber-600 mt-1">{lang === "ko" ? "한글은 지원되지 않습니다. 영문으로 입력해주세요." : "Korean characters are not supported. Please use English text."}</p>
+                  {/[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText) && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{lang === "ko" ? "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요." : "CJK characters are not supported. Please use Latin text."}</p>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -2547,7 +2552,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex items-center justify-between">
                   <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); setCompressionInfo(null); setHtmlPreview(null); setConfirmDelete(false); setBatchProgress(-1); }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                    {lang === "ko" ? "다른 파일 처리하기" : "Process another file"}
+                    {t.processAnother}
                   </button>
                   {procTime !== null && <span className="text-[10px] text-gray-400">{procTime < 1000 ? `${procTime}ms` : `${(procTime / 1000).toFixed(1)}s`}</span>}
                 </div>
@@ -2599,7 +2604,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex items-center justify-between pt-1">
                   <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); setCompressionInfo(null); setHtmlPreview(null); setConfirmDelete(false); setBatchProgress(-1); }}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                    {lang === "ko" ? "다른 파일 처리하기" : "Process another file"}
+                    {t.processAnother}
                   </button>
                   {procTime !== null && <span className="text-[10px] text-gray-400">{procTime < 1000 ? `${procTime}ms` : `${(procTime / 1000).toFixed(1)}s`}</span>}
                 </div>
