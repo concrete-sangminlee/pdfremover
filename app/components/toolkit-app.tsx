@@ -253,6 +253,15 @@ export const T: Record<Lang, Record<string, string>> = {
     msgDocxDone: "DOCX 변환 완료!",
     warnExcludedImg: "개의 비이미지 파일이 제외되었습니다.",
     warnExcludedPdf: "개의 비PDF 파일이 제외되었습니다.",
+    msgImgConverted: "개 이미지 변환 완료!",
+    msgImgResized: "개 이미지 리사이즈 완료!",
+    msgPdfToImgDone: "페이지 → 이미지 변환 완료!",
+    msgImgToPdfDone: "개 이미지 → PDF 변환 완료!",
+    confirmDeleteBtn: "삭제 확인",
+    maxCompress: "최대 압축",
+    origQuality: "원본 품질",
+    toolCount: "개 도구",
+    imgStitchWarn: "2개 이상의 이미지를 업로드해주세요.",
     errImgOnly: "이미지 파일만 업로드할 수 있습니다 (JPG, PNG, WebP).",
     errHtmlOnly: "HTML 파일만 업로드할 수 있습니다.",
     errDocxOnly: "DOCX 파일만 업로드할 수 있습니다.",
@@ -471,6 +480,15 @@ export const T: Record<Lang, Record<string, string>> = {
     msgDocxDone: "DOCX converted!",
     warnExcludedImg: " non-image file(s) were excluded.",
     warnExcludedPdf: " non-PDF file(s) were excluded.",
+    msgImgConverted: " images converted!",
+    msgImgResized: " images resized!",
+    msgPdfToImgDone: " pages converted to images!",
+    msgImgToPdfDone: " images converted to PDF!",
+    confirmDeleteBtn: "Confirm Delete",
+    maxCompress: "Max compression",
+    origQuality: "Original quality",
+    toolCount: " tools",
+    imgStitchWarn: "Please upload 2 or more images.",
     errImgOnly: "Only image files are supported (JPG, PNG, WebP).",
     errHtmlOnly: "Only HTML files are supported.",
     errDocxOnly: "Only DOCX files are supported.",
@@ -1747,7 +1765,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           } else {
             setResultMulti(results);
           }
-          setMessage({ type: "success", text: `${results.length}${lang === "ko" ? `개 이미지 → ${imgOutputFormat.toUpperCase()} 변환 완료!` : ` images converted to ${imgOutputFormat.toUpperCase()}!`}` });
+          setMessage({ type: "success", text: `${results.length}${t.msgImgConverted} (${imgOutputFormat.toUpperCase()})` });
           addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
@@ -1775,7 +1793,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           } else {
             setResultMulti(results);
           }
-          setMessage({ type: "success", text: `${results.length}${lang === "ko" ? "개 이미지 리사이즈 완료!" : " images resized!"} (${Math.round(imgScale * 100)}%)` });
+          setMessage({ type: "success", text: `${results.length}${t.msgImgResized} (${Math.round(imgScale * 100)}%)` });
           addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
@@ -1823,7 +1841,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setMessage({ type: "warning", text: t.msgPdfToImg });
           const images = await pdfToImages(buf, (pct) => setBatchProgress(pct));
           setResultMulti(images);
-          setMessage({ type: "success", text: `${images.length}${lang === "ko" ? "페이지 → 이미지 변환 완료!" : " pages converted to images!"}` });
+          setMessage({ type: "success", text: `${images.length}${t.msgPdfToImgDone}` });
           addHistory(toolLabel, files[0].name, true, view);
           break;
         }
@@ -1832,7 +1850,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(files.length === 1 ? files[0].name.replace(/\.[^.]+$/, ".pdf") : `${files.length}_images.pdf`);
           const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
-          setMessage({ type: "success", text: `${files.length}${lang === "ko" ? "개 이미지 → PDF 변환 완료!" : " images converted to PDF!"} (${info.pages}p)` });
+          setMessage({ type: "success", text: `${files.length}${t.msgImgToPdfDone} (${info.pages}p)` });
           addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
@@ -1975,7 +1993,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     </span>
                   ))}
                   <span className="px-3 py-1.5 rounded-full bg-blue-600 text-[11px] font-semibold text-white shadow-sm shadow-blue-500/25">
-                    {lang === "ko" ? `${TOOLS.length}개 도구` : `${TOOLS.length} tools`}
+                    {TOOLS.length}{t.toolCount}
                   </span>
                 </div>
 
@@ -2450,7 +2468,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
 
             {view === "imgstitch" && files.length > 0 && files.length < 2 && (
-              <Toast type="warning" text={lang === "ko" ? "2개 이상의 이미지를 업로드해주세요." : "Please upload 2 or more images."} />
+              <Toast type="warning" text={t.imgStitchWarn} />
             )}
             {view === "imgstitch" && files.length > 0 && (
               <div className="animate-fadeIn">
@@ -2499,8 +2517,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
                 <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full" />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
-                  <span>{lang === "ko" ? "최대 압축" : "Max compression"}</span>
-                  <span>{lang === "ko" ? "원본 품질" : "Original quality"}</span>
+                  <span>{t.maxCompress}</span>
+                  <span>{t.origQuality}</span>
                 </div>
               </div>
             )}
@@ -2586,7 +2604,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view !== "info" && (files.length > 0 || view === "txt2pdf") && (
               <div className="relative">
                 <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
-                  {processing ? t.processing : confirmDelete ? (lang === "ko" ? "삭제 확인" : "Confirm Delete") : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+                  {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
                 </AccentButton>
                 {canExecute && !processing && (
                   <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 font-mono hidden sm:inline">Ctrl+Enter</kbd>
@@ -2801,7 +2819,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 : "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
             }`}
           >
-            {processing ? t.processing : confirmDelete ? (lang === "ko" ? "삭제 확인" : "Confirm Delete") : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+            {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
           </button>
         </div>
       )}
