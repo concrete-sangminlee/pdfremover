@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { TOOLS, VALID_TOOLS, type Tool, type View, type Lang } from "../lib/config";
 
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
@@ -945,6 +945,12 @@ function Toast({
   );
 }
 
+function ImgThumb({ file }: { file: File }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return <img src={url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />;
+}
+
 function FileDropzone({
   files,
   onSelect,
@@ -1037,9 +1043,7 @@ function FileDropzone({
                   </span>
                 )}
                 {onReorder && <span className="text-gray-400 text-xs flex-shrink-0 select-none">⠿</span>}
-                {f.type.startsWith("image/") && (
-                  <img src={URL.createObjectURL(f)} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)} />
-                )}
+                {f.type.startsWith("image/") && <ImgThumb file={f} />}
                 <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${
                   f.type === "application/pdf" ? "bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400" :
                   f.type.startsWith("image/") ? "bg-violet-50 dark:bg-violet-950/30 text-violet-500 dark:text-violet-400" :
@@ -2274,7 +2278,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
                 <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full" />
-                <div className="flex justify-between text-[10px] text-gray-400">
+                <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>10%</span>
                   <span>100%</span>
                   <span>200%</span>
@@ -2286,7 +2290,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
                 <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full" />
-                <div className="flex justify-between text-[10px] text-gray-400">
+                <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>{lang === "ko" ? "최대 압축" : "Max compression"}</span>
                   <span>{lang === "ko" ? "원본 품질" : "Original quality"}</span>
                 </div>
@@ -2435,6 +2439,30 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     className="w-full py-3.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300">
                     {resultMulti.length}{t.downloadZip}
                   </button>
+                )}
+                {/* Image grid preview for image results */}
+                {resultMulti.length > 0 && resultMulti[0].name.match(/\.(png|jpg|webp)$/i) && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 rounded-xl overflow-hidden">
+                    {resultMulti.slice(0, 8).map((r, i) => {
+                      const blob = new Blob([r.data.buffer as ArrayBuffer], { type: r.name.endsWith(".png") ? "image/png" : "image/jpeg" });
+                      const url = URL.createObjectURL(blob);
+                      return (
+                        <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : "image/jpeg")}
+                          className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg overflow-hidden group hover:ring-2 hover:ring-blue-400 transition-all">
+                          <img src={url} alt={r.name} className="w-full h-full object-cover" onLoad={() => URL.revokeObjectURL(url)} />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                          </div>
+                          <span className="absolute bottom-1 left-1 text-[9px] text-white/80 bg-black/40 px-1 rounded">{i + 1}</span>
+                        </button>
+                      );
+                    })}
+                    {resultMulti.length > 8 && (
+                      <div className="aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-gray-400 dark:text-slate-500 text-sm font-bold">
+                        +{resultMulti.length - 8}
+                      </div>
+                    )}
+                  </div>
                 )}
                 {resultMulti.map((r, i) => (
                   <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : r.name.endsWith(".jpg") ? "image/jpeg" : r.name.endsWith(".webp") ? "image/webp" : "application/pdf")}
