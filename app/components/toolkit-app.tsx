@@ -67,6 +67,7 @@ export const T: Record<Lang, Record<string, string>> = {
     processAnother: "다른 파일 처리하기",
     clearFiles: "파일 초기화",
     backToTop: "맨 위로",
+    footerImgDoc: "이미지 & 문서",
     execute: "실행",
     processing: "처리 중...",
     download: "다운로드",
@@ -263,6 +264,7 @@ export const T: Record<Lang, Record<string, string>> = {
     processAnother: "Process another file",
     clearFiles: "Clear files",
     backToTop: "Back to top",
+    footerImgDoc: "Image & Docs",
     execute: "Execute",
     processing: "Processing...",
     download: "Download",
@@ -1323,9 +1325,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, processing]);
 
-  // Preload pdf-lib when entering a tool page
+  // Preload pdf-lib when entering a tool page (skip for tools that don't need it)
   useEffect(() => {
-    if (view !== "home") getPdfLib();
+    const skip = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
+    if (view !== "home" && !skip.includes(view)) getPdfLib();
   }, [view]);
 
   // Clipboard paste support — moved after handleFiles definition
@@ -1495,8 +1498,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setMessage(null);
     setResultData(null);
     setResultMulti([]);
-    // Pre-warm pdf-lib on first use (shows loading state)
-    if (!_pdfLib) {
+    // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
+    const noPdfLibTools = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
+    if (!_pdfLib && !noPdfLibTools.includes(view)) {
       setMessage({ type: "warning", text: lang === "ko" ? "PDF 엔진 로딩 중..." : "Loading PDF engine..." });
       await getPdfLib();
       setMessage(null);
@@ -1506,7 +1510,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setBatchProgress(-1);
 
     try {
-      const toolLabel = t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "";
+      const toolLabel = t[activeTool?.labelKey || ""] || "";
       switch (view) {
         case "unlock": {
           if (files.length === 1) {
@@ -1778,7 +1782,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
       }
       setMessage({ type: "error", text: errMsg });
-      if (files[0]) addHistory(t[TOOLS.find((td) => td.id === view)?.labelKey || ""] || "", files[0].name, false, view);
+      if (files[0]) addHistory(t[activeTool?.labelKey || ""] || "", files[0].name, false, view);
     } finally {
       setProcessing(false);
       setBatchProgress(-1);
@@ -2134,7 +2138,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{lang === "ko" ? "이미지 & 문서" : "Image & Docs"}</h4>
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{t.footerImgDoc}</h4>
                   <ul className="space-y-2">
                     {TOOLS.slice(10).map((td) => (
                       <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t[td.labelKey]}</button></li>
