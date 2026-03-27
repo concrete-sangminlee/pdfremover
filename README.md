@@ -222,15 +222,19 @@ Contributions are welcome! Here are some ways you can help:
 
 ## Roadmap
 
-- [x] ~~Dark mode~~ — Complete with system preference + manual toggle
+- [x] ~~Dark mode~~ — System preference + manual toggle, 100% coverage
+- [x] ~~Tool search~~ — Instant search with `/` shortcut, categorized grid
+- [x] ~~Keyboard shortcuts~~ — `Esc`, `/`, `Ctrl+Enter`, `Ctrl+V`
+- [x] ~~Image previews~~ — Upload thumbnails + result grid preview
+- [x] ~~Batch progress~~ — Real-time percentage bar for all batch operations
+- [x] ~~WebP support~~ — Full WebP support in Image to PDF
+- [x] ~~Security hardening~~ — CSP headers, XSS-safe parsing, Permissions-Policy
 - [ ] PDF password protection (encryption)
 - [ ] More languages (Japanese, Chinese, Spanish)
 - [ ] Service worker for full offline support
 - [ ] PDF preview before processing
 - [ ] Unit tests for all tools
-- [ ] Performance benchmarks vs competitors
 - [ ] PDF form filling
-- [ ] PDF annotation tools
 
 ---
 

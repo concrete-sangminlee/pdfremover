@@ -39,6 +39,8 @@ export interface ToolDef {
   multi?: boolean;
   /** Accept file types other than PDF */
   accept?: string;
+  /** Show "New" badge */
+  isNew?: boolean;
 }
 
 export const TOOLS: ToolDef[] = [
@@ -56,12 +58,12 @@ export const TOOLS: ToolDef[] = [
   { id: "pdf2img",   icon: "\uD83D\uDCF7",      labelKey: "pdf2imgLabel",   descKey: "pdf2imgDesc",   labelEn: "PDF to IMG", hex: "#8b5cf6", tint: "#f5f3ff", category: "image" },
   { id: "imgcompress", icon: "\uD83D\uDDDC\uFE0F", labelKey: "imgcompressLabel", descKey: "imgcompressDesc", labelEn: "IMG Compress", hex: "#ca8a04", tint: "#fefce8", category: "image", multi: true, accept: "image/*" },
   { id: "imgresize",  icon: "\uD83D\uDD0D",      labelKey: "imgresizeLabel",  descKey: "imgresizeDesc",  labelEn: "IMG Resize",  hex: "#6366f1", tint: "#eef2ff", category: "image", multi: true, accept: "image/*" },
-  { id: "imgstitch", icon: "\uD83E\uDDE9",      labelKey: "imgstitchLabel", descKey: "imgstitchDesc", labelEn: "IMG Stitch", hex: "#7c3aed", tint: "#f5f3ff", category: "image", multi: true, accept: "image/*" },
-  { id: "imgconvert", icon: "\uD83C\uDFA8",      labelKey: "imgconvertLabel", descKey: "imgconvertDesc", labelEn: "IMG Convert", hex: "#e11d48", tint: "#fff1f2", category: "image", multi: true, accept: "image/*" },
+  { id: "imgstitch", icon: "\uD83E\uDDE9",      labelKey: "imgstitchLabel", descKey: "imgstitchDesc", labelEn: "IMG Stitch", hex: "#7c3aed", tint: "#f5f3ff", category: "image", multi: true, accept: "image/*", isNew: true },
+  { id: "imgconvert", icon: "\uD83C\uDFA8",      labelKey: "imgconvertLabel", descKey: "imgconvertDesc", labelEn: "IMG Convert", hex: "#e11d48", tint: "#fff1f2", category: "image", multi: true, accept: "image/*", isNew: true },
   { id: "docx2html", icon: "\uD83D\uDCDD",      labelKey: "docx2htmlLabel", descKey: "docx2htmlDesc", labelEn: "DOCX View", hex: "#2563eb", tint: "#eff6ff", category: "document", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
   { id: "pdftext",   icon: "\uD83D\uDCCB",      labelKey: "pdftextLabel",   descKey: "pdftextDesc",   labelEn: "PDF Text",  hex: "#0891b2", tint: "#ecfeff", category: "document" },
   { id: "txt2pdf",   icon: "\uD83D\uDCDD",      labelKey: "txt2pdfLabel",   descKey: "txt2pdfDesc",   labelEn: "Text to PDF", hex: "#475569", tint: "#f8fafc", category: "document" },
-  { id: "html2pdf",  icon: "\uD83C\uDF10",      labelKey: "html2pdfLabel",  descKey: "html2pdfDesc",  labelEn: "HTML to PDF", hex: "#0ea5e9", tint: "#f0f9ff", category: "document", accept: ".html,.htm,text/html" },
+  { id: "html2pdf",  icon: "\uD83C\uDF10",      labelKey: "html2pdfLabel",  descKey: "html2pdfDesc",  labelEn: "HTML to PDF", hex: "#0ea5e9", tint: "#f0f9ff", category: "document", accept: ".html,.htm,text/html", isNew: true },
 ];
 
 export const VALID_TOOLS = TOOLS.map((t) => t.id);

@@ -68,6 +68,9 @@ export const T: Record<Lang, Record<string, string>> = {
     clearFiles: "파일 초기화",
     backToTop: "맨 위로",
     footerImgDoc: "이미지 & 문서",
+    noResults: "검색 결과가 없습니다",
+    engineLoading: "PDF 엔진 로딩 중...",
+    linkCopied: "링크가 복사되었습니다",
     execute: "실행",
     processing: "처리 중...",
     download: "다운로드",
@@ -265,6 +268,9 @@ export const T: Record<Lang, Record<string, string>> = {
     clearFiles: "Clear files",
     backToTop: "Back to top",
     footerImgDoc: "Image & Docs",
+    noResults: "No tools found",
+    engineLoading: "Loading PDF engine...",
+    linkCopied: "Link copied",
     execute: "Execute",
     processing: "Processing...",
     download: "Download",
@@ -1501,7 +1507,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
     const noPdfLibTools = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
     if (!_pdfLib && !noPdfLibTools.includes(view)) {
-      setMessage({ type: "warning", text: lang === "ko" ? "PDF 엔진 로딩 중..." : "Loading PDF engine..." });
+      setMessage({ type: "warning", text: t.engineLoading });
       await getPdfLib();
       setMessage(null);
     }
@@ -2002,7 +2008,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                           style={{ background: `${td.hex}15`, boxShadow: `0 0 0 1px ${td.hex}20` }}>
                           {td.icon}
                         </div>
-                        <h3 className="text-sm font-bold tracking-tight text-gray-900 dark:text-slate-100 mb-0.5">{t[td.labelKey]}</h3>
+                        <h3 className="text-sm font-bold tracking-tight text-gray-900 dark:text-slate-100 mb-0.5">
+                          {t[td.labelKey]}
+                          {td.isNew && <span className="ml-1.5 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 align-middle">NEW</span>}
+                        </h3>
                         <span className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${td.hex}80` }}>{td.labelEn}</span>
                         <p className="text-xs text-gray-400 dark:text-slate-500 leading-relaxed mt-2 hidden sm:block">{t[td.descKey]}</p>
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
@@ -2015,7 +2024,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             })}
             {toolSearch && TOOLS.filter((td) => t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) || td.labelEn.toLowerCase().includes(toolSearch.toLowerCase()) || t[td.descKey].toLowerCase().includes(toolSearch.toLowerCase())).length === 0 && (
               <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">
-                {lang === "ko" ? "검색 결과가 없습니다" : "No tools found"}
+                {t.noResults}
               </div>
             )}
 
@@ -2207,7 +2216,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       navigator.share({ title: `${t[activeTool.labelKey]} — FileForge`, url: window.location.href });
                     } else {
                       navigator.clipboard.writeText(window.location.href);
-                      setMessage({ type: "success", text: lang === "ko" ? "링크가 복사되었습니다" : "Link copied" });
+                      setMessage({ type: "success", text: t.linkCopied });
                     }
                   }}
                   className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all flex-shrink-0"
