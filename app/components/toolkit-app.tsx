@@ -235,6 +235,11 @@ export const T: Record<Lang, Record<string, string>> = {
     msgDeleted: "페이지 삭제 완료!",
     msgRemaining: "페이지 남음",
     msgError: "처리 중 오류가 발생했습니다.",
+    msgPassword: "이 PDF는 열기 비밀번호가 설정되어 있습니다. 비밀번호를 알아야 처리할 수 있습니다.",
+    msgCorrupt: "손상되었거나 유효하지 않은 PDF 파일입니다.",
+    copyBtn: "복사",
+    infoYes: "예",
+    infoNo: "아니오",
   },
   en: {
     heroTag: "All-in-One Document Solution",
@@ -430,6 +435,11 @@ export const T: Record<Lang, Record<string, string>> = {
     msgDeleted: " pages deleted!",
     msgRemaining: " remaining",
     msgError: "An error occurred during processing.",
+    msgPassword: "This PDF requires an open password. You need the password to process it.",
+    msgCorrupt: "This file is corrupted or not a valid PDF.",
+    copyBtn: "Copy",
+    infoYes: "Yes",
+    infoNo: "No",
   },
 };
 
@@ -443,6 +453,23 @@ function fmtSize(b: number) {
 
 function fmtTime() {
   return new Date().toLocaleTimeString(undefined, { hour12: false });
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for non-secure contexts
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }
 }
 
 function download(data: Uint8Array, filename: string, mime = "application/pdf") {
@@ -1783,9 +1810,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       let errMsg = t.msgError;
       if (err instanceof Error) {
         if (err.message.includes("encrypt") || err.message.includes("password")) {
-          errMsg = lang === "ko" ? "이 PDF는 열기 비밀번호가 설정되어 있습니다. 비밀번호를 알아야 처리할 수 있습니다." : "This PDF requires an open password. You need the password to process it.";
+          errMsg = t.msgPassword;
         } else if (err.message.includes("invalid") || err.message.includes("Failed to parse")) {
-          errMsg = lang === "ko" ? "손상되었거나 유효하지 않은 PDF 파일입니다." : "This file is corrupted or not a valid PDF.";
+          errMsg = t.msgCorrupt;
         } else {
           errMsg = err.message;
         }
@@ -2218,7 +2245,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     if (navigator.share) {
                       navigator.share({ title: `${t[activeTool.labelKey]} — FileForge`, url: window.location.href });
                     } else {
-                      navigator.clipboard.writeText(window.location.href);
+                      copyToClipboard(window.location.href);
                       setMessage({ type: "success", text: t.linkCopied });
                     }
                   }}
@@ -2637,7 +2664,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       <button onClick={() => {
                         const parsed = new DOMParser().parseFromString(htmlPreview || "", "text/html");
                         const text = parsed.body.textContent || "";
-                        navigator.clipboard.writeText(text);
+                        copyToClipboard(text);
                         setMessage({ type: "success", text: t.copied });
                       }} className="text-xs text-blue-600 hover:text-blue-700 font-medium">{t.copyText}</button>
                     )}
@@ -2661,7 +2688,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       {[
                         { icon: "\uD83D\uDCD1", val: String(pdfInfoResult.pages), label: t.infoPages },
                         { icon: "\uD83D\uDCBE", val: fmtSize(pdfInfoResult.size), label: t.infoSize },
-                        { icon: "\uD83D\uDD10", val: "No", label: t.infoEncrypted },
+                        { icon: "\uD83D\uDD10", val: t.infoNo, label: t.infoEncrypted },
                         { icon: "\uD83D\uDCCA", val: fmtSize(Math.round(pdfInfoResult.size / Math.max(pdfInfoResult.pages, 1))), label: t.infoPerPage },
                       ].map((s, i) => (
                         <div key={i} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 text-center hover:border-blue-200 dark:hover:border-blue-800 hover:-translate-y-0.5 transition-all">
@@ -2677,11 +2704,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         <button
                           onClick={() => {
                             const text = `Pages: ${pdfInfoResult.pages}\nSize: ${fmtSize(pdfInfoResult.size)}\nTitle: ${pdfInfoResult.title}\nAuthor: ${pdfInfoResult.author}\nCreator: ${pdfInfoResult.creator}\nProducer: ${pdfInfoResult.producer}`;
-                            navigator.clipboard.writeText(text);
-                            setMessage({ type: "success", text: lang === "ko" ? "클립보드에 복사됨" : "Copied to clipboard" });
+                            copyToClipboard(text);
+                            setMessage({ type: "success", text: t.copied });
                           }}
                           className="text-[10px] text-blue-500 hover:text-blue-700 font-medium transition-colors"
-                        >{lang === "ko" ? "복사" : "Copy"}</button>
+                        >{t.copyBtn}</button>
                       </div>
                       {[
                         [t.metaTitle, pdfInfoResult.title],
