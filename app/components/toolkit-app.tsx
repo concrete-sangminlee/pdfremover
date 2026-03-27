@@ -1017,11 +1017,32 @@ function FileDropzone({
         {files.length === 0 ? (
           <>
             <svg className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 32l8-8 4 4 8-8 12 12M8 32V12a4 4 0 014-4h24a4 4 0 014 4v20M8 32h32a4 4 0 004-4" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M24 22v12m0 0l-4-4m4 4l4-4" />
+              {acceptType.includes("image/") ? (
+                <>
+                  <rect x="6" y="6" width="36" height="36" rx="4" />
+                  <circle cx="18" cy="18" r="4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 34l10-10 6 6 8-8 12 12" />
+                </>
+              ) : acceptType.includes(".docx") ? (
+                <>
+                  <rect x="10" y="4" width="28" height="40" rx="3" />
+                  <path strokeLinecap="round" d="M18 16h12M18 22h12M18 28h8" />
+                </>
+              ) : (
+                <>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 32l8-8 4 4 8-8 12 12M8 32V12a4 4 0 014-4h24a4 4 0 014 4v20M8 32h32a4 4 0 004-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M24 22v12m0 0l-4-4m4 4l4-4" />
+                </>
+              )}
             </svg>
             <p className="text-gray-500 dark:text-slate-400 text-sm font-medium">
-              {t.uploadHint} <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
+              {(() => {
+                const fileType = acceptType.includes("image/") ? (t.uploadHint.includes("PDF") ? t.uploadHint.replace("PDF ", "") : t.uploadHint)
+                  : acceptType.includes(".docx") ? t.uploadHint.replace("PDF", "DOCX")
+                  : acceptType.includes(".html") ? t.uploadHint.replace("PDF", "HTML")
+                  : t.uploadHint;
+                return fileType;
+              })()} <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
             </p>
             <button type="button" onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}
               className="mt-3 px-5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all">
@@ -2053,7 +2074,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">&nbsp;</h4>
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{lang === "ko" ? "이미지 & 문서" : "Image & Docs"}</h4>
                   <ul className="space-y-2">
                     {TOOLS.slice(10).map((td) => (
                       <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t[td.labelKey]}</button></li>
@@ -2359,7 +2380,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
-                    <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3 accent-[#2563eb]" />
+                    <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
