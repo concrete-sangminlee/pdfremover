@@ -581,8 +581,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-function download(data: Uint8Array, filename: string, mime = "application/pdf") {
-  const blob = new Blob([toArrayBuffer(data)], { type: mime });
+function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -591,10 +590,17 @@ function download(data: Uint8Array, filename: string, mime = "application/pdf") 
   document.body.appendChild(a);
   // Use setTimeout for Safari compatibility
   setTimeout(() => {
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      a.click();
+    } finally {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
   }, 0);
+}
+
+function download(data: Uint8Array, filename: string, mime = "application/pdf") {
+  downloadBlob(new Blob([toArrayBuffer(data)], { type: mime }), filename);
 }
 
 async function downloadZip(files: { name: string; data: Uint8Array }[], zipName = "fileforge_output.zip") {
@@ -603,14 +609,7 @@ async function downloadZip(files: { name: string; data: Uint8Array }[], zipName 
   const seen = new Map<string, number>();
   files.forEach((f) => zip.file(uniqueFilename(f.name, seen), toArrayBuffer(f.data)));
   const blob = await zip.generateAsync({ type: "blob" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = zipName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, zipName);
 }
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
@@ -1578,12 +1577,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Search ref for "/" shortcut
   const searchRef = useRef<HTMLInputElement>(null);
+  const goHomeRef = useRef<() => void>(() => {});
+  const resetStateRef = useRef<() => void>(() => {});
+
   // Basic keyboard shortcuts (Escape, /)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-      if (e.key === "Escape" && view !== "home" && !processing) goHome();
+      if (e.key === "Escape" && view !== "home" && !processing) goHomeRef.current();
       if (e.key === "/" && view === "home" && !isInput) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -1591,8 +1593,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-    // goHome is stable in behavior but recreated each render — safe to omit
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, processing]);
 
   // Preload pdf-lib when entering a tool page (skip for tools that don't need it)
@@ -1623,6 +1623,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setConfirmDelete(false);
     setBatchProgress(-1);
   };
+  resetStateRef.current = resetState;
 
   const goTool = (tool: Tool) => {
     setView(tool);
@@ -1638,6 +1639,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     window.history.pushState(null, "", "/");
     window.scrollTo(0, 0);
   };
+  goHomeRef.current = goHome;
 
   // Sync URL with browser back/forward
   useEffect(() => {
@@ -1648,13 +1650,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       } else {
         setView("home");
       }
-      resetState();
+      resetStateRef.current();
       setToolSearch("");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-    // Mount-only: popstate listener for browser back/forward
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -2500,13 +2500,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <p className="text-sm text-gray-400 dark:text-slate-400">{t[activeTool.descKey]}</p>
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (navigator.share) {
-                      navigator.share({ title: `${t[activeTool.labelKey]} — FileForge`, url: window.location.href });
-                    } else {
-                      copyToClipboard(window.location.href);
-                      setMessage({ type: "success", text: t.linkCopied });
+                      try {
+                        await navigator.share({ title: `${t[activeTool.labelKey]} — FileForge`, url: window.location.href });
+                        return;
+                      } catch (err) {
+                        if (err instanceof DOMException && err.name === "AbortError") return;
+                      }
                     }
+                    const copied = await copyToClipboard(window.location.href);
+                    setMessage(copied ? { type: "success", text: t.linkCopied } : { type: "error", text: t.msgError });
                   }}
                   className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all flex-shrink-0"
                   aria-label="Share"
@@ -2916,7 +2920,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         setMessage({ type: "success", text: t.copied });
                       }} className="text-xs text-blue-600 hover:text-blue-700 font-medium">{t.copyText}</button>
                     )}
-                    <button onClick={() => { const blob = new Blob([htmlPreview || ""], { type: "text/html" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "preview.html"; a.click(); URL.revokeObjectURL(url); }}
+                    <button onClick={() => downloadBlob(new Blob([htmlPreview || ""], { type: "text/html" }), "preview.html")}
                       className="text-xs text-blue-600 hover:text-blue-700 font-medium">HTML {t.download}</button>
                   </div>
                 </div>
