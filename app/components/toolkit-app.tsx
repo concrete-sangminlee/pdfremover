@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { TOOLS, VALID_TOOLS, type Tool, type View, type Lang } from "../lib/config";
+import { parsePageRangeGroups, parsePageRanges, type PageRange } from "../lib/page-ranges";
 
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
 let _pdfLib: typeof import("pdf-lib") | null = null;
@@ -612,41 +613,6 @@ async function downloadZip(files: { name: string; data: Uint8Array }[], zipName 
   URL.revokeObjectURL(url);
 }
 
-interface PageRange {
-  start: number;
-  end: number;
-}
-
-function parsePageRangeGroups(input: string, total: number): PageRange[] | null {
-  const ranges: PageRange[] = [];
-  for (const part of input.split(",")) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-
-    const match = trimmed.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
-    if (!match) return null;
-
-    const start = Number(match[1]);
-    const end = Number(match[2] ?? match[1]);
-    if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
-    if (start < 1 || end < 1 || start > total || end > total || start > end) return null;
-
-    ranges.push({ start, end });
-  }
-  return ranges.length > 0 ? ranges : null;
-}
-
-function parsePageRanges(input: string, total: number): number[] {
-  const ranges = parsePageRangeGroups(input, total);
-  if (!ranges) return [];
-
-  const pages: number[] = [];
-  for (const { start, end } of ranges) {
-    for (let i = start; i <= end; i++) pages.push(i);
-  }
-  return Array.from(new Set(pages)).sort((a, b) => a - b);
-}
-
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -687,6 +653,57 @@ function needsImagePdfRendering(text: string) {
 
 function normalizePdfText(text: string) {
   return text.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
+}
+
+function isSafePreviewUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("../")) {
+    return true;
+  }
+  if (/^data:image\/(?:png|gif|jpe?g|webp);base64,/i.test(trimmed)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(trimmed, window.location.origin);
+    return ["http:", "https:", "mailto:", "tel:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+async function sanitizePreviewHtml(html: string) {
+  const { default: DOMPurify } = await import("dompurify");
+  const clean = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "a", "b", "blockquote", "br", "code", "del", "em", "h1", "h2", "h3", "h4",
+      "h5", "h6", "i", "img", "li", "ol", "p", "pre", "s", "strong", "sub", "sup",
+      "table", "tbody", "td", "th", "thead", "tr", "u", "ul",
+    ],
+    ALLOWED_ATTR: ["alt", "colspan", "height", "href", "rowspan", "src", "start", "title", "width"],
+    ALLOW_DATA_ATTR: false,
+    FORBID_ATTR: ["style"],
+    FORBID_TAGS: ["button", "embed", "form", "iframe", "input", "object", "script", "style"],
+  });
+
+  const parsed = new DOMParser().parseFromString(clean, "text/html");
+  parsed.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((link) => {
+    const href = link.getAttribute("href") || "";
+    if (!isSafePreviewUrl(href)) {
+      link.removeAttribute("href");
+      return;
+    }
+    if (/^https?:/i.test(href)) {
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+    }
+  });
+  parsed.querySelectorAll<HTMLImageElement>("img[src]").forEach((img) => {
+    const src = img.getAttribute("src") || "";
+    if (!isSafePreviewUrl(src)) img.removeAttribute("src");
+  });
+
+  return parsed.body.innerHTML;
 }
 
 function wrapCanvasLine(ctx: CanvasRenderingContext2D, line: string, maxWidth: number) {
@@ -1014,7 +1031,7 @@ async function extractPdfText(data: ArrayBuffer): Promise<string> {
 async function docxToHtml(data: ArrayBuffer): Promise<string> {
   const mammoth = await import("mammoth");
   const result = await mammoth.convertToHtml({ arrayBuffer: data });
-  return result.value;
+  return sanitizePreviewHtml(result.value);
 }
 
 async function pdfToImages(data: ArrayBuffer, onProgress?: (pct: number) => void): Promise<{ name: string; data: Uint8Array }[]> {
@@ -1808,7 +1825,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "extract": {
           const buf = await files[0].arrayBuffer();
           const info = await getPdfInfo(buf, files[0].size);
-          const pages = parsePageRanges(pagesInput, info.pages);
+          const pages = parsePageRanges(pagesInput, info.pages, { preserveOrder: true });
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           const data = await extractPages(buf, pages);
           setResultData(data);
@@ -2045,6 +2062,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
   };
 
+  const executeRef = useRef(execute);
+  executeRef.current = execute;
+
   const canExecute = (() => {
     if (view === "txt2pdf") return !processing && textInput.trim().length > 0;
     if (files.length === 0 || processing) return false;
@@ -2066,7 +2086,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && view !== "home" && canExecute && !processing) {
         e.preventDefault();
-        execute();
+        executeRef.current();
       }
     };
     window.addEventListener("keydown", handler);
