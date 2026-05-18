@@ -43,6 +43,8 @@ export interface ToolDef {
   isNew?: boolean;
 }
 
+export const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
+
 export const TOOLS: ToolDef[] = [
   { id: "unlock",    icon: "\uD83D\uDD13", labelKey: "unlockLabel",    descKey: "unlockDesc",    labelEn: "Unlock",    hex: "#16a34a", tint: "#f0fdf4", category: "pdf" },
   { id: "merge",     icon: "\uD83D\uDCCB", labelKey: "mergeLabel",     descKey: "mergeDesc",     labelEn: "Merge",     hex: "#2563eb", tint: "#eff6ff", category: "pdf", multi: true },
@@ -54,12 +56,12 @@ export const TOOLS: ToolDef[] = [
   { id: "pagenum",   icon: "\uD83D\uDD22", labelKey: "pagenumLabel",   descKey: "pagenumDesc",   labelEn: "Numbers",   hex: "#d97706", tint: "#fffbeb", category: "pdf" },
   { id: "delete",    icon: "\uD83D\uDDD1\uFE0F", labelKey: "deleteLabel",    descKey: "deleteDesc",    labelEn: "Delete",    hex: "#dc2626", tint: "#fef2f2", category: "pdf" },
   { id: "info",      icon: "\u2139\uFE0F", labelKey: "infoLabel",      descKey: "infoDesc",      labelEn: "Info",      hex: "#64748b", tint: "#f8fafc", category: "pdf" },
-  { id: "img2pdf",   icon: "\uD83D\uDDBC\uFE0F", labelKey: "img2pdfLabel",   descKey: "img2pdfDesc",   labelEn: "IMG to PDF", hex: "#059669", tint: "#ecfdf5", category: "image", multi: true, accept: "image/*" },
+  { id: "img2pdf",   icon: "\uD83D\uDDBC\uFE0F", labelKey: "img2pdfLabel",   descKey: "img2pdfDesc",   labelEn: "IMG to PDF", hex: "#059669", tint: "#ecfdf5", category: "image", multi: true, accept: IMAGE_ACCEPT },
   { id: "pdf2img",   icon: "\uD83D\uDCF7",      labelKey: "pdf2imgLabel",   descKey: "pdf2imgDesc",   labelEn: "PDF to IMG", hex: "#8b5cf6", tint: "#f5f3ff", category: "image" },
-  { id: "imgcompress", icon: "\uD83D\uDDDC\uFE0F", labelKey: "imgcompressLabel", descKey: "imgcompressDesc", labelEn: "IMG Compress", hex: "#ca8a04", tint: "#fefce8", category: "image", multi: true, accept: "image/*" },
-  { id: "imgresize",  icon: "\uD83D\uDD0D",      labelKey: "imgresizeLabel",  descKey: "imgresizeDesc",  labelEn: "IMG Resize",  hex: "#6366f1", tint: "#eef2ff", category: "image", multi: true, accept: "image/*" },
-  { id: "imgstitch", icon: "\uD83E\uDDE9",      labelKey: "imgstitchLabel", descKey: "imgstitchDesc", labelEn: "IMG Stitch", hex: "#7c3aed", tint: "#f5f3ff", category: "image", multi: true, accept: "image/*", isNew: true },
-  { id: "imgconvert", icon: "\uD83C\uDFA8",      labelKey: "imgconvertLabel", descKey: "imgconvertDesc", labelEn: "IMG Convert", hex: "#e11d48", tint: "#fff1f2", category: "image", multi: true, accept: "image/*", isNew: true },
+  { id: "imgcompress", icon: "\uD83D\uDDDC\uFE0F", labelKey: "imgcompressLabel", descKey: "imgcompressDesc", labelEn: "IMG Compress", hex: "#ca8a04", tint: "#fefce8", category: "image", multi: true, accept: IMAGE_ACCEPT },
+  { id: "imgresize",  icon: "\uD83D\uDD0D",      labelKey: "imgresizeLabel",  descKey: "imgresizeDesc",  labelEn: "IMG Resize",  hex: "#6366f1", tint: "#eef2ff", category: "image", multi: true, accept: IMAGE_ACCEPT },
+  { id: "imgstitch", icon: "\uD83E\uDDE9",      labelKey: "imgstitchLabel", descKey: "imgstitchDesc", labelEn: "IMG Stitch", hex: "#7c3aed", tint: "#f5f3ff", category: "image", multi: true, accept: IMAGE_ACCEPT, isNew: true },
+  { id: "imgconvert", icon: "\uD83C\uDFA8",      labelKey: "imgconvertLabel", descKey: "imgconvertDesc", labelEn: "IMG Convert", hex: "#e11d48", tint: "#fff1f2", category: "image", multi: true, accept: IMAGE_ACCEPT, isNew: true },
   { id: "docx2html", icon: "\uD83D\uDCDD",      labelKey: "docx2htmlLabel", descKey: "docx2htmlDesc", labelEn: "DOCX View", hex: "#2563eb", tint: "#eff6ff", category: "document", accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
   { id: "pdftext",   icon: "\uD83D\uDCCB",      labelKey: "pdftextLabel",   descKey: "pdftextDesc",   labelEn: "PDF Text",  hex: "#0891b2", tint: "#ecfeff", category: "document" },
   { id: "txt2pdf",   icon: "\uD83D\uDCDD",      labelKey: "txt2pdfLabel",   descKey: "txt2pdfDesc",   labelEn: "Text to PDF", hex: "#475569", tint: "#f8fafc", category: "document" },

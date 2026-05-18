@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import ToolkitApp from "../components/toolkit-app";
 import { TOOLS, VALID_TOOLS, type Tool, type View } from "../lib/config";
+
+export const dynamicParams = false;
 
 const META: Record<string, { titleKo: string; titleEn: string; descKo: string; descEn: string }> = {
   unlock: {
@@ -132,7 +135,7 @@ export function generateStaticParams() {
 export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
   const meta = META[params.tool];
   if (!meta) {
-    return { title: "FileForge" };
+    notFound();
   }
 
   return {
@@ -164,6 +167,8 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
 }
 
 export default function ToolPage({ params }: { params: { tool: string } }) {
-  const tool = VALID_TOOLS.includes(params.tool as Tool) ? (params.tool as View) : "home";
+  if (!VALID_TOOLS.includes(params.tool as Tool)) notFound();
+
+  const tool = params.tool as View;
   return <ToolkitApp initialTool={tool} />;
 }

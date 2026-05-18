@@ -574,10 +574,12 @@ async function copyToClipboard(text: string): Promise<boolean> {
     ta.value = text;
     ta.style.cssText = "position:fixed;opacity:0";
     document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
+    try {
+      ta.select();
+      return document.execCommand("copy");
+    } finally {
+      ta.remove();
+    }
   }
 }
 
@@ -1568,6 +1570,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [pdfInfoResult, setPdfInfoResult] = useState<PdfInfo | null>(null);
   const [compressionInfo, setCompressionInfo] = useState<{ before: number; after: number } | null>(null);
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
+  const [procTime, setProcTime] = useState<number | null>(null);
 
   const t = T[lang];
 
@@ -1611,6 +1614,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setFiles([]);
     setMessage(null);
     setResultData(null);
+    setResultName("");
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
@@ -1622,6 +1626,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setPageInfo({});
     setConfirmDelete(false);
     setBatchProgress(-1);
+    setProcTime(null);
   };
   resetStateRef.current = resetState;
 
@@ -1769,8 +1774,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   }, [view]);
 
   // ─── Execute ───
-  const [procTime, setProcTime] = useState<number | null>(null);
-
   const execute = async () => {
     if (files.length === 0 && view !== "txt2pdf") return;
     const startTime = performance.now();
@@ -2554,7 +2557,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)}
               pageInfo={pageInfo}
               t={t}
-              acceptType={["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view) ? "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" : view === "docx2html" ? ".docx" : view === "html2pdf" ? ".html,.htm" : ".pdf"}
+              acceptType={activeTool?.accept || ".pdf"}
             />
             )}
 
@@ -2856,7 +2859,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {resultName} ({fmtSize(resultData.length)})
                 </button>
                 <div className="flex items-center justify-between">
-                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); setCompressionInfo(null); setHtmlPreview(null); setConfirmDelete(false); setBatchProgress(-1); }}
+                  <button onClick={resetState}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
                     {t.processAnother}
                   </button>
@@ -2897,7 +2900,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </button>
                 ))}
                 <div className="flex items-center justify-between pt-1">
-                  <button onClick={() => { setFiles([]); setResultData(null); setResultMulti([]); setMessage(null); setProcTime(null); setPageInfo({}); setCompressionInfo(null); setHtmlPreview(null); setConfirmDelete(false); setBatchProgress(-1); }}
+                  <button onClick={resetState}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
                     {t.processAnother}
                   </button>
