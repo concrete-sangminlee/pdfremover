@@ -1,7 +1,6 @@
 "use client";
 
 export default function Error({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -15,7 +14,7 @@ export default function Error({
           Something went wrong
         </h2>
         <p className="text-gray-400 dark:text-slate-400 text-sm mb-6 leading-relaxed">
-          {error.message || "An unexpected error occurred while processing your request."}
+          An unexpected error occurred while processing your request.
         </p>
         <div className="flex gap-3 justify-center">
           <button

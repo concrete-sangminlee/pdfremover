@@ -117,7 +117,7 @@ Most online document tools upload your files to remote servers. **FileForge proc
 - 📲 **PWA ready** — Web app manifest, SVG favicon, Apple mobile web app support
 - ♿ **Accessible** — Skip-to-content, `aria-labels`, `focus-visible`, semantic HTML, WCAG AA, `prefers-reduced-motion`
 - 🛡️ **Security hardened** — XSS-safe (DOMParser), CSP headers, X-Frame-Options, no server-side data
-- 💾 **Persistent state** — Language, theme, history, and processed count stored in `localStorage`
+- 💾 **Persistent state** — Language, theme, and processed count stored in `localStorage`; file history stays session-only
 - 🔒 **Memory safe** — Proper cleanup of Object URLs to prevent memory leaks
 - 🔤 **Optimized fonts** — Self-hosted Inter via `next/font` (no external requests)
 - 📦 **Cache optimized** — Immutable cache headers for static assets (worker, favicon)

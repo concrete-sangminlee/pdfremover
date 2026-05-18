@@ -531,7 +531,7 @@ function isPreviewableImage(filename: string) {
 }
 
 function isImageFile(file: File) {
-  return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name);
+  return ["image/png", "image/jpeg", "image/webp"].includes(file.type) || isPreviewableImage(file.name);
 }
 
 function isPdfFile(file: File) {
@@ -655,18 +655,33 @@ function normalizePdfText(text: string) {
   return text.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
 }
 
-function isSafePreviewUrl(value: string) {
+function isSafePreviewLink(value: string) {
   const trimmed = value.trim();
-  if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("../")) {
+  if (!trimmed || trimmed.startsWith("#")) {
     return true;
   }
+
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
+    return false;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return ["http:", "https:", "mailto:", "tel:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function isSafePreviewImage(value: string) {
+  const trimmed = value.trim();
   if (/^data:image\/(?:png|gif|jpe?g|webp);base64,/i.test(trimmed)) {
     return true;
   }
 
   try {
-    const url = new URL(trimmed, window.location.origin);
-    return ["http:", "https:", "mailto:", "tel:"].includes(url.protocol);
+    const url = new URL(trimmed);
+    return url.protocol === "blob:";
   } catch {
     return false;
   }
@@ -689,7 +704,7 @@ async function sanitizePreviewHtml(html: string) {
   const parsed = new DOMParser().parseFromString(clean, "text/html");
   parsed.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((link) => {
     const href = link.getAttribute("href") || "";
-    if (!isSafePreviewUrl(href)) {
+    if (!isSafePreviewLink(href)) {
       link.removeAttribute("href");
       return;
     }
@@ -700,7 +715,7 @@ async function sanitizePreviewHtml(html: string) {
   });
   parsed.querySelectorAll<HTMLImageElement>("img[src]").forEach((img) => {
     const src = img.getAttribute("src") || "";
-    if (!isSafePreviewUrl(src)) img.removeAttribute("src");
+    if (!isSafePreviewImage(src)) img.removeAttribute("src");
   });
 
   return parsed.body.innerHTML;
@@ -1071,7 +1086,7 @@ async function imagesToPDF(imageFiles: File[]): Promise<Uint8Array> {
     } else if (isPng) {
       img = await doc.embedPng(bytes);
     } else {
-      // Convert browser-decodable formats such as WebP/GIF/SVG to PNG, then embed.
+      // Convert browser-decodable non-JPEG/PNG files such as WebP to PNG, then embed.
       const image = await loadImageFromFile(file);
       const canvas = document.createElement("canvas");
       canvas.width = image.width;
@@ -1129,7 +1144,11 @@ async function getPdfInfo(data: ArrayBuffer, size: number): Promise<PdfInfo> {
       encrypted: false,
       size,
     };
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message.toLowerCase() : "";
+    if (!message.includes("encrypt") && !message.includes("password")) {
+      throw err;
+    }
     return { pages: 0, title: "", author: "", creator: "", producer: "", encrypted: true, size };
   }
 }
@@ -1497,11 +1516,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [processCount, setProcessCount] = useState(0);
   const [pageInfo, setPageInfo] = useState<Record<string, number>>({});
 
-  // Hydrate from localStorage on mount
+  // Hydrate non-sensitive preferences from localStorage on mount
   useEffect(() => {
     setLang(detectLang());
-    setHistory(loadStorage<HistoryItem[]>("pdftk_history", []));
     setProcessCount(loadStorage<number>("pdftk_count", 0));
+    try { localStorage.removeItem("pdftk_history"); } catch {}
     // Dark mode: check stored preference or system preference
     const storedDark = localStorage.getItem("pdftk_dark");
     if (storedDark !== null) {
@@ -1511,9 +1530,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
   }, []);
 
-  // Persist lang, history, count, dark mode
+  // Persist non-sensitive preferences only.
   useEffect(() => { saveStorage("pdftk_lang", lang); document.documentElement.lang = lang === "ko" ? "ko" : "en"; }, [lang]);
-  useEffect(() => { if (history.length > 0) saveStorage("pdftk_history", history); }, [history]);
   useEffect(() => { if (processCount > 0) saveStorage("pdftk_count", processCount); }, [processCount]);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
