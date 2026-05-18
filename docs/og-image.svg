@@ -17,7 +17,7 @@
 
   <!-- Tagline -->
   <text x="600" y="240" font-family="system-ui" font-size="20" fill="#475569" text-anchor="middle">Open-source, privacy-first PDF toolkit</text>
-  <text x="600" y="270" font-family="system-ui" font-size="16" fill="#94a3b8" text-anchor="middle">10 tools · 100% browser-based · No server uploads</text>
+  <text x="600" y="270" font-family="system-ui" font-size="16" fill="#94a3b8" text-anchor="middle">20 tools · 100% browser-based · No server uploads</text>
 
   <!-- Feature pills -->
   <g transform="translate(200, 310)">
@@ -39,8 +39,8 @@
 
   <!-- Stats -->
   <g transform="translate(300, 400)">
-    <text x="0" y="0" font-family="system-ui" font-size="36" font-weight="800" fill="#2563eb">104KB</text>
-    <text x="0" y="24" font-family="system-ui" font-size="12" fill="#94a3b8">First Load</text>
+    <text x="0" y="0" font-family="system-ui" font-size="36" font-weight="800" fill="#2563eb">Lazy</text>
+    <text x="0" y="24" font-family="system-ui" font-size="12" fill="#94a3b8">Tool Loading</text>
 
     <text x="200" y="0" font-family="system-ui" font-size="36" font-weight="800" fill="#0f172a">10</text>
     <text x="200" y="24" font-family="system-ui" font-size="12" fill="#94a3b8">PDF Tools</text>

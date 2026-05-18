@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ToolkitApp from "../components/toolkit-app";
-import { TOOLS, VALID_TOOLS, type Tool, type View } from "../lib/config";
+import { VALID_TOOLS, isValidTool, type Tool } from "../lib/config";
 
 export const dynamicParams = false;
 
@@ -133,11 +133,11 @@ export function generateStaticParams() {
 }
 
 export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
-  if (!VALID_TOOLS.includes(params.tool as Tool)) {
+  if (!isValidTool(params.tool)) {
     notFound();
   }
 
-  const tool = params.tool as Tool;
+  const tool = params.tool;
   const meta = META[tool];
 
   return {
@@ -169,8 +169,7 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
 }
 
 export default function ToolPage({ params }: { params: { tool: string } }) {
-  if (!VALID_TOOLS.includes(params.tool as Tool)) notFound();
+  if (!isValidTool(params.tool)) notFound();
 
-  const tool = params.tool as View;
-  return <ToolkitApp initialTool={tool} />;
+  return <ToolkitApp initialTool={params.tool} />;
 }

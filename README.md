@@ -7,9 +7,9 @@
 No server uploads. No sign-ups. No limits. Just fast, secure document processing.
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Bundle Size](https://img.shields.io/badge/First_Load-104KB-green)](/)
+[![CI](https://github.com/concrete-sangminlee/pdfremover/actions/workflows/ci.yml/badge.svg)](https://github.com/concrete-sangminlee/pdfremover/actions/workflows/ci.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 [**Live Demo**](https://pdfcontrol.vercel.app) · [Report Bug](https://github.com/concrete-sangminlee/pdfremover/issues) · [Request Feature](https://github.com/concrete-sangminlee/pdfremover/issues)
@@ -30,7 +30,7 @@ Most online document tools upload your files to remote servers. **FileForge proc
 | **Completely Free** | ✅ | ❌ (freemium) |
 | **Open Source** | ✅ | ❌ |
 | **Works Offline** | ✅ | ❌ |
-| **First Load Size** | 104 KB | 2+ MB |
+| **Initial Load** | Optimized with lazy loading | Large app bundles |
 
 ---
 
@@ -88,7 +88,7 @@ Most online document tools upload your files to remote servers. **FileForge proc
 
 **Key design decisions:**
 
-- **Dynamic imports** — `pdf-lib` (225KB), `pdfjs-dist`, `jszip` (100KB), and `mammoth` are lazy-loaded only when a tool is actually used, keeping the initial bundle at just **104KB**
+- **Dynamic imports** — `pdf-lib`, `pdfjs-dist`, `jszip`, and `mammoth` are lazy-loaded only when a tool is actually used, keeping the initial route lightweight
 - **Static Site Generation** — All 21 pages are pre-rendered at build time for instant loading
 - **Zero backend** — No API routes, no database, no server-side processing. Deploy anywhere that serves static files
 - **SEO-first routing** — Each tool has its own URL (`/unlock`, `/merge`, etc.) with dedicated meta tags, Open Graph, and structured data
@@ -111,7 +111,7 @@ Most online document tools upload your files to remote servers. **FileForge proc
 - 🖼️ **Image previews** — Upload thumbnails and result grid preview for image operations
 
 ### Technical
-- ⚡ **112KB First Load** — Optimized through dynamic imports and tree-shaking
+- ⚡ **Light initial load** — Optimized through dynamic imports and tree-shaking
 - 🏗️ **21 static pages** — Pre-rendered with `generateStaticParams`
 - 🔍 **Full SEO** — Sitemap, robots.txt, per-tool meta tags, JSON-LD structured data
 - 📲 **PWA ready** — Web app manifest, SVG favicon, Apple mobile web app support
@@ -188,7 +188,7 @@ public/
 
 | Technology | Purpose |
 |-----------|---------|
-| [Next.js 14](https://nextjs.org) | Framework (Static Site Generation) |
+| [Next.js 16](https://nextjs.org) | Framework (Static Site Generation) |
 | [React 18](https://react.dev) | UI library |
 | [TypeScript 5](https://typescriptlang.org) | Type safety |
 | [Tailwind CSS 3](https://tailwindcss.com) | Styling |

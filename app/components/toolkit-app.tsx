@@ -1,7 +1,19 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { TOOLS, VALID_TOOLS, type Tool, type View, type Lang } from "../lib/config";
+import {
+  NO_PAGE_INFO_TOOLS,
+  NO_PDF_LIB_PRELOAD_TOOLS,
+  PAGE_INPUT_TOOLS,
+  TOOLS,
+  TOOL_BY_ID,
+  isImageInputTool,
+  isValidTool,
+  type Lang,
+  type Tool,
+  type View,
+} from "../lib/config";
+import { sanitizeOutputFilename } from "../lib/file-names";
 import { parsePageRangeGroups, parsePageRanges, type PageRange } from "../lib/page-ranges";
 
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
@@ -548,20 +560,22 @@ function isHtmlFile(file: File) {
 }
 
 function uniqueFilename(filename: string, seen: Map<string, number>) {
-  const count = seen.get(filename) ?? 0;
-  seen.set(filename, count + 1);
-  if (count === 0) return filename;
+  const safeName = sanitizeOutputFilename(filename);
+  const count = seen.get(safeName) ?? 0;
+  seen.set(safeName, count + 1);
+  if (count === 0) return safeName;
 
-  const dot = filename.lastIndexOf(".");
+  const dot = safeName.lastIndexOf(".");
   const suffix = ` (${count + 1})`;
   return dot > 0
-    ? `${filename.slice(0, dot)}${suffix}${filename.slice(dot)}`
-    : `${filename}${suffix}`;
+    ? `${safeName.slice(0, dot)}${suffix}${safeName.slice(dot)}`
+    : `${safeName}${suffix}`;
 }
 
 function replaceExtension(filename: string, replacement: string) {
   const dot = filename.lastIndexOf(".");
-  return dot > 0 ? `${filename.slice(0, dot)}${replacement}` : `${filename}${replacement}`;
+  const output = dot > 0 ? `${filename.slice(0, dot)}${replacement}` : `${filename}${replacement}`;
+  return sanitizeOutputFilename(output, `file${replacement}`);
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -587,7 +601,7 @@ function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = sanitizeOutputFilename(filename, "download");
   a.style.display = "none";
   document.body.appendChild(a);
   // Use setTimeout for Safari compatibility
@@ -611,7 +625,7 @@ async function downloadZip(files: { name: string; data: Uint8Array }[], zipName 
   const seen = new Map<string, number>();
   files.forEach((f) => zip.file(uniqueFilename(f.name, seen), toArrayBuffer(f.data)));
   const blob = await zip.generateAsync({ type: "blob" });
-  downloadBlob(blob, zipName);
+  downloadBlob(blob, sanitizeOutputFilename(zipName, "fileforge_output.zip"));
 }
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
@@ -1495,6 +1509,10 @@ function loadStorage<T>(key: string, fallback: T): T {
 function saveStorage(key: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
+function loadNumberStorage(key: string, fallback: number): number {
+  const value = loadStorage<unknown>(key, fallback);
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
 function detectLang(): Lang {
   if (typeof window === "undefined") return "ko";
   try {
@@ -1508,7 +1526,7 @@ function detectLang(): Lang {
 }
 
 // ━━━ Related tools map (extracted from render for performance) ━━━
-const RELATED_TOOLS: Record<string, Tool[]> = {
+const RELATED_TOOLS: Record<Tool, Tool[]> = {
   unlock: ["merge", "compress", "info", "split"],
   merge: ["split", "compress", "pagenum", "unlock"],
   split: ["merge", "extract", "delete", "pagenum"],
@@ -1547,7 +1565,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   // Hydrate non-sensitive preferences from localStorage on mount
   useEffect(() => {
     setLang(detectLang());
-    setProcessCount(loadStorage<number>("pdftk_count", 0));
+    setProcessCount(loadNumberStorage("pdftk_count", 0));
     try { localStorage.removeItem("pdftk_history"); } catch {}
     // Dark mode: check stored preference or system preference
     let storedDark: string | null = null;
@@ -1631,8 +1649,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Preload pdf-lib when entering a tool page (skip for tools that don't need it)
   useEffect(() => {
-    const skip = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
-    if (view !== "home" && !skip.includes(view)) getPdfLib();
+    if (view !== "home" && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) getPdfLib();
   }, [view]);
 
   // Clipboard paste support — moved after handleFiles definition
@@ -1681,8 +1698,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   useEffect(() => {
     const onPop = () => {
       const path = window.location.pathname.slice(1);
-      if (VALID_TOOLS.includes(path as Tool)) {
-        setView(path as Tool);
+      if (isValidTool(path)) {
+        setView(path);
       } else {
         setView("home");
       }
@@ -1721,7 +1738,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     // Validate files based on current tool
     let validFiles: File[];
     let nextMessage: { type: "success" | "error" | "warning"; text: string } | null = null;
-    if (["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) {
+    if (isImageInputTool(view)) {
       validFiles = newFiles.filter(isImageFile);
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
@@ -1764,7 +1781,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setProcTime(null);
     setConfirmDelete(false);
     setBatchProgress(-1);
-    if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
+    if (view !== "home" && !NO_PAGE_INFO_TOOLS.includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -1786,7 +1803,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   filesRef.current = files;
   handleFilesRef.current = handleFiles;
   useEffect(() => {
-    if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) return;
+    if (!isImageInputTool(view)) return;
     const handler = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -1821,8 +1838,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setProcTime(null);
     setBatchProgress(-1);
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
-    const noPdfLibTools = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
-    if (!_pdfLib && !noPdfLibTools.includes(view)) {
+    if (view !== "home" && !_pdfLib && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) {
       setMessage({ type: "warning", text: t.engineLoading });
       await getPdfLib();
       setMessage(null);
@@ -2144,7 +2160,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     return true;
   })();
 
-  const activeTool = TOOLS.find((td) => td.id === view);
+  const activeTool = view === "home" ? undefined : TOOL_BY_ID[view];
 
   // Ctrl+Enter to execute (must be after canExecute/execute are defined)
   useEffect(() => {
@@ -2436,7 +2452,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-6">{t.recentTitle}</h2>
                 <div className="space-y-1">
                   {history.slice(0, 8).map((h, i) => (
-                    <button key={i} onClick={() => h.toolId && VALID_TOOLS.includes(h.toolId as Tool) && goTool(h.toolId as Tool)}
+                    <button key={i} onClick={() => h.toolId && isValidTool(h.toolId) && goTool(h.toolId)}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors w-full text-left ${h.toolId ? "cursor-pointer" : "cursor-default"}`}>
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
                       <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1 truncate">
@@ -2598,7 +2614,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               onSelect={handleFiles}
               onRemove={files.length > 0 ? removeFile : undefined}
               onReorder={view === "merge" ? reorderFiles : undefined}
-              multiple={["merge", "unlock", "img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)}
+              multiple={activeTool?.multi}
               pageInfo={pageInfo}
               t={t}
               acceptType={activeTool?.accept || ".pdf"}
@@ -2636,7 +2652,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
 
             {/* Multi-image summary */}
-            {["imgcompress", "imgresize", "imgconvert", "imgstitch", "img2pdf"].includes(view) && files.length >= 2 && (
+            {isImageInputTool(view) && files.length >= 2 && (
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900 text-sm animate-fadeIn">
                 <span className="text-violet-700 dark:text-violet-400 font-medium">{files.length} {lang === "ko" ? "개 이미지 선택됨" : "images selected"}</span>
                 <span className="text-violet-500 dark:text-violet-400 text-xs font-mono">{fmtSize(files.reduce((sum, f) => sum + f.size, 0))}</span>
@@ -2644,7 +2660,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
 
             {/* Page count hint for single-file tools */}
-            {["split", "extract", "delete", "rotate"].includes(view) && files.length === 1 && (() => {
+            {PAGE_INPUT_TOOLS.includes(view) && files.length === 1 && (() => {
               const pc = pageInfo[files[0].name + files[0].size + files[0].lastModified];
               return pc > 0 ? (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-xs animate-fadeIn">
@@ -3031,7 +3047,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           <div className="mt-14 pt-8 border-t border-gray-100 dark:border-slate-800">
             <h3 className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">{t.relatedTools}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {RELATED_TOOLS[view as string]?.map((id) => TOOLS.find((td) => td.id === id)!).filter(Boolean).map((td) => (
+              {RELATED_TOOLS[view as Tool].map((id) => TOOL_BY_ID[id]).map((td) => (
                 <button key={td.id} onClick={() => goTool(td.id)}
                   className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-slate-800 hover:border-gray-200 dark:hover:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all text-left">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"

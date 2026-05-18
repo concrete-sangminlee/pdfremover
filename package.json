@@ -31,8 +31,10 @@
   ],
   "scripts": {
     "dev": "next dev",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "next build",
+    "verify": "npm run typecheck && npm test && npm audit && npm run build",
     "start": "next start"
   },
   "dependencies": {

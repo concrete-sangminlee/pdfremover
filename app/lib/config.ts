@@ -68,4 +68,18 @@ export const TOOLS: ToolDef[] = [
   { id: "html2pdf",  icon: "\uD83C\uDF10",      labelKey: "html2pdfLabel",  descKey: "html2pdfDesc",  labelEn: "HTML to PDF", hex: "#0ea5e9", tint: "#f0f9ff", category: "document", accept: ".html,.htm,text/html", isNew: true },
 ];
 
+export const TOOL_BY_ID = Object.fromEntries(TOOLS.map((tool) => [tool.id, tool])) as Record<Tool, ToolDef>;
 export const VALID_TOOLS = TOOLS.map((t) => t.id);
+
+export const IMAGE_INPUT_TOOLS: readonly Tool[] = ["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"];
+export const NO_PAGE_INFO_TOOLS: readonly Tool[] = [...IMAGE_INPUT_TOOLS, "docx2html", "html2pdf"];
+export const NO_PDF_LIB_PRELOAD_TOOLS: readonly Tool[] = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
+export const PAGE_INPUT_TOOLS: readonly Tool[] = ["split", "extract", "delete", "rotate"];
+
+export function isValidTool(value: string): value is Tool {
+  return VALID_TOOLS.includes(value as Tool);
+}
+
+export function isImageInputTool(value: View): boolean {
+  return IMAGE_INPUT_TOOLS.includes(value as Tool);
+}
