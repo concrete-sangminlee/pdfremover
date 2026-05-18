@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ToolkitApp from "../components/toolkit-app";
-import { VALID_TOOLS, isValidTool, type Tool } from "../lib/config";
+import { TOOL_BY_ID, VALID_TOOLS, isValidTool, type Tool, type ToolCategory } from "../lib/config";
 
 export const dynamicParams = false;
 
@@ -132,6 +132,12 @@ export function generateStaticParams() {
   return VALID_TOOLS.map((tool) => ({ tool }));
 }
 
+const CATEGORY_KEYWORDS: Record<ToolCategory, string[]> = {
+  image: ["image tool", "free image tool", "online image converter"],
+  document: ["document tool", "free document tool"],
+  pdf: ["PDF tool", "free PDF", "online PDF"],
+};
+
 export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
   if (!isValidTool(params.tool)) {
     notFound();
@@ -146,9 +152,7 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
     keywords: [
       meta.titleEn,
       meta.titleKo,
-      ...(tool.startsWith("img") ? ["image tool", "free image tool", "online image converter"] : []),
-      ...(["docx2html", "pdftext", "txt2pdf", "html2pdf"].includes(tool) ? ["document tool", "free document tool"] : []),
-      ...(!tool.startsWith("img") && !["docx2html", "txt2pdf", "html2pdf"].includes(tool) ? ["PDF tool", "free PDF", "online PDF"] : []),
+      ...CATEGORY_KEYWORDS[TOOL_BY_ID[tool].category],
       "FileForge",
     ],
     openGraph: {

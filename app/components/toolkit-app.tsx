@@ -1652,29 +1652,31 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view !== "home" && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) getPdfLib();
   }, [view]);
 
-  // Clipboard paste support — moved after handleFiles definition
-
   const addHistory = useCallback((action: string, file: string, ok: boolean, toolId?: string) => {
     setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
   }, []);
 
-  const resetState = () => {
-    setFiles([]);
-    setMessage(null);
+  const clearResults = () => {
     setResultData(null);
-    setResultName("");
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
     setHtmlPreview(null);
+    setProcTime(null);
+    setBatchProgress(-1);
+  };
+
+  const resetState = () => {
+    setFiles([]);
+    setMessage(null);
+    setResultName("");
     setRangeInput("");
     setPagesInput("");
     setRotatePagesInput("");
     setDeleteInput("");
     setPageInfo({});
     setConfirmDelete(false);
-    setBatchProgress(-1);
-    setProcTime(null);
+    clearResults();
   };
   resetStateRef.current = resetState;
 
@@ -1773,14 +1775,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
     setFiles(validFiles);
     setMessage(nextMessage);
-    setResultData(null);
-    setResultMulti([]);
-    setPdfInfoResult(null);
-    setCompressionInfo(null);
-    setHtmlPreview(null);
-    setProcTime(null);
     setConfirmDelete(false);
-    setBatchProgress(-1);
+    clearResults();
     if (view !== "home" && !NO_PAGE_INFO_TOOLS.includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
@@ -1829,14 +1825,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     const startTime = performance.now();
     setProcessing(true);
     setMessage(null);
-    setResultData(null);
     setResultName("");
-    setResultMulti([]);
-    setPdfInfoResult(null);
-    setCompressionInfo(null);
-    setHtmlPreview(null);
-    setProcTime(null);
-    setBatchProgress(-1);
+    clearResults();
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
     if (view !== "home" && !_pdfLib && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) {
       setMessage({ type: "warning", text: t.engineLoading });
@@ -2109,14 +2099,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           recordSuccess(`${files.length} images`);
           break;
         }
-        case "info": {
-          const buf = await files[0].arrayBuffer();
-          setPdfInfoResult(await getPdfInfo(buf, files[0].size));
-          completed = true;
-          break;
-        }
       }
-      if (completed && view !== "info") setProcessCount((c) => c + 1);
+      if (completed) setProcessCount((c) => c + 1);
     } catch (err: unknown) {
       let errMsg = t.msgError;
       if (err instanceof Error) {

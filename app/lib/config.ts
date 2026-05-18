@@ -81,5 +81,5 @@ export function isValidTool(value: string): value is Tool {
 }
 
 export function isImageInputTool(value: View): boolean {
-  return IMAGE_INPUT_TOOLS.includes(value as Tool);
+  return (IMAGE_INPUT_TOOLS as readonly View[]).includes(value);
 }
