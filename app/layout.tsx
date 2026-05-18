@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { SITE_URL } from "./lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,11 +40,12 @@ export const metadata: Metadata = {
   creator: "FileForge",
   publisher: "FileForge",
   robots: { index: true, follow: true },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://pdfcontrol.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     type: "website",
     locale: "ko_KR",
     alternateLocale: "en_US",
+    url: SITE_URL,
     siteName: "FileForge",
     title: "FileForge — Free Online Document Toolkit",
     description: "20+ free tools for PDF, images & documents. Unlock, merge, split, convert — all in your browser.",

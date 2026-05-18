@@ -5,7 +5,7 @@ import { TOOLS, VALID_TOOLS, type Tool, type View } from "../lib/config";
 
 export const dynamicParams = false;
 
-const META: Record<string, { titleKo: string; titleEn: string; descKo: string; descEn: string }> = {
+const META: Record<Tool, { titleKo: string; titleEn: string; descKo: string; descEn: string }> = {
   unlock: {
     titleKo: "PDF 암호 해제",
     titleEn: "Unlock PDF",
@@ -133,10 +133,12 @@ export function generateStaticParams() {
 }
 
 export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
-  const meta = META[params.tool];
-  if (!meta) {
+  if (!VALID_TOOLS.includes(params.tool as Tool)) {
     notFound();
   }
+
+  const tool = params.tool as Tool;
+  const meta = META[tool];
 
   return {
     title: meta.titleEn,
@@ -144,9 +146,9 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
     keywords: [
       meta.titleEn,
       meta.titleKo,
-      ...(params.tool.startsWith("img") ? ["image tool", "free image tool", "online image converter"] : []),
-      ...(["docx2html", "pdftext", "txt2pdf", "html2pdf"].includes(params.tool) ? ["document tool", "free document tool"] : []),
-      ...(!params.tool.startsWith("img") && !["docx2html", "txt2pdf", "html2pdf"].includes(params.tool) ? ["PDF tool", "free PDF", "online PDF"] : []),
+      ...(tool.startsWith("img") ? ["image tool", "free image tool", "online image converter"] : []),
+      ...(["docx2html", "pdftext", "txt2pdf", "html2pdf"].includes(tool) ? ["document tool", "free document tool"] : []),
+      ...(!tool.startsWith("img") && !["docx2html", "txt2pdf", "html2pdf"].includes(tool) ? ["PDF tool", "free PDF", "online PDF"] : []),
       "FileForge",
     ],
     openGraph: {
@@ -161,7 +163,7 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
       description: meta.descEn,
     },
     alternates: {
-      canonical: `/${params.tool}`,
+      canonical: `/${tool}`,
     },
   };
 }

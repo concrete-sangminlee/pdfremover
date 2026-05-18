@@ -1033,15 +1033,24 @@ async function compressImage(file: File, quality: number): Promise<{ name: strin
 async function extractPdfText(data: ArrayBuffer): Promise<string> {
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
-  const pages: string[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    const text = content.items.map((item: unknown) => (item as { str?: string }).str || "").join(" ");
-    pages.push(`--- Page ${i} ---\n${text}`);
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
+  const doc = await loadingTask.promise;
+  try {
+    const pages: string[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      try {
+        const content = await page.getTextContent();
+        const text = content.items.map((item: unknown) => (item as { str?: string }).str || "").join(" ");
+        pages.push(`--- Page ${i} ---\n${text}`);
+      } finally {
+        page.cleanup();
+      }
+    }
+    return pages.join("\n\n");
+  } finally {
+    await doc.destroy();
   }
-  return pages.join("\n\n");
 }
 
 async function docxToHtml(data: ArrayBuffer): Promise<string> {
@@ -1055,23 +1064,37 @@ async function pdfToImages(data: ArrayBuffer, onProgress?: (pct: number) => void
   pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
   const doc = await loadingTask.promise;
-  const results: { name: string; data: Uint8Array }[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    onProgress?.(Math.round(((i - 1) / doc.numPages) * 100));
-    const page = await doc.getPage(i);
-    const scale = 2;
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d")!;
-    const renderContext = { canvasContext: ctx, viewport };
-    await page.render(renderContext as Parameters<typeof page.render>[0]).promise;
-    const blob = await canvasToBlob(canvas, "image/png");
-    results.push({ name: `page_${i}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+  try {
+    const results: { name: string; data: Uint8Array }[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      onProgress?.(Math.round(((i - 1) / doc.numPages) * 100));
+      const page = await doc.getPage(i);
+      let canvas: HTMLCanvasElement | null = null;
+      try {
+        const scale = 2;
+        const viewport = page.getViewport({ scale });
+        canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        const renderContext = { canvasContext: ctx, viewport };
+        await page.render(renderContext as Parameters<typeof page.render>[0]).promise;
+        const blob = await canvasToBlob(canvas, "image/png");
+        const imageData = new Uint8Array(await blob.arrayBuffer());
+        results.push({ name: `page_${i}.png`, data: imageData });
+      } finally {
+        if (canvas) {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+        page.cleanup();
+      }
+    }
+    onProgress?.(100);
+    return results;
+  } finally {
+    await doc.destroy();
   }
-  onProgress?.(100);
-  return results;
 }
 
 async function imagesToPDF(imageFiles: File[]): Promise<Uint8Array> {
@@ -1474,8 +1497,12 @@ function saveStorage(key: string, value: unknown) {
 }
 function detectLang(): Lang {
   if (typeof window === "undefined") return "ko";
-  const stored = localStorage.getItem("pdftk_lang");
-  if (stored === "en" || stored === "ko") return stored;
+  try {
+    const stored = localStorage.getItem("pdftk_lang");
+    if (stored === "en" || stored === "ko") return stored;
+    const parsed = stored ? JSON.parse(stored) : null;
+    if (parsed === "en" || parsed === "ko") return parsed;
+  } catch {}
   const nav = navigator.language.toLowerCase();
   return nav.startsWith("ko") ? "ko" : "en";
 }
@@ -1523,7 +1550,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setProcessCount(loadStorage<number>("pdftk_count", 0));
     try { localStorage.removeItem("pdftk_history"); } catch {}
     // Dark mode: check stored preference or system preference
-    const storedDark = localStorage.getItem("pdftk_dark");
+    let storedDark: string | null = null;
+    try { storedDark = localStorage.getItem("pdftk_dark"); } catch {}
     if (storedDark !== null) {
       setDark(storedDark === "true");
     } else {
@@ -1532,11 +1560,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   }, []);
 
   // Persist non-sensitive preferences only.
-  useEffect(() => { saveStorage("pdftk_lang", lang); document.documentElement.lang = lang === "ko" ? "ko" : "en"; }, [lang]);
+  useEffect(() => {
+    try { localStorage.setItem("pdftk_lang", lang); } catch {}
+    document.documentElement.lang = lang === "ko" ? "ko" : "en";
+  }, [lang]);
   useEffect(() => { if (processCount > 0) saveStorage("pdftk_count", processCount); }, [processCount]);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("pdftk_dark", String(dark));
+    try { localStorage.setItem("pdftk_dark", String(dark)); } catch {}
   }, [dark]);
 
   // Tool-specific state
@@ -1751,7 +1782,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Clipboard paste support for image tools (uses refs to avoid stale closures)
   const filesRef = useRef(files);
+  const handleFilesRef = useRef(handleFiles);
   filesRef.current = files;
+  handleFilesRef.current = handleFiles;
   useEffect(() => {
     if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) return;
     const handler = (e: ClipboardEvent) => {
@@ -1766,7 +1799,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
       if (imageFiles.length > 0) {
         e.preventDefault();
-        handleFiles([...filesRef.current, ...imageFiles]);
+        handleFilesRef.current([...filesRef.current, ...imageFiles]);
       }
     };
     window.addEventListener("paste", handler);
@@ -1780,7 +1813,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setProcessing(true);
     setMessage(null);
     setResultData(null);
+    setResultName("");
     setResultMulti([]);
+    setPdfInfoResult(null);
+    setCompressionInfo(null);
+    setHtmlPreview(null);
+    setProcTime(null);
+    setBatchProgress(-1);
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
     const noPdfLibTools = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
     if (!_pdfLib && !noPdfLibTools.includes(view)) {
@@ -1788,12 +1827,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       await getPdfLib();
       setMessage(null);
     }
-    setProcTime(null);
-    setCompressionInfo(null);
-    setBatchProgress(-1);
 
+    let completed = false;
     try {
       const toolLabel = t[activeTool?.labelKey || ""] || "";
+      const recordSuccess = (fileLabel: string) => {
+        completed = true;
+        addHistory(toolLabel, fileLabel, true, view);
+      };
       switch (view) {
         case "unlock": {
           if (files.length === 1) {
@@ -1802,7 +1843,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultData(data);
             setResultName(replaceExtension(files[0].name, "_unlocked.pdf"));
             setMessage({ type: "success", text: t.msgUnlocked });
-            addHistory(toolLabel, files[0].name, true, view);
+            recordSuccess(files[0].name);
           } else {
             // Batch unlock with progress
             const results: { name: string; data: Uint8Array }[] = [];
@@ -1816,7 +1857,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setBatchProgress(100);
             setResultMulti(results);
             setMessage({ type: "success", text: `${files.length}${t.msgBatchUnlocked}` });
-            addHistory(toolLabel, `${files.length} files`, true, view);
+            recordSuccess(`${files.length} files`);
           }
           break;
         }
@@ -1827,7 +1868,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName("merged.pdf");
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${files.length}${t.msgMerged} (${t.msgMergedPages.replace("{n}", String(info.pages))})` });
-          addHistory(toolLabel, `${files.length} files`, true, view);
+          recordSuccess(`${files.length} files`);
           break;
         }
         case "split": {
@@ -1840,7 +1881,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const results = await splitPDF(buf, ranges);
           setResultMulti(results);
           setMessage({ type: "success", text: `${results.length}${t.msgSplit}` });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "extract": {
@@ -1852,7 +1893,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(replaceExtension(files[0].name, "_extracted.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgExtracted}` });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "rotate": {
@@ -1867,7 +1908,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(replaceExtension(files[0].name, "_rotated.pdf"));
           setMessage({ type: "success", text: `${rotateDeg}°${t.msgRotated}` });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "compress": {
@@ -1884,7 +1925,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultName(files[0].name);
             setMessage({ type: "warning", text: t.compressAlready });
           }
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "watermark": {
@@ -1893,7 +1934,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(replaceExtension(files[0].name, "_watermarked.pdf"));
           setMessage({ type: "success", text: t.msgWatermarked });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "pagenum": {
@@ -1903,7 +1944,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(replaceExtension(files[0].name, "_numbered.pdf"));
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${info.pages}${t.msgNumbered}` });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "delete": {
@@ -1926,7 +1967,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(replaceExtension(files[0].name, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "imgstitch": {
@@ -1935,7 +1976,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(`stitched_${stitchDir}.png`);
           setMessage({ type: "success", text: `${files.length}${t.msgStitched}` });
-          addHistory(toolLabel, `${files.length} images`, true, view);
+          recordSuccess(`${files.length} images`);
           break;
         }
         case "txt2pdf": {
@@ -1944,7 +1985,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName("text.pdf");
           setMessage({ type: "success", text: t.msgTxtDone });
-          addHistory(toolLabel, "text input", true, view);
+          recordSuccess("text input");
           break;
         }
         case "imgconvert": {
@@ -1961,7 +2002,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultMulti(results);
           }
           setMessage({ type: "success", text: `${results.length}${t.msgImgConverted} (${imgOutputFormat.toUpperCase()})` });
-          addHistory(toolLabel, `${files.length} images`, true, view);
+          recordSuccess(`${files.length} images`);
           break;
         }
         case "html2pdf": {
@@ -1971,7 +2012,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(replaceExtension(files[0].name, ".pdf"));
           setMessage({ type: "success", text: t.msgHtmlDone });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "imgresize": {
@@ -1989,7 +2030,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultMulti(results);
           }
           setMessage({ type: "success", text: `${results.length}${t.msgImgResized} (${Math.round(imgScale * 100)}%)` });
-          addHistory(toolLabel, `${files.length} images`, true, view);
+          recordSuccess(`${files.length} images`);
           break;
         }
         case "imgcompress": {
@@ -2015,7 +2056,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setMessage(saved > 0
             ? { type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${pct}% ${t.compressPercent})` }
             : { type: "warning", text: t.compressAlready });
-          addHistory(toolLabel, `${files.length} images`, true, view);
+          recordSuccess(`${files.length} images`);
           break;
         }
         case "pdftext": {
@@ -2023,7 +2064,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const text = await extractPdfText(buf);
           setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${escapeHtml(text)}</pre>`);
           setMessage({ type: "success", text: t.msgTextExtracted });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "docx2html": {
@@ -2031,7 +2072,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const html = await docxToHtml(buf);
           setHtmlPreview(html);
           setMessage({ type: "success", text: t.msgDocxDone });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "pdf2img": {
@@ -2040,7 +2081,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const images = await pdfToImages(buf, (pct) => setBatchProgress(pct));
           setResultMulti(images);
           setMessage({ type: "success", text: `${images.length}${t.msgPdfToImgDone}` });
-          addHistory(toolLabel, files[0].name, true, view);
+          recordSuccess(files[0].name);
           break;
         }
         case "img2pdf": {
@@ -2049,16 +2090,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(files.length === 1 ? replaceExtension(files[0].name, ".pdf") : `${files.length}_images.pdf`);
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${files.length}${t.msgImgToPdfDone} (${info.pages}p)` });
-          addHistory(toolLabel, `${files.length} images`, true, view);
+          recordSuccess(`${files.length} images`);
           break;
         }
         case "info": {
           const buf = await files[0].arrayBuffer();
           setPdfInfoResult(await getPdfInfo(buf, files[0].size));
+          completed = true;
           break;
         }
       }
-      if (view !== "info") setProcessCount((c) => c + 1);
+      if (completed && view !== "info") setProcessCount((c) => c + 1);
     } catch (err: unknown) {
       let errMsg = t.msgError;
       if (err instanceof Error) {
@@ -2075,11 +2117,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     } finally {
       setProcessing(false);
       setBatchProgress(-1);
-      setProcTime(Math.round(performance.now() - startTime));
-      setTimeout(() => {
-        const el = document.getElementById("results-area");
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
+      if (completed) {
+        setProcTime(Math.round(performance.now() - startTime));
+        setTimeout(() => {
+          const el = document.getElementById("results-area");
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      }
     }
   };
 
