@@ -112,7 +112,7 @@ export const T: Record<Lang, Record<string, string>> = {
     rotScope: "적용 범위",
     rotAll: "전체",
     rotSpecific: "특정",
-    rotPagesPlaceholder: "예: 1, 3, 5",
+    rotPagesPlaceholder: "예: 1, 3, 5-7",
     wmText: "워터마크 텍스트",
     wmSize: "크기",
     wmOpacity: "투명도",
@@ -344,7 +344,7 @@ export const T: Record<Lang, Record<string, string>> = {
     rotScope: "Scope",
     rotAll: "All",
     rotSpecific: "Specific",
-    rotPagesPlaceholder: "e.g. 1, 3, 5",
+    rotPagesPlaceholder: "e.g. 1, 3, 5-7",
     wmText: "Watermark text",
     wmSize: "Size",
     wmOpacity: "Opacity",
@@ -509,6 +509,60 @@ function fmtTime() {
   return new Date().toLocaleTimeString(undefined, { hour12: false });
 }
 
+function toArrayBuffer(data: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(data.byteLength);
+  copy.set(data);
+  return copy.buffer;
+}
+
+function getMimeTypeForFilename(filename: string) {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html";
+  if (lower.endsWith(".zip")) return "application/zip";
+  return "application/pdf";
+}
+
+function isPreviewableImage(filename: string) {
+  return /\.(png|jpe?g|webp)$/i.test(filename);
+}
+
+function isImageFile(file: File) {
+  return file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(file.name);
+}
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function isDocxFile(file: File) {
+  return file.name.toLowerCase().endsWith(".docx") || file.type.includes("wordprocessingml");
+}
+
+function isHtmlFile(file: File) {
+  const name = file.name.toLowerCase();
+  return name.endsWith(".html") || name.endsWith(".htm") || file.type === "text/html";
+}
+
+function uniqueFilename(filename: string, seen: Map<string, number>) {
+  const count = seen.get(filename) ?? 0;
+  seen.set(filename, count + 1);
+  if (count === 0) return filename;
+
+  const dot = filename.lastIndexOf(".");
+  const suffix = ` (${count + 1})`;
+  return dot > 0
+    ? `${filename.slice(0, dot)}${suffix}${filename.slice(dot)}`
+    : `${filename}${suffix}`;
+}
+
+function replaceExtension(filename: string, replacement: string) {
+  const dot = filename.lastIndexOf(".");
+  return dot > 0 ? `${filename.slice(0, dot)}${replacement}` : `${filename}${replacement}`;
+}
+
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
@@ -527,7 +581,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 function download(data: Uint8Array, filename: string, mime = "application/pdf") {
-  const blob = new Blob([data.buffer as ArrayBuffer], { type: mime });
+  const blob = new Blob([toArrayBuffer(data)], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -545,7 +599,8 @@ function download(data: Uint8Array, filename: string, mime = "application/pdf") 
 async function downloadZip(files: { name: string; data: Uint8Array }[], zipName = "fileforge_output.zip") {
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
-  files.forEach((f) => zip.file(f.name, f.data));
+  const seen = new Map<string, number>();
+  files.forEach((f) => zip.file(uniqueFilename(f.name, seen), toArrayBuffer(f.data)));
   const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -557,24 +612,144 @@ async function downloadZip(files: { name: string; data: Uint8Array }[], zipName 
   URL.revokeObjectURL(url);
 }
 
-function parsePageRanges(input: string, total: number): number[] {
-  const pages: number[] = [];
+interface PageRange {
+  start: number;
+  end: number;
+}
+
+function parsePageRangeGroups(input: string, total: number): PageRange[] | null {
+  const ranges: PageRange[] = [];
   for (const part of input.split(",")) {
     const trimmed = part.trim();
     if (!trimmed) continue;
-    if (trimmed.includes("-")) {
-      const [s, e] = trimmed.split("-");
-      const start = Math.max(1, parseInt(s));
-      const end = Math.min(total, parseInt(e));
-      if (!isNaN(start) && !isNaN(end)) {
-        for (let i = start; i <= end; i++) pages.push(i);
-      }
-    } else {
-      const n = parseInt(trimmed);
-      if (!isNaN(n) && n >= 1 && n <= total) pages.push(n);
-    }
+
+    const match = trimmed.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!match) return null;
+
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
+    if (start < 1 || end < 1 || start > total || end > total || start > end) return null;
+
+    ranges.push({ start, end });
+  }
+  return ranges.length > 0 ? ranges : null;
+}
+
+function parsePageRanges(input: string, total: number): number[] {
+  const ranges = parsePageRangeGroups(input, total);
+  if (!ranges) return [];
+
+  const pages: number[] = [];
+  for (const { start, end } of ranges) {
+    for (let i = start; i <= end; i++) pages.push(i);
   }
   return Array.from(new Set(pages)).sort((a, b) => a - b);
+}
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+
+    img.onload = () => {
+      cleanup();
+      resolve(img);
+    };
+    img.onerror = () => {
+      cleanup();
+      reject(new Error("Unable to load image file."));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Unable to encode image output."));
+    }, type, quality);
+  });
+}
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function needsImagePdfRendering(text: string) {
+  return /[^\t\n\r\x20-\x7E\xA0-\xFF]/.test(text);
+}
+
+function normalizePdfText(text: string) {
+  return text.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
+}
+
+function wrapCanvasLine(ctx: CanvasRenderingContext2D, line: string, maxWidth: number) {
+  if (!line) return [""];
+  const wrapped: string[] = [];
+  let current = "";
+
+  for (const char of line) {
+    const next = current + char;
+    if (current && ctx.measureText(next).width > maxWidth) {
+      wrapped.push(current.trimEnd());
+      current = char.trimStart();
+    } else {
+      current = next;
+    }
+  }
+
+  wrapped.push(current);
+  return wrapped;
+}
+
+async function textToImagePdf(text: string): Promise<Uint8Array> {
+  const { PDFDocument } = await getPdfLib();
+  const doc = await PDFDocument.create();
+  const normalizedText = normalizePdfText(text);
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 50;
+  const fontSize = 14;
+  const lineHeight = 21;
+  const fontFamily = getComputedStyle(document.body).fontFamily || "Arial, sans-serif";
+  const scale = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
+
+  const measureCanvas = document.createElement("canvas");
+  const measureCtx = measureCanvas.getContext("2d")!;
+  measureCtx.font = `${fontSize}px ${fontFamily}`;
+  const lines = normalizedText.split("\n").flatMap((line) => wrapCanvasLine(measureCtx, line, pageWidth - margin * 2));
+  const linesPerPage = Math.max(1, Math.floor((pageHeight - margin * 2) / lineHeight));
+
+  for (let i = 0; i < Math.max(lines.length, 1); i += linesPerPage) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(pageWidth * scale);
+    canvas.height = Math.round(pageHeight * scale);
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, pageWidth, pageHeight);
+    ctx.fillStyle = "#1f2937";
+    ctx.font = `${fontSize}px ${fontFamily}`;
+    ctx.textBaseline = "top";
+
+    const pageLines = lines.slice(i, i + linesPerPage);
+    pageLines.forEach((line, j) => {
+      ctx.fillText(line, margin, margin + j * lineHeight);
+    });
+
+    const blob = await canvasToBlob(canvas, "image/png");
+    const image = await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
+    const page = doc.addPage([pageWidth, pageHeight]);
+    page.drawImage(image, { x: 0, y: 0, width: pageWidth, height: pageHeight });
+  }
+
+  return doc.save();
 }
 
 // ━━━ PDF Operations (all lazy-load pdf-lib) ━━━━━━━━━━━━━━
@@ -597,24 +772,12 @@ async function mergePDFs(buffers: ArrayBuffer[]): Promise<Uint8Array> {
 
 async function splitPDF(
   data: ArrayBuffer,
-  rangesStr: string
+  ranges: PageRange[]
 ): Promise<{ name: string; data: Uint8Array }[]> {
   const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.load(data, { ignoreEncryption: true });
-  const total = doc.getPageCount();
   const results: { name: string; data: Uint8Array }[] = [];
-  for (const part of rangesStr.split(",")) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    let start: number, end: number;
-    if (trimmed.includes("-")) {
-      const [s, e] = trimmed.split("-");
-      start = Math.max(1, parseInt(s));
-      end = Math.min(total, parseInt(e));
-    } else {
-      start = end = Math.max(1, Math.min(total, parseInt(trimmed)));
-    }
-    if (isNaN(start) || isNaN(end)) continue;
+  for (const { start, end } of ranges) {
     const newDoc = await PDFDocument.create();
     const indices = Array.from({ length: end - start + 1 }, (_, i) => start - 1 + i);
     const pages = await newDoc.copyPages(doc, indices);
@@ -718,14 +881,7 @@ async function addWatermark(
 }
 
 async function stitchImages(imageFiles: File[], direction: "vertical" | "horizontal"): Promise<Uint8Array> {
-  const urls: string[] = [];
-  const imgs = await Promise.all(imageFiles.map((f) => new Promise<HTMLImageElement>((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(f);
-    urls.push(url);
-    img.onload = () => resolve(img);
-    img.src = url;
-  })));
+  const imgs = await Promise.all(imageFiles.map(loadImageFromFile));
   const canvas = document.createElement("canvas");
   if (direction === "vertical") {
     canvas.width = Math.max(...imgs.map((i) => i.width));
@@ -740,40 +896,40 @@ async function stitchImages(imageFiles: File[], direction: "vertical" | "horizon
     let x = 0;
     for (const img of imgs) { ctx.drawImage(img, x, 0); x += img.width; }
   }
-  urls.forEach((u) => URL.revokeObjectURL(u));
-  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+  const blob = await canvasToBlob(canvas, "image/png");
   return new Uint8Array(await blob.arrayBuffer());
 }
 
 async function convertImageFormat(file: File, format: "png" | "jpeg" | "webp"): Promise<{ name: string; data: Uint8Array }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0);
-      const ext = format === "jpeg" ? "jpg" : format;
-      canvas.toBlob(async (blob) => {
-        const data = new Uint8Array(await blob!.arrayBuffer());
-        const name = file.name.replace(/\.[^.]+$/, `.${ext}`);
-        resolve({ name, data });
-      }, `image/${format}`, 0.92);
-    };
-    img.src = url;
-  });
+  const img = await loadImageFromFile(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d")!;
+  if (format === "jpeg") {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(img, 0, 0);
+  const ext = format === "jpeg" ? "jpg" : format;
+  const blob = await canvasToBlob(canvas, `image/${format}`, 0.92);
+  const data = new Uint8Array(await blob.arrayBuffer());
+  const name = replaceExtension(file.name, `.${ext}`);
+  return { name, data };
 }
 
 async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
   const { PDFDocument, StandardFonts, rgb } = await getPdfLib();
-  const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
   // Strip HTML tags safely using DOMParser (no script execution)
   const parsed = new DOMParser().parseFromString(htmlContent, "text/html");
-  const text = parsed.body.textContent || "";
+  const text = normalizePdfText(parsed.body.textContent || "");
+
+  if (needsImagePdfRendering(text)) {
+    return textToImagePdf(text);
+  }
+
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
   const lines = text.split("\n").flatMap((line) => {
     // Word-wrap at ~80 chars
     const wrapped: string[] = [];
@@ -807,49 +963,38 @@ async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
 }
 
 async function resizeImage(file: File, scale: number): Promise<{ name: string; data: Uint8Array; w: number; h: number }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, w, h);
-      const isPng = file.name.toLowerCase().endsWith(".png");
-      canvas.toBlob(async (blob) => {
-        const data = new Uint8Array(await blob!.arrayBuffer());
-        const name = file.name.replace(/\.[^.]+$/, `_${w}x${h}${isPng ? ".png" : ".jpg"}`);
-        resolve({ name, data, w, h });
-      }, isPng ? "image/png" : "image/jpeg", 0.92);
-    };
-    img.src = url;
-  });
+  const img = await loadImageFromFile(file);
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  const isPng = file.name.toLowerCase().endsWith(".png");
+  if (!isPng) {
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(img, 0, 0, w, h);
+  const blob = await canvasToBlob(canvas, isPng ? "image/png" : "image/jpeg", 0.92);
+  const data = new Uint8Array(await blob.arrayBuffer());
+  const name = replaceExtension(file.name, `_${w}x${h}${isPng ? ".png" : ".jpg"}`);
+  return { name, data, w, h };
 }
 
 async function compressImage(file: File, quality: number): Promise<{ name: string; data: Uint8Array; before: number; after: number }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(async (blob) => {
-        const data = new Uint8Array(await blob!.arrayBuffer());
-        const ext = quality < 1 ? ".jpg" : ".png";
-        const name = file.name.replace(/\.[^.]+$/, `_compressed${ext}`);
-        resolve({ name, data, before: file.size, after: data.length });
-      }, "image/jpeg", quality);
-    };
-    img.src = url;
-  });
+  const img = await loadImageFromFile(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+  const blob = await canvasToBlob(canvas, "image/jpeg", quality);
+  const data = new Uint8Array(await blob.arrayBuffer());
+  const name = replaceExtension(file.name, "_compressed.jpg");
+  return { name, data, before: file.size, after: data.length };
 }
 
 async function extractPdfText(data: ArrayBuffer): Promise<string> {
@@ -889,7 +1034,7 @@ async function pdfToImages(data: ArrayBuffer, onProgress?: (pct: number) => void
     const ctx = canvas.getContext("2d")!;
     const renderContext = { canvasContext: ctx, viewport };
     await page.render(renderContext as Parameters<typeof page.render>[0]).promise;
-    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+    const blob = await canvasToBlob(canvas, "image/png");
     results.push({ name: `page_${i}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
   }
   onProgress?.(100);
@@ -903,32 +1048,21 @@ async function imagesToPDF(imageFiles: File[]): Promise<Uint8Array> {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const isJpg = file.type === "image/jpeg" || file.name.toLowerCase().endsWith(".jpg") || file.name.toLowerCase().endsWith(".jpeg");
     const isPng = file.type === "image/png" || file.name.toLowerCase().endsWith(".png");
-    const isWebP = file.type === "image/webp" || file.name.toLowerCase().endsWith(".webp");
     let img;
     if (isJpg) {
       img = await doc.embedJpg(bytes);
     } else if (isPng) {
       img = await doc.embedPng(bytes);
-    } else if (isWebP) {
-      // Convert WebP to PNG via canvas, then embed
-      const pngBytes = await new Promise<Uint8Array>((resolve) => {
-        const image = new Image();
-        const url = URL.createObjectURL(file);
-        image.onload = () => {
-          URL.revokeObjectURL(url);
-          const canvas = document.createElement("canvas");
-          canvas.width = image.width;
-          canvas.height = image.height;
-          canvas.getContext("2d")!.drawImage(image, 0, 0);
-          canvas.toBlob((blob) => {
-            blob!.arrayBuffer().then((buf) => resolve(new Uint8Array(buf)));
-          }, "image/png");
-        };
-        image.src = url;
-      });
-      img = await doc.embedPng(pngBytes);
     } else {
-      continue; // skip unsupported formats
+      // Convert browser-decodable formats such as WebP/GIF/SVG to PNG, then embed.
+      const image = await loadImageFromFile(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      canvas.getContext("2d")!.drawImage(image, 0, 0);
+      const blob = await canvasToBlob(canvas, "image/png");
+      const pngBytes = new Uint8Array(await blob.arrayBuffer());
+      img = await doc.embedPng(pngBytes);
     }
     const page = doc.addPage([img.width, img.height]);
     page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
@@ -1067,6 +1201,27 @@ function ImgThumb({ file }: { file: File }) {
   return <img src={url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />;
 }
 
+function ResultImagePreview({ result, index }: { result: { name: string; data: Uint8Array }; index: number }) {
+  const mime = getMimeTypeForFilename(result.name);
+  const url = useMemo(() => {
+    const blob = new Blob([toArrayBuffer(result.data)], { type: mime });
+    return URL.createObjectURL(blob);
+  }, [result.data, mime]);
+
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+
+  return (
+    <button onClick={() => download(result.data, result.name, mime)}
+      className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg overflow-hidden group hover:ring-2 hover:ring-blue-400 transition-all">
+      <img src={url} alt={result.name} className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+        <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      </div>
+      <span className="absolute bottom-1 left-1 text-[9px] text-white/80 bg-black/40 px-1 rounded">{index + 1}</span>
+    </button>
+  );
+}
+
 function FileDropzone({
   files,
   onSelect,
@@ -1102,18 +1257,7 @@ function FileDropzone({
           e.preventDefault();
           setDragging(false);
           if (dragIdx !== null) return;
-          const dropped = Array.from(e.dataTransfer.files).filter((f) => {
-            if (acceptType.includes("image/") || acceptType.includes(".jpg") || acceptType.includes(".png") || acceptType.includes(".webp")) {
-              return f.type.startsWith("image/");
-            }
-            if (acceptType.includes(".docx")) {
-              return f.name.toLowerCase().endsWith(".docx") || f.type.includes("wordprocessingml");
-            }
-            if (acceptType.includes(".html")) {
-              return f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html";
-            }
-            return f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
-          });
+          const dropped = Array.from(e.dataTransfer.files);
           onSelect(multiple ? [...files, ...dropped] : dropped.slice(0, 1));
         }}
       >
@@ -1393,6 +1537,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   const t = T[lang];
 
+  useEffect(() => {
+    setConfirmDelete(false);
+  }, [deleteInput, files, view]);
+
   // Search ref for "/" shortcut
   const searchRef = useRef<HTMLInputElement>(null);
   // Basic keyboard shortcuts (Escape, /)
@@ -1501,54 +1649,60 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const handleFiles = async (newFiles: File[]) => {
     // Validate files based on current tool
     let validFiles: File[];
+    let nextMessage: { type: "success" | "error" | "warning"; text: string } | null = null;
     if (["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch"].includes(view)) {
-      validFiles = newFiles.filter((f) => f.type.startsWith("image/"));
+      validFiles = newFiles.filter(isImageFile);
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
         setMessage({ type: "error", text: t.errImgOnly });
         return;
       }
       if (rejected > 0) {
-        setMessage({ type: "warning", text: `${rejected}${t.warnExcludedImg}` });
+        nextMessage = { type: "warning", text: `${rejected}${t.warnExcludedImg}` };
       }
     } else if (view === "html2pdf") {
-      validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".html") || f.name.toLowerCase().endsWith(".htm") || f.type === "text/html");
+      validFiles = newFiles.filter(isHtmlFile);
       if (validFiles.length === 0) {
         setMessage({ type: "error", text: t.errHtmlOnly });
         return;
       }
     } else if (view === "docx2html") {
-      validFiles = newFiles.filter((f) => f.name.toLowerCase().endsWith(".docx") || f.type.includes("wordprocessingml"));
+      validFiles = newFiles.filter(isDocxFile);
       if (validFiles.length === 0) {
         setMessage({ type: "error", text: t.errDocxOnly });
         return;
       }
     } else {
-      validFiles = newFiles.filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+      validFiles = newFiles.filter(isPdfFile);
       const rejected = newFiles.length - validFiles.length;
       if (rejected > 0 && validFiles.length === 0) {
         setMessage({ type: "error", text: t.errPdfOnly });
         return;
       }
       if (rejected > 0) {
-        setMessage({ type: "warning", text: `${rejected}${t.warnExcludedPdf}` });
+        nextMessage = { type: "warning", text: `${rejected}${t.warnExcludedPdf}` };
       }
     }
     setFiles(validFiles);
+    setMessage(nextMessage);
     setResultData(null);
     setResultMulti([]);
     setPdfInfoResult(null);
     setCompressionInfo(null);
+    setHtmlPreview(null);
+    setProcTime(null);
+    setConfirmDelete(false);
+    setBatchProgress(-1);
     if (!["img2pdf", "imgcompress", "imgresize", "imgconvert", "imgstitch", "docx2html", "html2pdf"].includes(view)) loadPageInfo(validFiles);
     // Large file warning
-    const totalSize = newFiles.reduce((sum, f) => sum + f.size, 0);
+    const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
       setMessage({ type: "warning", text: `${fmtSize(totalSize)} — ${t.warnLargeFile}` });
     }
-    if (view === "info" && newFiles.length > 0) {
+    if (view === "info" && validFiles.length > 0) {
       try {
-        const buf = await newFiles[0].arrayBuffer();
-        setPdfInfoResult(await getPdfInfo(buf, newFiles[0].size));
+        const buf = await validFiles[0].arrayBuffer();
+        setPdfInfoResult(await getPdfInfo(buf, validFiles[0].size));
       } catch {
         setMessage({ type: "error", text: t.infoInvalid });
       }
@@ -1608,7 +1762,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             const buf = await files[0].arrayBuffer();
             const data = await unlockPDF(buf);
             setResultData(data);
-            setResultName(files[0].name.replace(/\.pdf$/i, "_unlocked.pdf"));
+            setResultName(replaceExtension(files[0].name, "_unlocked.pdf"));
             setMessage({ type: "success", text: t.msgUnlocked });
             addHistory(toolLabel, files[0].name, true, view);
           } else {
@@ -1619,7 +1773,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               setMessage({ type: "warning", text: `${t.msgBatchProcess} ${idx + 1}/${files.length}...` });
               const buf = await files[idx].arrayBuffer();
               const data = await unlockPDF(buf);
-              results.push({ name: files[idx].name.replace(/\.pdf$/i, "_unlocked.pdf"), data });
+              results.push({ name: replaceExtension(files[idx].name, "_unlocked.pdf"), data });
             }
             setBatchProgress(100);
             setResultMulti(results);
@@ -1633,7 +1787,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const data = await mergePDFs(buffers);
           setResultData(data);
           setResultName("merged.pdf");
-          const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
+          const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${files.length}${t.msgMerged} (${t.msgMergedPages.replace("{n}", String(info.pages))})` });
           addHistory(toolLabel, `${files.length} files`, true, view);
           break;
@@ -1642,8 +1796,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           const info = await getPdfInfo(buf, files[0].size);
           const ranges = splitMode === "all"
-            ? Array.from({ length: info.pages }, (_, i) => String(i + 1)).join(",")
-            : rangeInput;
+            ? Array.from({ length: info.pages }, (_, i) => ({ start: i + 1, end: i + 1 }))
+            : parsePageRangeGroups(rangeInput, info.pages);
+          if (!ranges) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           const results = await splitPDF(buf, ranges);
           setResultMulti(results);
           setMessage({ type: "success", text: `${results.length}${t.msgSplit}` });
@@ -1657,7 +1812,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           const data = await extractPages(buf, pages);
           setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_extracted.pdf"));
+          setResultName(replaceExtension(files[0].name, "_extracted.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgExtracted}` });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1666,11 +1821,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           let pageNums: number[] | undefined;
           if (rotateScope === "specific" && rotatePagesInput) {
-            pageNums = rotatePagesInput.split(",").map((p) => parseInt(p.trim())).filter((n) => !isNaN(n));
+            const info = await getPdfInfo(buf, files[0].size);
+            pageNums = parsePageRanges(rotatePagesInput, info.pages);
+            if (pageNums.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           }
           const data = await rotatePages(buf, rotateDeg, pageNums);
           setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_rotated.pdf"));
+          setResultName(replaceExtension(files[0].name, "_rotated.pdf"));
           setMessage({ type: "success", text: `${rotateDeg}°${t.msgRotated}` });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1681,7 +1838,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const saved = files[0].size - data.length;
           if (saved > 0) {
             setResultData(data);
-            setResultName(files[0].name.replace(/\.pdf$/i, "_compressed.pdf"));
+            setResultName(replaceExtension(files[0].name, "_compressed.pdf"));
             setCompressionInfo({ before: files[0].size, after: data.length });
             setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${Math.round((saved / files[0].size) * 100)}% ${t.compressPercent})` });
           } else {
@@ -1696,7 +1853,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           const data = await addWatermark(buf, wmText, wmSize, wmOpacity, wmRotation, wmPosition);
           setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_watermarked.pdf"));
+          setResultName(replaceExtension(files[0].name, "_watermarked.pdf"));
           setMessage({ type: "success", text: t.msgWatermarked });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1705,8 +1862,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const buf = await files[0].arrayBuffer();
           const data = await addPageNumbers(buf, pnFormat, pnPosition, pnSize);
           setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_numbered.pdf"));
-          const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
+          setResultName(replaceExtension(files[0].name, "_numbered.pdf"));
+          const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${info.pages}${t.msgNumbered}` });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1729,7 +1886,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           }
           const data = await deletePagesFromPDF(buf, pages);
           setResultData(data);
-          setResultName(files[0].name.replace(/\.pdf$/i, "_edited.pdf"));
+          setResultName(replaceExtension(files[0].name, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1745,7 +1902,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
         case "txt2pdf": {
           if (!textInput.trim()) { setMessage({ type: "warning", text: t.msgEmptyTxt }); break; }
-          const data = await htmlToPdf(`<pre>${textInput}</pre>`);
+          const data = await htmlToPdf(`<pre>${escapeHtml(textInput)}</pre>`);
           setResultData(data);
           setResultName("text.pdf");
           setMessage({ type: "success", text: t.msgTxtDone });
@@ -1774,7 +1931,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           if (!text.trim()) { setMessage({ type: "warning", text: t.msgEmptyHtml }); break; }
           const data = await htmlToPdf(text);
           setResultData(data);
-          setResultName(files[0].name.replace(/\.(html?|htm)$/i, ".pdf"));
+          setResultName(replaceExtension(files[0].name, ".pdf"));
           setMessage({ type: "success", text: t.msgHtmlDone });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1815,15 +1972,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setResultMulti(results);
           }
           setCompressionInfo({ before: totalBefore, after: totalAfter });
-          const pct = Math.round(((totalBefore - totalAfter) / totalBefore) * 100);
-          setMessage({ type: "success", text: `${fmtSize(totalBefore - totalAfter)} ${t.compressSaved} (${pct}% ${t.compressPercent})` });
+          const saved = Math.max(0, totalBefore - totalAfter);
+          const pct = totalBefore > 0 ? Math.round((saved / totalBefore) * 100) : 0;
+          setMessage(saved > 0
+            ? { type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${pct}% ${t.compressPercent})` }
+            : { type: "warning", text: t.compressAlready });
           addHistory(toolLabel, `${files.length} images`, true, view);
           break;
         }
         case "pdftext": {
           const buf = await files[0].arrayBuffer();
           const text = await extractPdfText(buf);
-          setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${text.replace(/</g, "&lt;")}</pre>`);
+          setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${escapeHtml(text)}</pre>`);
           setMessage({ type: "success", text: t.msgTextExtracted });
           addHistory(toolLabel, files[0].name, true, view);
           break;
@@ -1848,8 +2008,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "img2pdf": {
           const data = await imagesToPDF(files);
           setResultData(data);
-          setResultName(files.length === 1 ? files[0].name.replace(/\.[^.]+$/, ".pdf") : `${files.length}_images.pdf`);
-          const info = await getPdfInfo(new Uint8Array(data).buffer, data.length);
+          setResultName(files.length === 1 ? replaceExtension(files[0].name, ".pdf") : `${files.length}_images.pdf`);
+          const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${files.length}${t.msgImgToPdfDone} (${info.pages}p)` });
           addHistory(toolLabel, `${files.length} images`, true, view);
           break;
@@ -1892,6 +2052,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view === "imgstitch" && files.length < 2) return false;
     if (view === "split" && splitMode === "range" && !rangeInput.trim()) return false;
     if (view === "extract" && !pagesInput.trim()) return false;
+    if (view === "rotate" && rotateScope === "specific" && !rotatePagesInput.trim()) return false;
     if (view === "delete" && !deleteInput.trim()) return false;
     if (view === "watermark" && (!wmText.trim() || /[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText))) return false;
     if (view === "info") return false;
@@ -2647,7 +2808,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <span className="text-sm font-semibold text-green-700 dark:text-green-400">{message?.text}</span>
                 </div>
-                <button onClick={() => download(resultData, resultName)}
+                <button onClick={() => download(resultData, resultName, getMimeTypeForFilename(resultName))}
                   className="w-full py-3.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   {resultName} ({fmtSize(resultData.length)})
@@ -2672,22 +2833,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </button>
                 )}
                 {/* Image grid preview for image results */}
-                {resultMulti.length > 0 && resultMulti[0].name.match(/\.(png|jpg|webp)$/i) && (
+                {resultMulti.length > 0 && isPreviewableImage(resultMulti[0].name) && (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 rounded-xl overflow-hidden">
-                    {resultMulti.slice(0, 8).map((r, i) => {
-                      const blob = new Blob([r.data.buffer as ArrayBuffer], { type: r.name.endsWith(".png") ? "image/png" : "image/jpeg" });
-                      const url = URL.createObjectURL(blob);
-                      return (
-                        <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : "image/jpeg")}
-                          className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg overflow-hidden group hover:ring-2 hover:ring-blue-400 transition-all">
-                          <img src={url} alt={r.name} className="w-full h-full object-cover" onLoad={() => URL.revokeObjectURL(url)} />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                          </div>
-                          <span className="absolute bottom-1 left-1 text-[9px] text-white/80 bg-black/40 px-1 rounded">{i + 1}</span>
-                        </button>
-                      );
-                    })}
+                    {resultMulti.slice(0, 8).map((r, i) => (
+                      <ResultImagePreview key={`${r.name}-${i}`} result={r} index={i} />
+                    ))}
                     {resultMulti.length > 8 && (
                       <div className="aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-gray-400 dark:text-slate-500 text-sm font-bold">
                         +{resultMulti.length - 8}
@@ -2696,7 +2846,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                 )}
                 {resultMulti.map((r, i) => (
-                  <button key={i} onClick={() => download(r.data, r.name, r.name.endsWith(".png") ? "image/png" : r.name.endsWith(".jpg") ? "image/jpeg" : r.name.endsWith(".webp") ? "image/webp" : "application/pdf")}
+                  <button key={i} onClick={() => download(r.data, r.name, getMimeTypeForFilename(r.name))}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-left group">
                     <span className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                     <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{r.name}</span>
@@ -2833,7 +2983,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       {resultData && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 p-3 sm:hidden">
           <button
-            onClick={() => download(resultData, resultName)}
+            onClick={() => download(resultData, resultName, getMimeTypeForFilename(resultName))}
             className="w-full py-3 rounded-xl font-bold text-sm bg-green-600 text-white shadow-lg shadow-green-500/20"
           >
             {resultName} {t.download}

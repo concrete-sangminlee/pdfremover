@@ -2,6 +2,8 @@
 node_modules/
 .next/
 out/
+dev-server*.log
+*.tsbuildinfo
 
 # Python
 __pycache__/
