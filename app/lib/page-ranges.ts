@@ -4,42 +4,41 @@ export interface PageRange {
 }
 
 export function isValidPageRangeInput(input: string): boolean {
-  const trimmed = input.trim();
-  if (!trimmed) return false;
-
-  let hasRange = false;
-  for (const part of trimmed.split(",")) {
-    const segment = part.trim();
-    if (!segment) return false;
-
-    const match = segment.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
-    if (!match) return false;
-
-    const start = Number(match[1]);
-    const end = Number(match[2] ?? match[1]);
-    if (start < 1 || end < 1 || start > end) return false;
-    hasRange = true;
-  }
-
-  return hasRange;
+  return parsePageRangeGroupsInternal(input) !== null;
 }
 
 export function parsePageRangeGroups(input: string, total: number): PageRange[] | null {
-  const ranges: PageRange[] = [];
-  for (const part of input.split(",")) {
-    const trimmed = part.trim();
-    if (!trimmed) return null;
+  return parsePageRangeGroupsInternal(input, total);
+}
 
-    const match = trimmed.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[] | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const ranges: PageRange[] = [];
+  for (const part of trimmed.split(",")) {
+    const segment = part.trim();
+    if (!segment) return null;
+
+    const match = segment.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
     if (!match) return null;
 
     const start = Number(match[1]);
     const end = Number(match[2] ?? match[1]);
-    if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
-    if (start < 1 || end < 1 || start > total || end > total || start > end) return null;
+    if (
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < 1 ||
+      end < 1 ||
+      start > end ||
+      (typeof total === "number" && (start > total || end > total))
+    ) {
+      return null;
+    }
 
     ranges.push({ start, end });
   }
+
   return ranges.length > 0 ? ranges : null;
 }
 
@@ -48,7 +47,7 @@ export function parsePageRanges(
   total: number,
   options: { preserveOrder?: boolean } = {}
 ): number[] {
-  const ranges = parsePageRangeGroups(input, total);
+  const ranges = parsePageRangeGroupsInternal(input, total);
   if (!ranges) return [];
 
   const seen = new Set<number>();

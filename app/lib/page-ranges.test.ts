@@ -18,6 +18,14 @@ describe("parsePageRangeGroups", () => {
     expect(parsePageRangeGroups("11", 10)).toBeNull();
     expect(parsePageRangeGroups("", 10)).toBeNull();
   });
+
+  it("supports whitespace around commas and ranges", () => {
+    expect(parsePageRangeGroups("1, 3 - 5,  7", 10)).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 5 },
+      { start: 7, end: 7 },
+    ]);
+  });
 });
 
 describe("isValidPageRangeInput", () => {
