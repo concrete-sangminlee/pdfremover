@@ -14,7 +14,7 @@ import {
   type View,
 } from "../lib/config";
 import { sanitizeOutputFilename } from "../lib/file-names";
-import { parsePageRangeGroups, parsePageRanges, type PageRange } from "../lib/page-ranges";
+import { isValidPageRangeInput, parsePageRangeGroups, parsePageRanges, type PageRange } from "../lib/page-ranges";
 
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
 let _pdfLib: typeof import("pdf-lib") | null = null;
@@ -1682,16 +1682,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       unlock: ({ processing, filesCount }) => !processing && filesCount > 0,
       merge: ({ processing, filesCount }) => !processing && filesCount >= 2,
       split: ({ processing, filesCount, splitMode, rangeInput }) =>
-        !processing && filesCount > 0 && (splitMode === "all" || rangeInput.trim().length > 0),
-      extract: ({ processing, filesCount, pagesInput }) => !processing && filesCount > 0 && pagesInput.trim().length > 0,
+        !processing && filesCount > 0 && (splitMode === "all" || isValidPageRangeInput(rangeInput)),
+      extract: ({ processing, filesCount, pagesInput }) => !processing && filesCount > 0 && isValidPageRangeInput(pagesInput),
       rotate: ({ processing, filesCount, rotateScope, rotatePagesInput }) =>
-        !processing && filesCount > 0 && (rotateScope === "all" || rotatePagesInput.trim().length > 0),
+        !processing &&
+        filesCount > 0 &&
+        (rotateScope === "all" || isValidPageRangeInput(rotatePagesInput)),
       compress: ({ processing, filesCount }) => !processing && filesCount > 0,
       watermark: ({ processing, filesCount, wmText }) =>
         !processing && filesCount > 0 && isValidWatermarkText(wmText),
       pagenum: ({ processing, filesCount }) => !processing && filesCount > 0,
       delete: ({ processing, filesCount, deleteInput }) =>
-        !processing && filesCount > 0 && deleteInput.trim().length > 0,
+        !processing && filesCount > 0 && isValidPageRangeInput(deleteInput),
       info: () => false,
       imgstitch: ({ processing, filesCount }) => !processing && filesCount >= 2,
       imgconvert: ({ processing, filesCount }) => !processing && filesCount > 0,

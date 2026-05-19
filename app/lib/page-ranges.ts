@@ -3,6 +3,27 @@ export interface PageRange {
   end: number;
 }
 
+export function isValidPageRangeInput(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+
+  let hasRange = false;
+  for (const part of trimmed.split(",")) {
+    const segment = part.trim();
+    if (!segment) return false;
+
+    const match = segment.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!match) return false;
+
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    if (start < 1 || end < 1 || start > end) return false;
+    hasRange = true;
+  }
+
+  return hasRange;
+}
+
 export function parsePageRangeGroups(input: string, total: number): PageRange[] | null {
   const ranges: PageRange[] = [];
   for (const part of input.split(",")) {

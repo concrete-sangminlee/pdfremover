@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePageRangeGroups, parsePageRanges } from "./page-ranges";
+import { isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
 
 describe("parsePageRangeGroups", () => {
   it("parses single pages and inclusive ranges", () => {
@@ -16,6 +16,22 @@ describe("parsePageRangeGroups", () => {
     expect(parsePageRangeGroups("5-3", 10)).toBeNull();
     expect(parsePageRangeGroups("11", 10)).toBeNull();
     expect(parsePageRangeGroups("", 10)).toBeNull();
+  });
+});
+
+describe("isValidPageRangeInput", () => {
+  it("validates numeric pages and ranges with optional whitespace", () => {
+    expect(isValidPageRangeInput("1")).toBe(true);
+    expect(isValidPageRangeInput("1, 3-5, 7")).toBe(true);
+  });
+
+  it("rejects malformed, empty, and reversed segments", () => {
+    expect(isValidPageRangeInput("")).toBe(false);
+    expect(isValidPageRangeInput("1,,")).toBe(false);
+    expect(isValidPageRangeInput(",2")).toBe(false);
+    expect(isValidPageRangeInput("2-a")).toBe(false);
+    expect(isValidPageRangeInput("5-3")).toBe(false);
+    expect(isValidPageRangeInput("0-2")).toBe(false);
   });
 });
 
