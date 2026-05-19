@@ -11,7 +11,8 @@ describe("parsePageRangeGroups", () => {
   });
 
   it("rejects malformed, reversed, and out-of-range groups", () => {
-    expect(parsePageRangeGroups("1,,", 10)).toEqual([{ start: 1, end: 1 }]);
+    expect(parsePageRangeGroups("1,,", 10)).toBeNull();
+    expect(parsePageRangeGroups(",2", 10)).toBeNull();
     expect(parsePageRangeGroups("2-a", 10)).toBeNull();
     expect(parsePageRangeGroups("5-3", 10)).toBeNull();
     expect(parsePageRangeGroups("11", 10)).toBeNull();

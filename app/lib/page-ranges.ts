@@ -28,7 +28,7 @@ export function parsePageRangeGroups(input: string, total: number): PageRange[] 
   const ranges: PageRange[] = [];
   for (const part of input.split(",")) {
     const trimmed = part.trim();
-    if (!trimmed) continue;
+    if (!trimmed) return null;
 
     const match = trimmed.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
     if (!match) return null;
