@@ -620,6 +620,15 @@ function isValidWatermarkText(text: string): boolean {
   return true;
 }
 
+async function loadPdfForOperation(file: File): Promise<{ buffer: ArrayBuffer; info: PdfInfo }> {
+  const buffer = await file.arrayBuffer();
+  const info = await getPdfInfo(buffer, file.size);
+  if (info.encrypted || info.pages === 0) {
+    throw new Error("password protected");
+  }
+  return { buffer, info };
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1655,6 +1664,48 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const searchRef = useRef<HTMLInputElement>(null);
   const goHomeRef = useRef<() => void>(() => {});
   const resetStateRef = useRef<() => void>(() => {});
+  type ExecuteValidationContext = {
+    processing: boolean;
+    filesCount: number;
+    splitMode: "range" | "all";
+    rangeInput: string;
+    pagesInput: string;
+    rotateScope: "all" | "specific";
+    rotatePagesInput: string;
+    deleteInput: string;
+    wmText: string;
+    textInput: string;
+  };
+  const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
+    () => ({
+      home: ({}) => false,
+      unlock: ({ processing, filesCount }) => !processing && filesCount > 0,
+      merge: ({ processing, filesCount }) => !processing && filesCount >= 2,
+      split: ({ processing, filesCount, splitMode, rangeInput }) =>
+        !processing && filesCount > 0 && (splitMode === "all" || rangeInput.trim().length > 0),
+      extract: ({ processing, filesCount, pagesInput }) => !processing && filesCount > 0 && pagesInput.trim().length > 0,
+      rotate: ({ processing, filesCount, rotateScope, rotatePagesInput }) =>
+        !processing && filesCount > 0 && (rotateScope === "all" || rotatePagesInput.trim().length > 0),
+      compress: ({ processing, filesCount }) => !processing && filesCount > 0,
+      watermark: ({ processing, filesCount, wmText }) =>
+        !processing && filesCount > 0 && isValidWatermarkText(wmText),
+      pagenum: ({ processing, filesCount }) => !processing && filesCount > 0,
+      delete: ({ processing, filesCount, deleteInput }) =>
+        !processing && filesCount > 0 && deleteInput.trim().length > 0,
+      info: () => false,
+      imgstitch: ({ processing, filesCount }) => !processing && filesCount >= 2,
+      imgconvert: ({ processing, filesCount }) => !processing && filesCount > 0,
+      imgresize: ({ processing, filesCount }) => !processing && filesCount > 0,
+      imgcompress: ({ processing, filesCount }) => !processing && filesCount > 0,
+      pdftext: ({ processing, filesCount }) => !processing && filesCount > 0,
+      txt2pdf: ({ processing, textInput }) => !processing && textInput.trim().length > 0,
+      html2pdf: ({ processing, filesCount }) => !processing && filesCount > 0,
+      docx2html: ({ processing, filesCount }) => !processing && filesCount > 0,
+      pdf2img: ({ processing, filesCount }) => !processing && filesCount > 0,
+      img2pdf: ({ processing, filesCount }) => !processing && filesCount > 0,
+    }),
+    []
+  );
 
   // Basic keyboard shortcuts (Escape, /)
   useEffect(() => {
@@ -1903,12 +1954,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "split": {
-          const buf = await files[0].arrayBuffer();
-          const info = await getPdfInfo(buf, files[0].size);
-          if (info.encrypted || info.pages === 0) {
-            setMessage({ type: "error", text: t.msgPassword });
-            break;
-          }
+          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
           const ranges = splitMode === "all"
             ? Array.from({ length: info.pages }, (_, i) => ({ start: i + 1, end: i + 1 }))
             : parsePageRangeGroups(rangeInput, info.pages);
@@ -1920,8 +1966,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "extract": {
-          const buf = await files[0].arrayBuffer();
-          const info = await getPdfInfo(buf, files[0].size);
+          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
           const pages = parsePageRanges(pagesInput, info.pages, { preserveOrder: true });
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           const data = await extractPages(buf, pages);
@@ -1932,10 +1977,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "rotate": {
-          const buf = await files[0].arrayBuffer();
+          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
           let pageNums: number[] | undefined;
           if (rotateScope === "specific" && rotatePagesInput) {
-            const info = await getPdfInfo(buf, files[0].size);
             pageNums = parsePageRanges(rotatePagesInput, info.pages);
             if (pageNums.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           }
@@ -1990,8 +2034,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             return;
           }
           setConfirmDelete(false);
-          const buf = await files[0].arrayBuffer();
-          const info = await getPdfInfo(buf, files[0].size);
+          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
           const pages = parsePageRanges(deleteInput, info.pages);
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           if (pages.length >= info.pages) {
@@ -2159,20 +2202,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const executeRef = useRef(execute);
   executeRef.current = execute;
 
-  const canExecute = (() => {
-    if (view === "txt2pdf") return !processing && textInput.trim().length > 0;
-    if (files.length === 0 || processing) return false;
-    if (view === "merge" && files.length < 2) return false;
-    if (view === "imgstitch" && files.length < 2) return false;
-    if (view === "split" && splitMode === "range" && !rangeInput.trim()) return false;
-    if (view === "extract" && !pagesInput.trim()) return false;
-    if (view === "rotate" && rotateScope === "specific" && !rotatePagesInput.trim()) return false;
-    if (view === "delete" && !deleteInput.trim()) return false;
-    if (view === "watermark" && !isValidWatermarkText(wmText)) return false;
-
-    if (view === "info") return false;
-    return true;
-  })();
+  const canExecute = (executeValidators[view] || executeValidators.home)({
+    filesCount: files.length,
+    splitMode,
+    rangeInput,
+    pagesInput,
+    rotateScope,
+    rotatePagesInput,
+    deleteInput,
+    wmText,
+    textInput,
+    processing,
+  });
 
   const activeTool = view === "home" ? undefined : TOOL_BY_ID[view];
 
