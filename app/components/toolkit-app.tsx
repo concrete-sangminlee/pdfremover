@@ -2740,23 +2740,38 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   ))}
                 </div>
                 {splitMode === "range" && (
-                  <input type="text" value={rangeInput} onChange={(e) => setRangeInput(e.target.value)}
-                    placeholder={t.rangePlaceholder}
-                    className="input-field" />
+                  <>
+                    <input type="text" value={rangeInput} onChange={(e) => setRangeInput(e.target.value)}
+                      placeholder={t.rangePlaceholder}
+                      className="input-field" />
+                    {rangeInput.trim() && !isValidPageRangeInput(rangeInput) && (
+                      <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                    )}
+                  </>
                 )}
               </div>
             )}
 
             {view === "extract" && files.length > 0 && (
-              <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
-                placeholder={t.pagesPlaceholder}
-                className="input-field animate-fadeIn" />
+              <div className="space-y-1 animate-fadeIn">
+                <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
+                  placeholder={t.pagesPlaceholder}
+                  className="input-field" />
+                {pagesInput.trim() && !isValidPageRangeInput(pagesInput) && (
+                  <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                )}
+              </div>
             )}
 
             {view === "delete" && files.length > 0 && (
-              <input type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)}
-                placeholder={t.deletePlaceholder}
-                className="input-field animate-fadeIn" />
+              <div className="space-y-1 animate-fadeIn">
+                <input type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)}
+                  placeholder={t.deletePlaceholder}
+                  className="input-field" />
+                {deleteInput.trim() && !isValidPageRangeInput(deleteInput) && (
+                  <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                )}
+              </div>
             )}
 
             {view === "rotate" && files.length > 0 && (
@@ -2788,9 +2803,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                 </div>
                 {rotateScope === "specific" && (
-                  <input type="text" value={rotatePagesInput} onChange={(e) => setRotatePagesInput(e.target.value)}
-                    placeholder={t.rotPagesPlaceholder}
-                    className="input-field" />
+                  <div className="space-y-1">
+                    <input type="text" value={rotatePagesInput} onChange={(e) => setRotatePagesInput(e.target.value)}
+                      placeholder={t.rotPagesPlaceholder}
+                      className="input-field" />
+                    {rotatePagesInput.trim() && !isValidPageRangeInput(rotatePagesInput) && (
+                      <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
