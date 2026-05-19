@@ -1676,11 +1676,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     wmText: string;
     textInput: string;
   };
+  const currentPdfPageInfoKey = useMemo(() => {
+    if (!files.length) return "";
+    return files[0].name + files[0].size + files[0].lastModified;
+  }, [files]);
   const currentPdfPageCount = useMemo(() => {
-    if (!files.length) return 0;
-    const key = files[0].name + files[0].size + files[0].lastModified;
-    return pageInfo[key] || 0;
-  }, [files, pageInfo]);
+    if (!currentPdfPageInfoKey) return 0;
+    return pageInfo[currentPdfPageInfoKey] || 0;
+  }, [currentPdfPageInfoKey, pageInfo]);
+  const isCurrentPdfPageInfoLoaded = useMemo(
+    () =>
+      Boolean(currentPdfPageInfoKey) &&
+      Object.prototype.hasOwnProperty.call(pageInfo, currentPdfPageInfoKey),
+    [currentPdfPageInfoKey, pageInfo]
+  );
   const isRangeInputValidWithTotal = useCallback(
     (input: string): boolean => currentPdfPageCount > 0 && parsePageRangeGroups(input, currentPdfPageCount) !== null,
     [currentPdfPageCount]
@@ -2752,7 +2761,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <input type="text" value={rangeInput} onChange={(e) => setRangeInput(e.target.value)}
                       placeholder={t.rangePlaceholder}
                       className="input-field" />
-                    {rangeInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(rangeInput) && (
+                    {rangeInput.trim() && !isCurrentPdfPageInfoLoaded && (
+                      <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
+                    )}
+                    {rangeInput.trim() &&
+                      isCurrentPdfPageInfoLoaded &&
+                      !isRangeInputValidWithTotal(rangeInput) && (
                       <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
                     )}
                   </>
@@ -2762,12 +2776,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "extract" && files.length > 0 && (
               <div className="space-y-1 animate-fadeIn">
-                <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
-                  placeholder={t.pagesPlaceholder}
-                  className="input-field" />
-                {pagesInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(pagesInput) && (
-                  <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                  <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
+                    placeholder={t.pagesPlaceholder}
+                    className="input-field" />
+                {pagesInput.trim() && !isCurrentPdfPageInfoLoaded && (
+                  <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
                 )}
+                {pagesInput.trim() &&
+                  isCurrentPdfPageInfoLoaded &&
+                  !isRangeInputValidWithTotal(pagesInput) && (
+                    <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                  )}
               </div>
             )}
 
@@ -2776,9 +2795,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <input type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)}
                   placeholder={t.deletePlaceholder}
                   className="input-field" />
-                {deleteInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(deleteInput) && (
-                  <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                {deleteInput.trim() && !isCurrentPdfPageInfoLoaded && (
+                  <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
                 )}
+                {deleteInput.trim() &&
+                  isCurrentPdfPageInfoLoaded &&
+                  !isRangeInputValidWithTotal(deleteInput) && (
+                    <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                  )}
               </div>
             )}
 
@@ -2815,9 +2839,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <input type="text" value={rotatePagesInput} onChange={(e) => setRotatePagesInput(e.target.value)}
                       placeholder={t.rotPagesPlaceholder}
                       className="input-field" />
-                    {rotatePagesInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(rotatePagesInput) && (
-                      <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                    {rotatePagesInput.trim() && !isCurrentPdfPageInfoLoaded && (
+                      <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
                     )}
+                    {rotatePagesInput.trim() &&
+                      isCurrentPdfPageInfoLoaded &&
+                      !isRangeInputValidWithTotal(rotatePagesInput) && (
+                        <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                      )}
                   </div>
                 )}
               </div>
