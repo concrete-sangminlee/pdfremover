@@ -583,6 +583,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
+    if (typeof document === "undefined" || !document.body) return false;
     // Fallback for non-secure contexts
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -590,11 +591,33 @@ async function copyToClipboard(text: string): Promise<boolean> {
     document.body.appendChild(ta);
     try {
       ta.select();
-      return document.execCommand("copy");
+      return document.execCommand("copy") === true;
+    } catch {
+      return false;
     } finally {
       ta.remove();
     }
   }
+}
+
+function isValidWatermarkText(text: string): boolean {
+  if (!text.trim()) return false;
+  for (const ch of text) {
+    const code = ch.codePointAt(0);
+    if (
+      code === undefined ||
+      !(
+        code === 9 ||
+        code === 10 ||
+        code === 13 ||
+        (code >= 32 && code <= 126) ||
+        (code >= 160 && code <= 255)
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -999,9 +1022,10 @@ async function htmlToPdf(htmlContent: string): Promise<Uint8Array> {
   }
   const linesPerPage = 50;
   const fontSize = 11;
-  for (let i = 0; i < filtered.length; i += linesPerPage) {
+  const pageCount = Math.max(1, Math.ceil(filtered.length / linesPerPage));
+  for (let p = 0; p < pageCount; p++) {
     const page = doc.addPage([612, 792]); // US Letter
-    const pageLines = filtered.slice(i, i + linesPerPage);
+    const pageLines = filtered.slice(p * linesPerPage, (p + 1) * linesPerPage);
     pageLines.forEach((line, j) => {
       page.drawText(line, { x: 50, y: 742 - j * 14, size: fontSize, font, color: rgb(0.1, 0.1, 0.1) });
     });
@@ -1674,6 +1698,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setPagesInput("");
     setRotatePagesInput("");
     setDeleteInput("");
+    setTextInput("");
     setPageInfo({});
     setConfirmDelete(false);
     clearResults();
@@ -1880,6 +1905,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "split": {
           const buf = await files[0].arrayBuffer();
           const info = await getPdfInfo(buf, files[0].size);
+          if (info.encrypted || info.pages === 0) {
+            setMessage({ type: "error", text: t.msgPassword });
+            break;
+          }
           const ranges = splitMode === "all"
             ? Array.from({ length: info.pages }, (_, i) => ({ start: i + 1, end: i + 1 }))
             : parsePageRangeGroups(rangeInput, info.pages);
@@ -2139,7 +2168,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     if (view === "extract" && !pagesInput.trim()) return false;
     if (view === "rotate" && rotateScope === "specific" && !rotatePagesInput.trim()) return false;
     if (view === "delete" && !deleteInput.trim()) return false;
-    if (view === "watermark" && (!wmText.trim() || /[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText))) return false;
+    if (view === "watermark" && !isValidWatermarkText(wmText)) return false;
+
     if (view === "info") return false;
     return true;
   })();
@@ -2960,11 +2990,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300">{view === "pdftext" ? t.pdftextLabel : t.docxPreview}</h3>
                   <div className="flex items-center gap-3">
                     {view === "pdftext" && (
-                      <button onClick={() => {
+                      <button onClick={async () => {
                         const parsed = new DOMParser().parseFromString(htmlPreview || "", "text/html");
                         const text = parsed.body.textContent || "";
-                        copyToClipboard(text);
-                        setMessage({ type: "success", text: t.copied });
+                        const ok = await copyToClipboard(text);
+                        setMessage(ok ? { type: "success", text: t.copied } : { type: "error", text: t.msgError });
                       }} className="text-xs text-blue-600 hover:text-blue-700 font-medium">{t.copyText}</button>
                     )}
                     <button onClick={() => downloadBlob(new Blob([htmlPreview || ""], { type: "text/html" }), "preview.html")}
@@ -3001,10 +3031,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-gray-500 dark:text-slate-400">{t.metadata}</h3>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const text = `Pages: ${pdfInfoResult.pages}\nSize: ${fmtSize(pdfInfoResult.size)}\nTitle: ${pdfInfoResult.title}\nAuthor: ${pdfInfoResult.author}\nCreator: ${pdfInfoResult.creator}\nProducer: ${pdfInfoResult.producer}`;
-                            copyToClipboard(text);
-                            setMessage({ type: "success", text: t.copied });
+                            const ok = await copyToClipboard(text);
+                            setMessage(ok ? { type: "success", text: t.copied } : { type: "error", text: t.msgError });
                           }}
                           className="text-[10px] text-blue-500 hover:text-blue-700 font-medium transition-colors"
                         >{t.copyBtn}</button>
