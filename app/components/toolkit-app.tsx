@@ -144,6 +144,7 @@ export const T: Record<Lang, Record<string, string>> = {
     pnTR: "상단 우",
     deletePlaceholder: "삭제할 페이지 (예: 2, 5, 8-10)",
     infoInvalid: "PDF 정보를 읽을 수 없습니다.",
+    pageInfoLoading: "페이지 정보 불러오는 중…",
     extractInvalid: "유효한 페이지 번호를 입력해주세요.",
     compressAlready: "이 파일은 이미 최적화되어 있어 추가 압축이 어렵습니다.",
     compressSaved: "절약!",
@@ -376,6 +377,7 @@ export const T: Record<Lang, Record<string, string>> = {
     pnTR: "Top R",
     deletePlaceholder: "Pages to delete (e.g. 2, 5, 8-10)",
     infoInvalid: "Unable to read PDF information.",
+    pageInfoLoading: "Loading page info…",
     extractInvalid: "Please enter valid page numbers.",
     compressAlready: "This file is already optimized. No further compression possible.",
     compressSaved: "saved!",
@@ -2762,7 +2764,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       placeholder={t.rangePlaceholder}
                       className="input-field" />
                     {rangeInput.trim() && !isCurrentPdfPageInfoLoaded && (
-                      <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
+                      <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                     )}
                     {rangeInput.trim() &&
                       isCurrentPdfPageInfoLoaded &&
@@ -2776,11 +2778,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "extract" && files.length > 0 && (
               <div className="space-y-1 animate-fadeIn">
-                  <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
-                    placeholder={t.pagesPlaceholder}
-                    className="input-field" />
+                <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
+                  placeholder={t.pagesPlaceholder}
+                  className="input-field" />
                 {pagesInput.trim() && !isCurrentPdfPageInfoLoaded && (
-                  <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
+                  <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                 )}
                 {pagesInput.trim() &&
                   isCurrentPdfPageInfoLoaded &&
@@ -2796,7 +2798,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   placeholder={t.deletePlaceholder}
                   className="input-field" />
                 {deleteInput.trim() && !isCurrentPdfPageInfoLoaded && (
-                  <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
+                  <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                 )}
                 {deleteInput.trim() &&
                   isCurrentPdfPageInfoLoaded &&
@@ -2840,7 +2842,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       placeholder={t.rotPagesPlaceholder}
                       className="input-field" />
                     {rotatePagesInput.trim() && !isCurrentPdfPageInfoLoaded && (
-                      <p className="text-xs text-amber-500 dark:text-amber-400">{t.infoInvalid}</p>
+                      <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                     )}
                     {rotatePagesInput.trim() &&
                       isCurrentPdfPageInfoLoaded &&
