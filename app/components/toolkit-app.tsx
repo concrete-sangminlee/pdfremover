@@ -2766,9 +2766,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     {rangeInput.trim() && !isCurrentPdfPageInfoLoaded && (
                       <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                     )}
-                    {rangeInput.trim() &&
-                      isCurrentPdfPageInfoLoaded &&
-                      !isRangeInputValidWithTotal(rangeInput) && (
+                    {rangeInput.trim() && isCurrentPdfPageInfoLoaded && currentPdfPageCount === 0 && (
+                      <p className="text-xs text-red-500 dark:text-red-400">{t.infoInvalid}</p>
+                    )}
+                    {rangeInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(rangeInput) && (
                       <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
                     )}
                   </>
@@ -2784,11 +2785,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 {pagesInput.trim() && !isCurrentPdfPageInfoLoaded && (
                   <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                 )}
-                {pagesInput.trim() &&
-                  isCurrentPdfPageInfoLoaded &&
-                  !isRangeInputValidWithTotal(pagesInput) && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
-                  )}
+                {pagesInput.trim() && isCurrentPdfPageInfoLoaded && currentPdfPageCount === 0 && (
+                  <p className="text-xs text-red-500 dark:text-red-400">{t.infoInvalid}</p>
+                )}
+                {pagesInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(pagesInput) && (
+                  <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                )}
               </div>
             )}
 
@@ -2800,11 +2802,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 {deleteInput.trim() && !isCurrentPdfPageInfoLoaded && (
                   <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                 )}
-                {deleteInput.trim() &&
-                  isCurrentPdfPageInfoLoaded &&
-                  !isRangeInputValidWithTotal(deleteInput) && (
-                    <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
-                  )}
+                {deleteInput.trim() && isCurrentPdfPageInfoLoaded && currentPdfPageCount === 0 && (
+                  <p className="text-xs text-red-500 dark:text-red-400">{t.infoInvalid}</p>
+                )}
+                {deleteInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(deleteInput) && (
+                  <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                )}
               </div>
             )}
 
@@ -2844,11 +2847,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     {rotatePagesInput.trim() && !isCurrentPdfPageInfoLoaded && (
                       <p className="text-xs text-amber-500 dark:text-amber-400">{t.pageInfoLoading}</p>
                     )}
-                    {rotatePagesInput.trim() &&
-                      isCurrentPdfPageInfoLoaded &&
-                      !isRangeInputValidWithTotal(rotatePagesInput) && (
-                        <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
-                      )}
+                    {rotatePagesInput.trim() && isCurrentPdfPageInfoLoaded && currentPdfPageCount === 0 && (
+                      <p className="text-xs text-red-500 dark:text-red-400">{t.infoInvalid}</p>
+                    )}
+                    {rotatePagesInput.trim() && currentPdfPageCount > 0 && !isRangeInputValidWithTotal(rotatePagesInput) && (
+                      <p className="text-xs text-red-500 dark:text-red-400">{t.extractInvalid}</p>
+                    )}
                   </div>
                 )}
               </div>
