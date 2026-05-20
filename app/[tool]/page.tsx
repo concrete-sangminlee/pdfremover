@@ -5,6 +5,10 @@ import { TOOL_BY_ID, VALID_TOOLS, isValidTool, type Tool, type ToolCategory } fr
 
 export const dynamicParams = false;
 
+type ToolPageParams = {
+  params: Promise<{ tool: string }>;
+};
+
 const META: Record<Tool, { titleKo: string; titleEn: string; descKo: string; descEn: string }> = {
   unlock: {
     titleKo: "PDF 암호 해제",
@@ -138,12 +142,12 @@ const CATEGORY_KEYWORDS: Record<ToolCategory, string[]> = {
   pdf: ["PDF tool", "free PDF", "online PDF"],
 };
 
-export function generateMetadata({ params }: { params: { tool: string } }): Metadata {
-  if (!isValidTool(params.tool)) {
+export async function generateMetadata({ params }: ToolPageParams): Promise<Metadata> {
+  const { tool } = await params;
+  if (!isValidTool(tool)) {
     notFound();
   }
 
-  const tool = params.tool;
   const meta = META[tool];
 
   return {
@@ -172,8 +176,9 @@ export function generateMetadata({ params }: { params: { tool: string } }): Meta
   };
 }
 
-export default function ToolPage({ params }: { params: { tool: string } }) {
-  if (!isValidTool(params.tool)) notFound();
+export default async function ToolPage({ params }: ToolPageParams) {
+  const { tool } = await params;
+  if (!isValidTool(tool)) notFound();
 
-  return <ToolkitApp initialTool={params.tool} />;
+  return <ToolkitApp initialTool={tool} />;
 }
