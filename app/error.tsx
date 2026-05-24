@@ -1,11 +1,18 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-white dark:bg-slate-950">
       <div className="text-center max-w-md">
@@ -16,6 +23,11 @@ export default function Error({
         <p className="text-gray-400 dark:text-slate-400 text-sm mb-6 leading-relaxed">
           An unexpected error occurred while processing your request.
         </p>
+        {error.digest && (
+          <p className="text-[10px] font-mono text-gray-300 dark:text-slate-600 mb-6 break-all">
+            ref: {error.digest}
+          </p>
+        )}
         <div className="flex gap-3 justify-center">
           <button
             onClick={reset}
