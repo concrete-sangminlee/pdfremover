@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useId, useMemo } from "react";
 import {
   NO_PAGE_INFO_TOOLS,
   NO_PDF_LIB_PRELOAD_TOOLS,
@@ -1298,11 +1298,15 @@ function Toast({
   }, [onDismiss, duration]);
 
   return (
-    <div className={`${styles[type]} border rounded-xl px-4 py-3 flex items-center gap-3 animate-toastIn text-sm font-medium`}>
-      <span className="text-lg">{icons[type]}</span>
+    <div
+      role={type === "error" ? "alert" : "status"}
+      aria-live={type === "error" ? "assertive" : "polite"}
+      className={`${styles[type]} border rounded-xl px-4 py-3 flex items-center gap-3 animate-toastIn text-sm font-medium`}
+    >
+      <span className="text-lg" aria-hidden="true">{icons[type]}</span>
       <span className="flex-1">{text}</span>
       {onDismiss && (
-        <button onClick={onDismiss} className="text-gray-300 hover:text-gray-500 transition-colors text-xs">{"\u2715"}</button>
+        <button onClick={onDismiss} aria-label="Dismiss" className="text-gray-300 hover:text-gray-500 transition-colors text-xs">{"\u2715"}</button>
       )}
     </div>
   );
@@ -1490,12 +1494,21 @@ function AccentButton({ children, onClick, disabled = false, loading = false }: 
 }
 
 function ProgressBar({ progress }: { progress?: number }) {
+  const determinate = progress !== undefined && progress >= 0;
+  const clamped = determinate ? Math.min(100, Math.max(0, progress!)) : undefined;
   return (
-    <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4">
-      {progress !== undefined && progress >= 0 ? (
+    <div
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clamped}
+      aria-label="Processing"
+      className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4"
+    >
+      {determinate ? (
         <div
           className="h-full bg-blue-600 rounded-full transition-all duration-300 ease-out"
-          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+          style={{ width: `${clamped}%` }}
         />
       ) : (
         <div className="progress-bar w-full h-full" />
@@ -1506,14 +1519,21 @@ function ProgressBar({ progress }: { progress?: number }) {
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
   return (
     <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
       <button onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={panelId}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
         <span className="text-sm font-semibold text-gray-800 dark:text-slate-200">{q}</span>
-        <span className={`text-gray-400 dark:text-slate-500 transition-transform duration-300 ${open ? "rotate-180" : ""}`}>&#9662;</span>
+        <span aria-hidden="true" className={`text-gray-400 dark:text-slate-500 transition-transform duration-300 ${open ? "rotate-180" : ""}`}>&#9662;</span>
       </button>
-      <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}>
+      <div
+        id={panelId}
+        hidden={!open}
+        className={`overflow-hidden transition-all duration-300 ${open ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}
+      >
         <p className="px-5 pb-4 text-sm text-gray-400 dark:text-slate-400 leading-relaxed">{a}</p>
       </div>
     </div>
