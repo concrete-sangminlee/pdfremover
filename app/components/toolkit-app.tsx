@@ -1712,14 +1712,25 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     },
     [currentPdfPageCount, isCurrentPdfPageInfoLoaded, isRangeInputValidWithTotal, t]
   );
-  const renderRangeInputFeedback = (input: string) => {
+  const rangeInputAria = (input: string, feedbackId: string) => {
+    const feedback = getRangeInputFeedback(input);
+    return {
+      "aria-invalid": feedback?.tone === "error" ? true : undefined,
+      "aria-describedby": feedback ? feedbackId : undefined,
+    } as const;
+  };
+  const renderRangeInputFeedback = (input: string, feedbackId: string) => {
     const feedback = getRangeInputFeedback(input);
     if (!feedback) return null;
     const className =
       feedback.tone === "warning"
         ? "text-xs text-amber-500 dark:text-amber-400"
         : "text-xs text-red-500 dark:text-red-400";
-    return <p className={className}>{feedback.text}</p>;
+    return (
+      <p id={feedbackId} className={className} role={feedback.tone === "error" ? "alert" : "status"} aria-live="polite">
+        {feedback.text}
+      </p>
+    );
   };
   const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
     () => ({
@@ -2787,8 +2798,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <>
                     <input type="text" value={rangeInput} onChange={(e) => setRangeInput(e.target.value)}
                       placeholder={t.rangePlaceholder}
-                      className="input-field" />
-                    {renderRangeInputFeedback(rangeInput)}
+                      className="input-field"
+                      {...rangeInputAria(rangeInput, "split-range-feedback")} />
+                    {renderRangeInputFeedback(rangeInput, "split-range-feedback")}
                   </>
                 )}
               </div>
@@ -2798,8 +2810,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-1 animate-fadeIn">
                 <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
                   placeholder={t.pagesPlaceholder}
-                  className="input-field" />
-                {renderRangeInputFeedback(pagesInput)}
+                  className="input-field"
+                  {...rangeInputAria(pagesInput, "extract-pages-feedback")} />
+                {renderRangeInputFeedback(pagesInput, "extract-pages-feedback")}
               </div>
             )}
 
@@ -2807,8 +2820,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-1 animate-fadeIn">
                 <input type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)}
                   placeholder={t.deletePlaceholder}
-                  className="input-field" />
-                {renderRangeInputFeedback(deleteInput)}
+                  className="input-field"
+                  {...rangeInputAria(deleteInput, "delete-pages-feedback")} />
+                {renderRangeInputFeedback(deleteInput, "delete-pages-feedback")}
               </div>
             )}
 
@@ -2844,8 +2858,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div className="space-y-1">
                     <input type="text" value={rotatePagesInput} onChange={(e) => setRotatePagesInput(e.target.value)}
                       placeholder={t.rotPagesPlaceholder}
-                      className="input-field" />
-                    {renderRangeInputFeedback(rotatePagesInput)}
+                      className="input-field"
+                      {...rangeInputAria(rotatePagesInput, "rotate-pages-feedback")} />
+                    {renderRangeInputFeedback(rotatePagesInput, "rotate-pages-feedback")}
                   </div>
                 )}
               </div>
