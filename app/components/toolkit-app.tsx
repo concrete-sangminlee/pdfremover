@@ -1322,7 +1322,15 @@ function ImgThumb({ file }: { file: File }) {
   return <img src={url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />;
 }
 
-function ResultImagePreview({ result, index }: { result: { name: string; data: Uint8Array }; index: number }) {
+function ResultImagePreview({
+  result,
+  index,
+  downloadLabel,
+}: {
+  result: { name: string; data: Uint8Array };
+  index: number;
+  downloadLabel: string;
+}) {
   const mime = getMimeTypeForFilename(result.name);
   const url = useMemo(() => {
     const blob = new Blob([toArrayBuffer(result.data)], { type: mime });
@@ -1333,10 +1341,11 @@ function ResultImagePreview({ result, index }: { result: { name: string; data: U
 
   return (
     <button onClick={() => download(result.data, result.name, mime)}
+      aria-label={`${downloadLabel}: ${result.name}`}
       className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg overflow-hidden group hover:ring-2 hover:ring-blue-400 transition-all">
       <img src={url} alt={result.name} className="w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
-        <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <svg aria-hidden="true" className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
       </div>
       <span className="absolute bottom-1 left-1 text-[9px] text-white/80 bg-black/40 px-1 rounded">{index + 1}</span>
     </button>
@@ -3106,7 +3115,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 {resultMulti.length > 0 && isPreviewableImage(resultMulti[0].name) && (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 rounded-xl overflow-hidden">
                     {resultMulti.slice(0, 8).map((r, i) => (
-                      <ResultImagePreview key={`${r.name}-${i}`} result={r} index={i} />
+                      <ResultImagePreview key={`${r.name}-${i}`} result={r} index={i} downloadLabel={t.download} />
                     ))}
                     {resultMulti.length > 8 && (
                       <div className="aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-gray-400 dark:text-slate-500 text-sm font-bold">
