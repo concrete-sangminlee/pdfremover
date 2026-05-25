@@ -72,6 +72,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteConfirm: "정말 선택한 페이지를 삭제하시겠습니까?",
     allTools: "모든 도구",
     searchPlaceholder: "도구 검색...",
+    clearSearch: "검색 지우기",
     catPdf: "PDF 도구",
     catImage: "이미지 도구",
     catDocument: "문서 도구",
@@ -308,6 +309,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteConfirm: "Are you sure you want to delete the selected pages?",
     allTools: "All Tools",
     searchPlaceholder: "Search tools...",
+    clearSearch: "Clear search",
     catPdf: "PDF Tools",
     catImage: "Image Tools",
     catDocument: "Document Tools",
@@ -2449,10 +2451,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   if (e.key === "Escape") { setToolSearch(""); searchRef.current?.blur(); }
                 }}
                 placeholder={t.searchPlaceholder}
+                aria-label={t.searchPlaceholder}
                 className="input-field pl-11 pr-16 py-3"
               />
               {toolSearch ? (
-                <button onClick={() => setToolSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xs">{"\u2715"}</button>
+                <button
+                  type="button"
+                  onClick={() => setToolSearch("")}
+                  aria-label={t.clearSearch}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xs"
+                >
+                  <span aria-hidden="true">{"\u2715"}</span>
+                </button>
               ) : (
                 <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-300 dark:text-slate-600 font-mono border border-gray-200 dark:border-slate-700 rounded px-1.5 py-0.5">/</kbd>
               )}
