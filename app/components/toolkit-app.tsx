@@ -2834,6 +2834,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex gap-2">
                   {(["range", "all"] as const).map((m) => (
                     <button key={m} onClick={() => setSplitMode(m)}
+                      aria-pressed={splitMode === m}
                       className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all
                         ${splitMode === m ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {m === "range" ? t.rangeMode : t.allPages}
@@ -2880,6 +2881,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <div className="flex gap-2">
                       {[90, 180, 270].map((d) => (
                         <button key={d} onClick={() => setRotateDeg(d)}
+                          aria-pressed={rotateDeg === d}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${rotateDeg === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {d}°
@@ -2892,6 +2894,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <div className="flex gap-2">
                       {(["all", "specific"] as const).map((s) => (
                         <button key={s} onClick={() => setRotateScope(s)}
+                          aria-pressed={rotateScope === s}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${rotateScope === s ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {s === "all" ? t.rotAll : t.rotSpecific}
@@ -2921,6 +2924,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex gap-2">
                   {(["vertical", "horizontal"] as const).map((d) => (
                     <button key={d} onClick={() => setStitchDir(d)}
+                      aria-pressed={stitchDir === d}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                         ${stitchDir === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {d === "vertical" ? t.imgVertical : t.imgHorizontal}
@@ -2936,6 +2940,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex gap-2">
                   {(["png", "jpeg", "webp"] as const).map((fmt) => (
                     <button key={fmt} onClick={() => setImgOutputFormat(fmt)}
+                      aria-pressed={imgOutputFormat === fmt}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all uppercase
                         ${imgOutputFormat === fmt ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {fmt === "jpeg" ? "JPG" : fmt.toUpperCase()}
@@ -2999,6 +3004,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div className="flex gap-2">
                     {([["center", t.wmCenter], ["diagonal", t.wmDiagonal], ["tiled", t.wmTiled]] as const).map(([val, label]) => (
                       <button key={val} onClick={() => setWmPosition(val as "center" | "diagonal" | "tiled")}
+                        aria-pressed={wmPosition === val}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                           ${wmPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
@@ -3017,6 +3023,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     <div className="flex gap-2">
                       {([["simple", "1, 2, 3"], ["total", "1/10"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setPnFormat(val as "simple" | "total")}
+                          aria-pressed={pnFormat === val}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${pnFormat === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {label}
@@ -3035,6 +3042,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label]) => (
                       <button key={val} onClick={() => setPnPosition(val)}
+                        aria-pressed={pnPosition === val}
                         className={`py-2 rounded-xl text-xs font-medium border transition-all
                           ${pnPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
