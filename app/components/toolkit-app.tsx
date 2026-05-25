@@ -1531,7 +1531,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
       </button>
       <div
         id={panelId}
-        hidden={!open}
+        aria-hidden={!open}
         className={`overflow-hidden transition-all duration-300 ${open ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}
       >
         <p className="px-5 pb-4 text-sm text-gray-400 dark:text-slate-400 leading-relaxed">{a}</p>
