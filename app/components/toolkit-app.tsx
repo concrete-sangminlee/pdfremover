@@ -1466,9 +1466,13 @@ function FileDropzone({
               </div>
             ))}
             {multiple && (
-              <p className="text-center text-gray-300 text-xs pt-2 cursor-pointer" onClick={() => ref.current?.click()}>
+              <button
+                type="button"
+                className="block w-full text-center text-gray-300 text-xs pt-2 cursor-pointer"
+                onClick={() => ref.current?.click()}
+              >
                 {t.addMore}{onReorder && <span className="text-gray-400"> · {t.dragReorder}</span>}
-              </p>
+              </button>
             )}
           </div>
         )}
