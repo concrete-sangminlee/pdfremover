@@ -1400,7 +1400,7 @@ function FileDropzone({
         />
         {files.length === 0 ? (
           <>
-            <svg className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
+            <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
               {acceptType.includes("image/") ? (
                 <>
                   <rect x="6" y="6" width="36" height="36" rx="4" />
@@ -2406,7 +2406,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <button onClick={() => goTool("unlock")}
                     className="group px-8 py-3.5 rounded-2xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2">
                     {t.heroCta}
-                    <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                    <svg aria-hidden="true" className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                   </button>
                   <button onClick={() => { const el = document.getElementById("tool-grid"); el?.scrollIntoView({ behavior: "smooth" }); }}
                     className="px-8 py-3.5 rounded-2xl bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 font-bold text-sm border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:-translate-y-0.5 transition-all shadow-sm">
@@ -2418,7 +2418,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex items-center justify-center gap-3 sm:gap-5 mt-10 flex-wrap">
                   {[t.trust1, t.trust2, t.trust3, t.trust4].map((label) => (
                     <span key={label} className="flex items-center gap-1.5 text-gray-400 dark:text-slate-500 text-[11px] font-medium">
-                      <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      <svg aria-hidden="true" className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                       {label}
                     </span>
                   ))}
@@ -2447,7 +2447,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div id="tool-grid" />
             {/* Search */}
             <div className="relative mb-6">
-              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <svg aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
                 ref={searchRef}
                 type="text"
@@ -2585,10 +2585,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div key={i} className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100 dark:border-slate-800" : ""}`}>
                     <div className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
                     <div className="px-2 sm:px-5 py-3 text-center">
-                      <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      <svg aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      <span className="sr-only">{lang === "ko" ? "지원" : "Yes"}</span>
                     </div>
                     <div className="px-2 sm:px-5 py-3 text-center">
-                      <svg className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <svg aria-hidden="true" className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <span className="sr-only">{lang === "ko" ? "미지원" : "No"}</span>
                     </div>
                   </div>
                 ))}
@@ -2783,7 +2785,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* Security callout */}
             {files.length === 0 && (
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-100 dark:border-green-900">
-                <svg className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <svg aria-hidden="true" className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 <span className="text-xs text-green-700 dark:text-green-400">{t.securityNote}</span>
               </div>
             )}
@@ -3095,13 +3097,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="animate-scaleIn space-y-3">
                 <div className="flex items-center justify-center gap-2 py-2">
                   <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <svg aria-hidden="true" className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                   </div>
                   <span className="text-sm font-semibold text-green-700 dark:text-green-400">{message?.text}</span>
                 </div>
                 <button onClick={() => download(resultData, resultName, getMimeTypeForFilename(resultName))}
                   className="w-full py-3.5 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  <svg aria-hidden="true" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   {resultName} ({fmtSize(resultData.length)})
                 </button>
                 <div className="flex items-center justify-between">
