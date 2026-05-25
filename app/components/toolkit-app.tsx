@@ -2756,6 +2756,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder={t.txtPlaceholder}
+                  aria-label={t.txtPlaceholder}
                   className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
                   rows={10}
                 />
@@ -2953,7 +2954,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgresize" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
-                <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full" />
+                <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
+                  aria-label={`${t.imgScale}: ${Math.round(imgScale * 100)}%`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>10%</span>
                   <span>100%</span>
@@ -2965,7 +2967,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgcompress" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
-                <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full" />
+                <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
+                  aria-label={`${t.imgQuality}: ${Math.round(imgQuality * 100)}%`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>{t.maxCompress}</span>
                   <span>{t.origQuality}</span>
@@ -2991,7 +2994,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
-                    <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3" />
+                    <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
+                      aria-label={`${t.wmOpacity}: ${Math.round(wmOpacity * 100)}%`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
