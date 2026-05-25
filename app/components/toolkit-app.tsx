@@ -79,6 +79,7 @@ export const T: Record<Lang, Record<string, string>> = {
     copied: "클립보드에 복사됨",
     processAnother: "다른 파일 처리하기",
     clearFiles: "파일 초기화",
+    removeFile: "파일 제거",
     backToTop: "맨 위로",
     footerImgDoc: "이미지 & 문서",
     noResults: "검색 결과가 없습니다",
@@ -314,6 +315,7 @@ export const T: Record<Lang, Record<string, string>> = {
     copied: "Copied to clipboard",
     processAnother: "Process another file",
     clearFiles: "Clear files",
+    removeFile: "Remove file",
     backToTop: "Back to top",
     footerImgDoc: "Image & Docs",
     noResults: "No tools found",
@@ -1455,8 +1457,9 @@ function FileDropzone({
                 {onRemove && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onRemove(i); }}
-                    className="w-6 h-6 rounded-md bg-gray-50 text-gray-300 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-                  >{"\u2715"}</button>
+                    aria-label={`${t.removeFile}: ${f.name}`}
+                    className="w-6 h-6 rounded-md bg-gray-50 text-gray-300 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all flex-shrink-0"
+                  ><span aria-hidden="true">{"\u2715"}</span></button>
                 )}
               </div>
             ))}
