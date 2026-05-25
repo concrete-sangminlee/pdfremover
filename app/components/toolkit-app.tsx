@@ -1496,7 +1496,7 @@ function AccentButton({ children, onClick, disabled = false, loading = false }: 
   );
 }
 
-function ProgressBar({ progress }: { progress?: number }) {
+function ProgressBar({ progress, label }: { progress?: number; label?: string }) {
   const determinate = progress !== undefined && progress >= 0;
   const clamped = determinate ? Math.min(100, Math.max(0, progress!)) : undefined;
   return (
@@ -1505,7 +1505,7 @@ function ProgressBar({ progress }: { progress?: number }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={clamped}
-      aria-label="Processing"
+      aria-label={label}
       className="w-full h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mb-4"
     >
       {determinate ? (
@@ -2721,9 +2721,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           </div>
 
           <div aria-live="polite" aria-atomic="true" className="sr-only">
-            {processing ? (batchProgress >= 0 ? `Processing ${batchProgress}%` : "Processing...") : message?.text || ""}
+            {processing ? (batchProgress >= 0 ? `${t.processing} ${batchProgress}%` : t.processing) : message?.text || ""}
           </div>
-          {processing && <ProgressBar progress={batchProgress >= 0 ? batchProgress : undefined} />}
+          {processing && <ProgressBar progress={batchProgress >= 0 ? batchProgress : undefined} label={t.processing} />}
 
           <div className="space-y-4 animate-fadeInUp" style={{ animationDelay: "100ms" }}>
             {/* Text input for txt2pdf */}
