@@ -92,6 +92,7 @@ export const T: Record<Lang, Record<string, string>> = {
     downloadZip: "개 파일 다운로드 (ZIP)",
     uploadHint: "PDF 파일을 드래그하거나",
     uploadClick: "클릭",
+    uploadFile: "업로드할 파일 선택",
     uploadSuffix: "하여 업로드",
     multiHint: "여러 파일 선택 가능",
     addMore: "클릭하여 파일 추가",
@@ -329,6 +330,7 @@ export const T: Record<Lang, Record<string, string>> = {
     downloadZip: " files download (ZIP)",
     uploadHint: "Drag PDF files here or",
     uploadClick: "click",
+    uploadFile: "Select file to upload",
     uploadSuffix: "to upload",
     multiHint: "Multiple files supported",
     addMore: "Click to add more files",
@@ -1269,9 +1271,9 @@ function DarkModeToggle({ dark, setDark }: { dark: boolean; setDark: (d: boolean
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {dark ? (
-        <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd"/></svg>
+        <svg aria-hidden="true" className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd"/></svg>
       ) : (
-        <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        <svg aria-hidden="true" className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
       )}
     </button>
   );
@@ -1343,7 +1345,7 @@ function ResultImagePreview({
     <button onClick={() => download(result.data, result.name, mime)}
       aria-label={`${downloadLabel}: ${result.name}`}
       className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg overflow-hidden group hover:ring-2 hover:ring-blue-400 transition-all">
-      <img src={url} alt={result.name} className="w-full h-full object-cover" />
+      <img src={url} alt="" aria-hidden="true" className="w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
         <svg aria-hidden="true" className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
       </div>
@@ -1429,6 +1431,7 @@ function FileDropzone({
               })()} <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
             </p>
             <button type="button" onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}
+              aria-label={t.uploadFile}
               className="mt-3 px-5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all">
               {t.uploadClick}
             </button>
@@ -2330,7 +2333,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <button onClick={goHome} className="flex items-center gap-2.5 group" aria-label="Go home">
           <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-sm group-hover:bg-blue-100 dark:group-hover:bg-blue-900 transition-colors">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#2563eb" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="#2563eb" strokeWidth="1" strokeLinecap="round" opacity="0.6"/></svg>
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="#2563eb" strokeWidth="1.5"/><path d="M5 4.5h6M5 7h6M5 9.5h4" stroke="#2563eb" strokeWidth="1" strokeLinecap="round" opacity="0.6"/></svg>
           </div>
           <span className="text-sm font-bold tracking-tight hidden sm:block dark:text-slate-100">
             File<span className="text-blue-600 dark:text-blue-400">Forge</span>
@@ -2575,22 +2578,22 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* Comparison */}
             <div className="mt-20 sm:mt-24 max-w-2xl mx-auto">
               <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
-              <div className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-                <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold">
-                  <div className="px-3 sm:px-5 py-3 text-gray-500 dark:text-slate-400">{t.compareFeature}</div>
-                  <div className="px-2 sm:px-5 py-3 text-blue-600 dark:text-blue-400 text-center truncate">{t.compareUs}</div>
-                  <div className="px-2 sm:px-5 py-3 text-gray-400 dark:text-slate-500 text-center truncate">{t.compareOthers}</div>
+              <div role="table" aria-label={t.compareTitle} className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+                <div role="row" className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold">
+                  <div role="columnheader" className="px-3 sm:px-5 py-3 text-gray-500 dark:text-slate-400">{t.compareFeature}</div>
+                  <div role="columnheader" className="px-2 sm:px-5 py-3 text-blue-600 dark:text-blue-400 text-center truncate">{t.compareUs}</div>
+                  <div role="columnheader" className="px-2 sm:px-5 py-3 text-gray-400 dark:text-slate-500 text-center truncate">{t.compareOthers}</div>
                 </div>
                 {[t.cmpPrivacy, t.cmpUpload, t.cmpFree, t.cmpSignup, t.cmpSpeed].map((feat, i) => (
-                  <div key={i} className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100 dark:border-slate-800" : ""}`}>
-                    <div className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
-                    <div className="px-2 sm:px-5 py-3 text-center">
+                  <div key={i} role="row" className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100 dark:border-slate-800" : ""}`}>
+                    <div role="cell" className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
+                    <div role="cell" className="px-2 sm:px-5 py-3 text-center">
                       <svg aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      <span className="sr-only">{lang === "ko" ? "지원" : "Yes"}</span>
+                      <span className="sr-only">{lang === "ko" ? `${t.compareUs}: 지원` : `${t.compareUs}: Yes`}</span>
                     </div>
-                    <div className="px-2 sm:px-5 py-3 text-center">
+                    <div role="cell" className="px-2 sm:px-5 py-3 text-center">
                       <svg aria-hidden="true" className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      <span className="sr-only">{lang === "ko" ? "미지원" : "No"}</span>
+                      <span className="sr-only">{lang === "ko" ? `${t.compareOthers}: 미지원` : `${t.compareOthers}: No`}</span>
                     </div>
                   </div>
                 ))}
@@ -2738,7 +2741,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   className="w-9 h-9 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all flex-shrink-0"
                   aria-label="Share"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                  <svg aria-hidden="true" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                 </button>
               </div>
             )}
@@ -2758,7 +2761,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder={t.txtPlaceholder}
-                  aria-label={t.txtPlaceholder}
+                  aria-label={t.txt2pdfLabel}
                   className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
                   rows={10}
                 />
@@ -2834,10 +2837,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "split" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <div className="flex gap-2">
+                <div role="radiogroup" aria-label={t.splitLabel} className="flex gap-2">
                   {(["range", "all"] as const).map((m) => (
                     <button key={m} onClick={() => setSplitMode(m)}
-                      aria-pressed={splitMode === m}
+                      role="radio"
+                      aria-checked={splitMode === m}
                       className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all
                         ${splitMode === m ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {m === "range" ? t.rangeMode : t.allPages}
@@ -2881,10 +2885,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotAngle}</label>
-                    <div className="flex gap-2">
+                    <div role="radiogroup" aria-label={t.rotAngle} className="flex gap-2">
                       {[90, 180, 270].map((d) => (
                         <button key={d} onClick={() => setRotateDeg(d)}
-                          aria-pressed={rotateDeg === d}
+                          role="radio"
+                          aria-checked={rotateDeg === d}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${rotateDeg === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {d}°
@@ -2894,10 +2899,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <div className="flex-1">
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotScope}</label>
-                    <div className="flex gap-2">
+                    <div role="radiogroup" aria-label={t.rotScope} className="flex gap-2">
                       {(["all", "specific"] as const).map((s) => (
                         <button key={s} onClick={() => setRotateScope(s)}
-                          aria-pressed={rotateScope === s}
+                          role="radio"
+                          aria-checked={rotateScope === s}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${rotateScope === s ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {s === "all" ? t.rotAll : t.rotSpecific}
@@ -2924,10 +2930,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgstitch" && files.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgDirection}</label>
-                <div className="flex gap-2">
+                <div role="radiogroup" aria-label={t.imgDirection} className="flex gap-2">
                   {(["vertical", "horizontal"] as const).map((d) => (
                     <button key={d} onClick={() => setStitchDir(d)}
-                      aria-pressed={stitchDir === d}
+                      role="radio"
+                      aria-checked={stitchDir === d}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                         ${stitchDir === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {d === "vertical" ? t.imgVertical : t.imgHorizontal}
@@ -2940,10 +2947,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgconvert" && files.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgFormat}</label>
-                <div className="flex gap-2">
+                <div role="radiogroup" aria-label={t.imgFormat} className="flex gap-2">
                   {(["png", "jpeg", "webp"] as const).map((fmt) => (
                     <button key={fmt} onClick={() => setImgOutputFormat(fmt)}
-                      aria-pressed={imgOutputFormat === fmt}
+                      role="radio"
+                      aria-checked={imgOutputFormat === fmt}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all uppercase
                         ${imgOutputFormat === fmt ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {fmt === "jpeg" ? "JPG" : fmt.toUpperCase()}
@@ -2957,7 +2965,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
                 <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
-                  aria-label={`${t.imgScale}: ${Math.round(imgScale * 100)}%`} />
+                  aria-label={t.imgScale} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>10%</span>
                   <span>100%</span>
@@ -2970,7 +2978,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
                 <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
-                  aria-label={`${t.imgQuality}: ${Math.round(imgQuality * 100)}%`} />
+                  aria-label={t.imgQuality} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>{t.maxCompress}</span>
                   <span>{t.origQuality}</span>
@@ -2997,7 +3005,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
                     <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
-                      aria-label={`${t.wmOpacity}: ${Math.round(wmOpacity * 100)}%`} />
+                      aria-label={t.wmOpacity} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
@@ -3007,10 +3015,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmLayout}</label>
-                  <div className="flex gap-2">
+                  <div role="radiogroup" aria-label={t.wmLayout} className="flex gap-2">
                     {([["center", t.wmCenter], ["diagonal", t.wmDiagonal], ["tiled", t.wmTiled]] as const).map(([val, label]) => (
                       <button key={val} onClick={() => setWmPosition(val as "center" | "diagonal" | "tiled")}
-                        aria-pressed={wmPosition === val}
+                        role="radio"
+                        aria-checked={wmPosition === val}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                           ${wmPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
@@ -3026,10 +3035,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnFormat}</label>
-                    <div className="flex gap-2">
+                    <div role="radiogroup" aria-label={t.pnFormat} className="flex gap-2">
                       {([["simple", "1, 2, 3"], ["total", "1/10"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setPnFormat(val as "simple" | "total")}
-                          aria-pressed={pnFormat === val}
+                          role="radio"
+                          aria-checked={pnFormat === val}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${pnFormat === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {label}
@@ -3045,10 +3055,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnPosition}</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  <div role="radiogroup" aria-label={t.pnPosition} className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label]) => (
                       <button key={val} onClick={() => setPnPosition(val)}
-                        aria-pressed={pnPosition === val}
+                        role="radio"
+                        aria-checked={pnPosition === val}
                         className={`py-2 rounded-xl text-xs font-medium border transition-all
                           ${pnPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
