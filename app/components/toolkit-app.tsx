@@ -93,6 +93,12 @@ export const T: Record<Lang, Record<string, string>> = {
     uploadHint: "PDF 파일을 드래그하거나",
     uploadClick: "클릭",
     uploadFile: "업로드할 파일 선택",
+    switchToLight: "밝은 모드로 전환",
+    switchToDark: "어두운 모드로 전환",
+    dismiss: "닫기",
+    textInputLabel: "텍스트 입력",
+    statusSuccess: "성공",
+    statusError: "오류",
     uploadSuffix: "하여 업로드",
     multiHint: "여러 파일 선택 가능",
     addMore: "클릭하여 파일 추가",
@@ -331,6 +337,12 @@ export const T: Record<Lang, Record<string, string>> = {
     uploadHint: "Drag PDF files here or",
     uploadClick: "click",
     uploadFile: "Select file to upload",
+    switchToLight: "Switch to light mode",
+    switchToDark: "Switch to dark mode",
+    dismiss: "Dismiss",
+    textInputLabel: "Text input",
+    statusSuccess: "Success",
+    statusError: "Error",
     uploadSuffix: "to upload",
     multiHint: "Multiple files supported",
     addMore: "Click to add more files",
@@ -1249,6 +1261,38 @@ async function getPageCount(file: File): Promise<number> {
 
 // ━━━ Components ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+type RadioValue = string | number;
+
+function handleRadioGroupKeyDown<T extends RadioValue>(
+  event: React.KeyboardEvent<HTMLElement>,
+  options: readonly T[],
+  currentValue: T,
+  onChange: (value: T) => void
+) {
+  const { key } = event;
+  const currentIndex = Math.max(0, options.findIndex((option) => option === currentValue));
+  let nextIndex: number | null = null;
+
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    nextIndex = (currentIndex + 1) % options.length;
+  } else if (key === "ArrowLeft" || key === "ArrowUp") {
+    nextIndex = (currentIndex - 1 + options.length) % options.length;
+  } else if (key === "Home") {
+    nextIndex = 0;
+  } else if (key === "End") {
+    nextIndex = options.length - 1;
+  }
+
+  if (nextIndex === null) return;
+  event.preventDefault();
+
+  onChange(options[nextIndex]);
+  const group = event.currentTarget;
+  requestAnimationFrame(() => {
+    group.querySelector<HTMLElement>(`[data-radio-index="${nextIndex}"]`)?.focus();
+  });
+}
+
 function LangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   return (
     <button
@@ -1263,12 +1307,12 @@ function LangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void 
   );
 }
 
-function DarkModeToggle({ dark, setDark }: { dark: boolean; setDark: (d: boolean) => void }) {
+function DarkModeToggle({ dark, setDark, t }: { dark: boolean; setDark: (d: boolean) => void; t: Record<string, string> }) {
   return (
     <button
       onClick={() => setDark(!dark)}
       className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-700 flex items-center justify-center transition-all text-sm"
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={dark ? t.switchToLight : t.switchToDark}
     >
       {dark ? (
         <svg aria-hidden="true" className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd"/></svg>
@@ -1283,10 +1327,12 @@ function Toast({
   type,
   text,
   onDismiss,
+  dismissLabel = "Dismiss",
 }: {
   type: "success" | "error" | "warning";
   text: string;
   onDismiss?: () => void;
+  dismissLabel?: string;
 }) {
   const styles = {
     success: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400",
@@ -1312,7 +1358,7 @@ function Toast({
       <span className="text-lg" aria-hidden="true">{icons[type]}</span>
       <span className="flex-1">{text}</span>
       {onDismiss && (
-        <button onClick={onDismiss} aria-label="Dismiss" className="text-gray-300 hover:text-gray-500 transition-colors text-xs">{"\u2715"}</button>
+        <button onClick={onDismiss} aria-label={dismissLabel} className="text-gray-300 hover:text-gray-500 transition-colors text-xs">{"\u2715"}</button>
       )}
     </div>
   );
@@ -1349,7 +1395,7 @@ function ResultImagePreview({
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
         <svg aria-hidden="true" className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
       </div>
-      <span className="absolute bottom-1 left-1 text-[9px] text-white/80 bg-black/40 px-1 rounded">{index + 1}</span>
+      <span aria-hidden="true" className="absolute bottom-1 left-1 text-[9px] text-white/80 bg-black/40 px-1 rounded">{index + 1}</span>
     </button>
   );
 }
@@ -1431,9 +1477,9 @@ function FileDropzone({
               })()} <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
             </p>
             <button type="button" onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}
-              aria-label={t.uploadFile}
               className="mt-3 px-5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all">
               {t.uploadClick}
+              <span className="sr-only"> - {t.uploadFile}</span>
             </button>
             {multiple && <p className="text-gray-400 dark:text-slate-500 text-xs mt-3">{t.multiHint}{acceptType.includes("image/") ? " · Ctrl+V" : ""}</p>}
           </>
@@ -2345,7 +2391,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               {t.allTools}
             </button>
           )}
-          <DarkModeToggle dark={dark} setDark={setDark} />
+          <DarkModeToggle dark={dark} setDark={setDark} t={t} />
           <LangToggle lang={lang} setLang={setLang} />
         </div>
       </div>
@@ -2579,24 +2625,28 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div className="mt-20 sm:mt-24 max-w-2xl mx-auto">
               <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
               <div role="table" aria-label={t.compareTitle} className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-                <div role="row" className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold">
-                  <div role="columnheader" className="px-3 sm:px-5 py-3 text-gray-500 dark:text-slate-400">{t.compareFeature}</div>
-                  <div role="columnheader" className="px-2 sm:px-5 py-3 text-blue-600 dark:text-blue-400 text-center truncate">{t.compareUs}</div>
-                  <div role="columnheader" className="px-2 sm:px-5 py-3 text-gray-400 dark:text-slate-500 text-center truncate">{t.compareOthers}</div>
-                </div>
-                {[t.cmpPrivacy, t.cmpUpload, t.cmpFree, t.cmpSignup, t.cmpSpeed].map((feat, i) => (
-                  <div key={i} role="row" className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100 dark:border-slate-800" : ""}`}>
-                    <div role="cell" className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
-                    <div role="cell" className="px-2 sm:px-5 py-3 text-center">
-                      <svg aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      <span className="sr-only">{lang === "ko" ? `${t.compareUs}: 지원` : `${t.compareUs}: Yes`}</span>
-                    </div>
-                    <div role="cell" className="px-2 sm:px-5 py-3 text-center">
-                      <svg aria-hidden="true" className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      <span className="sr-only">{lang === "ko" ? `${t.compareOthers}: 미지원` : `${t.compareOthers}: No`}</span>
-                    </div>
+                <div role="rowgroup">
+                  <div role="row" className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold">
+                    <div role="columnheader" className="px-3 sm:px-5 py-3 text-gray-500 dark:text-slate-400">{t.compareFeature}</div>
+                    <div role="columnheader" className="px-2 sm:px-5 py-3 text-blue-600 dark:text-blue-400 text-center truncate">{t.compareUs}</div>
+                    <div role="columnheader" className="px-2 sm:px-5 py-3 text-gray-400 dark:text-slate-500 text-center truncate">{t.compareOthers}</div>
                   </div>
-                ))}
+                </div>
+                <div role="rowgroup">
+                  {[t.cmpPrivacy, t.cmpUpload, t.cmpFree, t.cmpSignup, t.cmpSpeed].map((feat, i) => (
+                    <div key={i} role="row" className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 text-xs sm:text-sm ${i < 4 ? "border-b border-gray-100 dark:border-slate-800" : ""}`}>
+                      <div role="cell" className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
+                      <div role="cell" className="px-2 sm:px-5 py-3 text-center">
+                        <svg aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        <span className="sr-only">{lang === "ko" ? "지원" : "Yes"}</span>
+                      </div>
+                      <div role="cell" className="px-2 sm:px-5 py-3 text-center">
+                        <svg aria-hidden="true" className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        <span className="sr-only">{lang === "ko" ? "미지원" : "No"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -2617,8 +2667,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {history.slice(0, 8).map((h, i) => (
                     <button key={i} onClick={() => h.toolId && isValidTool(h.toolId) && goTool(h.toolId)}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors w-full text-left ${h.toolId ? "cursor-pointer" : "cursor-default"}`}>
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
+                      <div aria-hidden="true" className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
                       <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1 truncate">
+                        <span className="sr-only">{h.ok ? `${t.statusSuccess}: ` : `${t.statusError}: `}</span>
                         <span className="text-gray-700 dark:text-slate-300">{h.action}</span> — {h.file}
                       </span>
                       <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono flex-shrink-0">{h.time}</span>
@@ -2634,7 +2685,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           <div className="flex justify-center mt-12">
             <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="group flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-              <svg className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
+              <svg aria-hidden="true" className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
               {t.backToTop}
             </button>
           </div>
@@ -2761,7 +2812,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder={t.txtPlaceholder}
-                  aria-label={t.txt2pdfLabel}
+                  aria-label={t.textInputLabel}
                   className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
                   rows={10}
                 />
@@ -2837,11 +2888,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "split" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <div role="radiogroup" aria-label={t.splitLabel} className="flex gap-2">
-                  {(["range", "all"] as const).map((m) => (
+                <div
+                  role="radiogroup"
+                  aria-label={t.splitLabel}
+                  onKeyDown={(e) => handleRadioGroupKeyDown(e, ["range", "all"] as const, splitMode, setSplitMode)}
+                  className="flex gap-2"
+                >
+                  {(["range", "all"] as const).map((m, idx) => (
                     <button key={m} onClick={() => setSplitMode(m)}
                       role="radio"
                       aria-checked={splitMode === m}
+                      tabIndex={splitMode === m ? 0 : -1}
+                      data-radio-index={idx}
                       className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all
                         ${splitMode === m ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {m === "range" ? t.rangeMode : t.allPages}
@@ -2885,11 +2943,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotAngle}</label>
-                    <div role="radiogroup" aria-label={t.rotAngle} className="flex gap-2">
-                      {[90, 180, 270].map((d) => (
+                    <div
+                      role="radiogroup"
+                      aria-label={t.rotAngle}
+                      onKeyDown={(e) => handleRadioGroupKeyDown(e, [90, 180, 270] as const, rotateDeg, setRotateDeg)}
+                      className="flex gap-2"
+                    >
+                      {[90, 180, 270].map((d, idx) => (
                         <button key={d} onClick={() => setRotateDeg(d)}
                           role="radio"
                           aria-checked={rotateDeg === d}
+                          tabIndex={rotateDeg === d ? 0 : -1}
+                          data-radio-index={idx}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${rotateDeg === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {d}°
@@ -2899,11 +2964,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <div className="flex-1">
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotScope}</label>
-                    <div role="radiogroup" aria-label={t.rotScope} className="flex gap-2">
-                      {(["all", "specific"] as const).map((s) => (
+                    <div
+                      role="radiogroup"
+                      aria-label={t.rotScope}
+                      onKeyDown={(e) => handleRadioGroupKeyDown(e, ["all", "specific"] as const, rotateScope, setRotateScope)}
+                      className="flex gap-2"
+                    >
+                      {(["all", "specific"] as const).map((s, idx) => (
                         <button key={s} onClick={() => setRotateScope(s)}
                           role="radio"
                           aria-checked={rotateScope === s}
+                          tabIndex={rotateScope === s ? 0 : -1}
+                          data-radio-index={idx}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${rotateScope === s ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {s === "all" ? t.rotAll : t.rotSpecific}
@@ -2930,11 +3002,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgstitch" && files.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgDirection}</label>
-                <div role="radiogroup" aria-label={t.imgDirection} className="flex gap-2">
-                  {(["vertical", "horizontal"] as const).map((d) => (
+                <div
+                  role="radiogroup"
+                  aria-label={t.imgDirection}
+                  onKeyDown={(e) => handleRadioGroupKeyDown(e, ["vertical", "horizontal"] as const, stitchDir, setStitchDir)}
+                  className="flex gap-2"
+                >
+                  {(["vertical", "horizontal"] as const).map((d, idx) => (
                     <button key={d} onClick={() => setStitchDir(d)}
                       role="radio"
                       aria-checked={stitchDir === d}
+                      tabIndex={stitchDir === d ? 0 : -1}
+                      data-radio-index={idx}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                         ${stitchDir === d ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {d === "vertical" ? t.imgVertical : t.imgHorizontal}
@@ -2947,11 +3026,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgconvert" && files.length > 0 && (
               <div className="animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgFormat}</label>
-                <div role="radiogroup" aria-label={t.imgFormat} className="flex gap-2">
-                  {(["png", "jpeg", "webp"] as const).map((fmt) => (
+                <div
+                  role="radiogroup"
+                  aria-label={t.imgFormat}
+                  onKeyDown={(e) => handleRadioGroupKeyDown(e, ["png", "jpeg", "webp"] as const, imgOutputFormat, setImgOutputFormat)}
+                  className="flex gap-2"
+                >
+                  {(["png", "jpeg", "webp"] as const).map((fmt, idx) => (
                     <button key={fmt} onClick={() => setImgOutputFormat(fmt)}
                       role="radio"
                       aria-checked={imgOutputFormat === fmt}
+                      tabIndex={imgOutputFormat === fmt ? 0 : -1}
+                      data-radio-index={idx}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all uppercase
                         ${imgOutputFormat === fmt ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                       {fmt === "jpeg" ? "JPG" : fmt.toUpperCase()}
@@ -2965,7 +3051,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
                 <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
-                  aria-label={t.imgScale} />
+                  aria-label={t.imgScale}
+                  aria-valuetext={`${Math.round(imgScale * 100)}%`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>10%</span>
                   <span>100%</span>
@@ -2978,7 +3065,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
                 <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
-                  aria-label={t.imgQuality} />
+                  aria-label={t.imgQuality}
+                  aria-valuetext={`${Math.round(imgQuality * 100)}%`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>{t.maxCompress}</span>
                   <span>{t.origQuality}</span>
@@ -2991,6 +3079,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div>
                   <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
                   <input type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.wmText}
+                    aria-label={t.wmText}
                     className="input-field" />
                   {/[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText) && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{lang === "ko" ? "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요." : "CJK characters are not supported. Please use Latin text."}</p>
@@ -3000,26 +3089,36 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmSize}</label>
                     <input type="number" value={wmSize} onChange={(e) => setWmSize(Math.min(120, Math.max(12, Number(e.target.value) || 12)))} min={12} max={120}
+                      aria-label={t.wmSize}
                       className="input-field" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
                     <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
-                      aria-label={t.wmOpacity} />
+                      aria-label={t.wmOpacity}
+                      aria-valuetext={`${Math.round(wmOpacity * 100)}%`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
                     <input type="number" value={wmRotation} onChange={(e) => setWmRotation(Math.min(90, Math.max(-90, Number(e.target.value) || 0)))} min={-90} max={90}
+                      aria-label={t.wmAngle}
                       className="input-field" />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmLayout}</label>
-                  <div role="radiogroup" aria-label={t.wmLayout} className="flex gap-2">
-                    {([["center", t.wmCenter], ["diagonal", t.wmDiagonal], ["tiled", t.wmTiled]] as const).map(([val, label]) => (
+                  <div
+                    role="radiogroup"
+                    aria-label={t.wmLayout}
+                    onKeyDown={(e) => handleRadioGroupKeyDown(e, ["center", "diagonal", "tiled"] as const, wmPosition, setWmPosition)}
+                    className="flex gap-2"
+                  >
+                    {([["center", t.wmCenter], ["diagonal", t.wmDiagonal], ["tiled", t.wmTiled]] as const).map(([val, label], idx) => (
                       <button key={val} onClick={() => setWmPosition(val as "center" | "diagonal" | "tiled")}
                         role="radio"
                         aria-checked={wmPosition === val}
+                        tabIndex={wmPosition === val ? 0 : -1}
+                        data-radio-index={idx}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                           ${wmPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
@@ -3035,11 +3134,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnFormat}</label>
-                    <div role="radiogroup" aria-label={t.pnFormat} className="flex gap-2">
-                      {([["simple", "1, 2, 3"], ["total", "1/10"]] as const).map(([val, label]) => (
+                    <div
+                      role="radiogroup"
+                      aria-label={t.pnFormat}
+                      onKeyDown={(e) => handleRadioGroupKeyDown(e, ["simple", "total"] as const, pnFormat, setPnFormat)}
+                      className="flex gap-2"
+                    >
+                      {([["simple", "1, 2, 3"], ["total", "1/10"]] as const).map(([val, label], idx) => (
                         <button key={val} onClick={() => setPnFormat(val as "simple" | "total")}
                           role="radio"
                           aria-checked={pnFormat === val}
+                          tabIndex={pnFormat === val ? 0 : -1}
+                          data-radio-index={idx}
                           className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all
                             ${pnFormat === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                           {label}
@@ -3050,16 +3156,31 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div>
                     <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnSize}</label>
                     <input type="number" value={pnSize} onChange={(e) => setPnSize(Math.min(24, Math.max(8, Number(e.target.value) || 11)))} min={8} max={24}
+                      aria-label={t.pnSize}
                       className="input-field" />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnPosition}</label>
-                  <div role="radiogroup" aria-label={t.pnPosition} className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label]) => (
+                  <div
+                    role="radiogroup"
+                    aria-label={t.pnPosition}
+                    onKeyDown={(e) =>
+                      handleRadioGroupKeyDown(
+                        e,
+                        ["bottom-left", "bottom-center", "bottom-right", "top-center", "top-right"] as const,
+                        pnPosition,
+                        setPnPosition
+                      )
+                    }
+                    className="grid grid-cols-3 sm:grid-cols-5 gap-2"
+                  >
+                    {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label], idx) => (
                       <button key={val} onClick={() => setPnPosition(val)}
                         role="radio"
                         aria-checked={pnPosition === val}
+                        tabIndex={pnPosition === val ? 0 : -1}
+                        data-radio-index={idx}
                         className={`py-2 rounded-xl text-xs font-medium border transition-all
                           ${pnPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
@@ -3083,7 +3204,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
 
             {/* Messages */}
-            {message && <Toast type={message.type} text={message.text} onDismiss={() => setMessage(null)} />}
+            {message && <Toast type={message.type} text={message.text} onDismiss={() => setMessage(null)} dismissLabel={t.dismiss} />}
 
             <div id="results-area" />
 
