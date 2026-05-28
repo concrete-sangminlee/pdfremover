@@ -81,6 +81,13 @@ export const T: Record<Lang, Record<string, string>> = {
     counterChars: "자",
     counterLines: "줄",
     counterPages: "페이지",
+    filesSelected: "개 파일 선택됨",
+    imagesSelected: "개 이미지 선택됨",
+    pagesTotalPrefix: "총 ",
+    pagesTotalSuffix: "페이지",
+    pageCountPrefix: "이 PDF는 ",
+    pageCountSuffix: "페이지입니다",
+    wmCjkWarning: "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요.",
     catPdf: "PDF 도구",
     catImage: "이미지 도구",
     catDocument: "문서 도구",
@@ -333,6 +340,13 @@ export const T: Record<Lang, Record<string, string>> = {
     counterChars: "chars",
     counterLines: "lines",
     counterPages: "pages",
+    filesSelected: "files selected",
+    imagesSelected: "images selected",
+    pagesTotalPrefix: "",
+    pagesTotalSuffix: " pages total",
+    pageCountPrefix: "This PDF has ",
+    pageCountSuffix: " pages",
+    wmCjkWarning: "CJK characters are not supported. Please use Latin text.",
     catPdf: "PDF Tools",
     catImage: "Image Tools",
     catDocument: "Document Tools",
@@ -1783,6 +1797,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const wmOpacityId = `${controlId}-wm-opacity`;
   const wmAngleId = `${controlId}-wm-angle`;
   const wmLayoutId = `${controlId}-wm-layout`;
+  const splitLabelId = `${controlId}-split-label`;
   const pnFormatId = `${controlId}-pn-format`;
   const pnSizeId = `${controlId}-pn-size`;
   const pnPositionId = `${controlId}-pn-position`;
@@ -2898,10 +2913,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
             {view === "merge" && files.length >= 2 && (
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 text-sm animate-fadeIn">
-                <span className="text-blue-700 dark:text-blue-400 font-medium">{files.length} {lang === "ko" ? "개 파일 선택됨" : "files selected"}</span>
+                <span className="text-blue-700 dark:text-blue-400 font-medium">{files.length} {t.filesSelected}</span>
                 {(() => {
                   const total = files.reduce((sum, f) => sum + (pageInfo[f.name + f.size + f.lastModified] || 0), 0);
-                  return total > 0 ? <span className="text-blue-500 text-xs font-mono">{lang === "ko" ? `총 ${total}페이지` : `${total} pages total`}</span> : null;
+                  return total > 0 ? <span className="text-blue-500 text-xs font-mono">{t.pagesTotalPrefix}{total}{t.pagesTotalSuffix}</span> : null;
                 })()}
               </div>
             )}
@@ -2909,7 +2924,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* Multi-image summary */}
             {isImageInputTool(view) && files.length >= 2 && (
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900 text-sm animate-fadeIn">
-                <span className="text-violet-700 dark:text-violet-400 font-medium">{files.length} {lang === "ko" ? "개 이미지 선택됨" : "images selected"}</span>
+                <span className="text-violet-700 dark:text-violet-400 font-medium">{files.length} {t.imagesSelected}</span>
                 <span className="text-violet-500 dark:text-violet-400 text-xs font-mono">{fmtSize(files.reduce((sum, f) => sum + f.size, 0))}</span>
               </div>
             )}
@@ -2919,7 +2934,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               const pc = pageInfo[files[0].name + files[0].size + files[0].lastModified];
               return pc > 0 ? (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-xs animate-fadeIn">
-                  <span className="text-gray-500 dark:text-slate-400">{lang === "ko" ? `이 PDF는 ${pc}페이지입니다` : `This PDF has ${pc} pages`}</span>
+                  <span className="text-gray-500 dark:text-slate-400">{t.pageCountPrefix}{pc}{t.pageCountSuffix}</span>
                   <span className="text-gray-300 dark:text-slate-600">|</span>
                   <span className="text-gray-400 dark:text-slate-500 font-mono">{fmtSize(files[0].size)}</span>
                 </div>
@@ -2928,9 +2943,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "split" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
+                <span id={splitLabelId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.splitLabel}</span>
                 <div
                   role="radiogroup"
-                  aria-label={t.splitLabel}
+                  aria-labelledby={splitLabelId}
                   onKeyDown={(e) => handleRadioGroupKeyDown(e, ["range", "all"] as const, splitMode, setSplitMode)}
                   className="flex gap-2"
                 >
@@ -3090,7 +3106,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgresize" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label htmlFor={imgScaleId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
-                  {t.imgScale} <span className="sr-only">({t.percentUnit})</span> <span aria-hidden="true">({Math.round(imgScale * 100)}%)</span>
+                  {t.imgScale} <span aria-hidden="true">({Math.round(imgScale * 100)}%)</span>
                 </label>
                 <input id={imgScaleId} type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
                   aria-valuemin={10}
@@ -3108,7 +3124,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgcompress" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label htmlFor={imgQualityId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
-                  {t.imgQuality} <span className="sr-only">({t.percentUnit})</span> <span aria-hidden="true">({Math.round(imgQuality * 100)}%)</span>
+                  {t.imgQuality} <span aria-hidden="true">({Math.round(imgQuality * 100)}%)</span>
                 </label>
                 <input id={imgQualityId} type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
                   aria-valuemin={10}
@@ -3129,7 +3145,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <input id={wmTextId} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.watermarkPlaceholder}
                     className="input-field" />
                   {/[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText) && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{lang === "ko" ? "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요." : "CJK characters are not supported. Please use Latin text."}</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{t.wmCjkWarning}</p>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -3140,7 +3156,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <div>
                     <label htmlFor={wmOpacityId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
-                      {t.wmOpacity} <span className="sr-only">({t.percentUnit})</span> <span aria-hidden="true">({Math.round(wmOpacity * 100)}%)</span>
+                      {t.wmOpacity} <span aria-hidden="true">({Math.round(wmOpacity * 100)}%)</span>
                     </label>
                     <input id={wmOpacityId} type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
                       aria-valuemin={5}
@@ -3221,7 +3237,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         setPnPosition
                       )
                     }
-                    className="grid grid-cols-3 sm:grid-cols-5 gap-2"
+                    className="flex flex-wrap gap-2"
                   >
                     {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label], idx) => (
                       <button key={val} onClick={() => setPnPosition(val)}
