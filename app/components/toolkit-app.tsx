@@ -72,6 +72,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteConfirm: "정말 선택한 페이지를 삭제하시겠습니까?",
     allTools: "모든 도구",
     searchPlaceholder: "도구 검색...",
+    searchLabel: "도구 검색",
     clearSearch: "검색 지우기",
     catPdf: "PDF 도구",
     catImage: "이미지 도구",
@@ -96,7 +97,7 @@ export const T: Record<Lang, Record<string, string>> = {
     switchToLight: "밝은 모드로 전환",
     switchToDark: "어두운 모드로 전환",
     dismiss: "닫기",
-    textInputLabel: "텍스트 입력",
+    textInputLabel: "PDF로 변환할 텍스트",
     statusSuccess: "성공",
     statusError: "오류",
     uploadSuffix: "하여 업로드",
@@ -316,6 +317,7 @@ export const T: Record<Lang, Record<string, string>> = {
     deleteConfirm: "Are you sure you want to delete the selected pages?",
     allTools: "All Tools",
     searchPlaceholder: "Search tools...",
+    searchLabel: "Search tools",
     clearSearch: "Clear search",
     catPdf: "PDF Tools",
     catImage: "Image Tools",
@@ -340,7 +342,7 @@ export const T: Record<Lang, Record<string, string>> = {
     switchToLight: "Switch to light mode",
     switchToDark: "Switch to dark mode",
     dismiss: "Dismiss",
-    textInputLabel: "Text input",
+    textInputLabel: "Text to convert to PDF",
     statusSuccess: "Success",
     statusError: "Error",
     uploadSuffix: "to upload",
@@ -1270,10 +1272,16 @@ function handleRadioGroupKeyDown<T extends RadioValue>(
   onChange: (value: T) => void
 ) {
   const { key } = event;
-  const currentIndex = Math.max(0, options.findIndex((option) => option === currentValue));
+  if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(key)) return;
+  if (options.length < 2) return;
+
+  const rawIndex = options.findIndex((option) => option === currentValue);
+  const currentIndex = rawIndex === -1 ? 0 : rawIndex;
   let nextIndex: number | null = null;
 
-  if (key === "ArrowRight" || key === "ArrowDown") {
+  if (rawIndex === -1) {
+    nextIndex = 0;
+  } else if (key === "ArrowRight" || key === "ArrowDown") {
     nextIndex = (currentIndex + 1) % options.length;
   } else if (key === "ArrowLeft" || key === "ArrowUp") {
     nextIndex = (currentIndex - 1 + options.length) % options.length;
@@ -1748,6 +1756,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [procTime, setProcTime] = useState<number | null>(null);
 
   const t = T[lang];
+  const controlId = useId();
+  const searchInputId = `${controlId}-tool-search`;
+  const compareTitleId = `${controlId}-compare-title`;
+  const textInputId = `${controlId}-text-input`;
+  const imgScaleId = `${controlId}-img-scale`;
+  const imgQualityId = `${controlId}-img-quality`;
+  const wmTextId = `${controlId}-wm-text`;
+  const wmSizeId = `${controlId}-wm-size`;
+  const wmOpacityId = `${controlId}-wm-opacity`;
+  const wmAngleId = `${controlId}-wm-angle`;
+  const wmLayoutId = `${controlId}-wm-layout`;
+  const pnSizeId = `${controlId}-pn-size`;
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -2496,8 +2516,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             <div id="tool-grid" />
             {/* Search */}
             <div className="relative mb-6">
+              <label htmlFor={searchInputId} className="sr-only">{t.searchLabel}</label>
               <svg aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
+                id={searchInputId}
                 ref={searchRef}
                 type="text"
                 value={toolSearch}
@@ -2513,7 +2535,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   if (e.key === "Escape") { setToolSearch(""); searchRef.current?.blur(); }
                 }}
                 placeholder={t.searchPlaceholder}
-                aria-label={t.searchPlaceholder}
                 className="input-field pl-11 pr-16 py-3"
               />
               {toolSearch ? (
@@ -2623,8 +2644,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Comparison */}
             <div className="mt-20 sm:mt-24 max-w-2xl mx-auto">
-              <h2 className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
-              <div role="table" aria-label={t.compareTitle} className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+              <h2 id={compareTitleId} className="text-center text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-[3px] mb-10">{t.compareTitle}</h2>
+              <div role="table" aria-labelledby={compareTitleId} className="rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
                 <div role="rowgroup">
                   <div role="row" className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold">
                     <div role="columnheader" className="px-3 sm:px-5 py-3 text-gray-500 dark:text-slate-400">{t.compareFeature}</div>
@@ -2808,11 +2829,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* Text input for txt2pdf */}
             {view === "txt2pdf" ? (
               <div className="space-y-1">
+                <label htmlFor={textInputId} className="sr-only">{t.textInputLabel}</label>
                 <textarea
+                  id={textInputId}
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder={t.txtPlaceholder}
-                  aria-label={t.textInputLabel}
                   className="input-field min-h-[200px] resize-y font-mono text-sm leading-relaxed"
                   rows={10}
                 />
@@ -3049,9 +3071,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgresize" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgScale} ({Math.round(imgScale * 100)}%)</label>
-                <input type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
-                  aria-label={t.imgScale}
+                <label htmlFor={imgScaleId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
+                  {t.imgScale} <span aria-hidden="true">({Math.round(imgScale * 100)}%)</span>
+                </label>
+                <input id={imgScaleId} type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
                   aria-valuetext={`${Math.round(imgScale * 100)}%`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>10%</span>
@@ -3063,9 +3086,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgcompress" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgQuality} ({Math.round(imgQuality * 100)}%)</label>
-                <input type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
-                  aria-label={t.imgQuality}
+                <label htmlFor={imgQualityId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
+                  {t.imgQuality} <span aria-hidden="true">({Math.round(imgQuality * 100)}%)</span>
+                </label>
+                <input id={imgQualityId} type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
                   aria-valuetext={`${Math.round(imgQuality * 100)}%`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>{t.maxCompress}</span>
@@ -3077,9 +3101,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "watermark" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <div>
-                  <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
-                  <input type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.wmText}
-                    aria-label={t.wmText}
+                  <label htmlFor={wmTextId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
+                  <input id={wmTextId} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.wmText}
                     className="input-field" />
                   {/[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText) && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{lang === "ko" ? "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요." : "CJK characters are not supported. Please use Latin text."}</p>
@@ -3087,29 +3110,28 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmSize}</label>
-                    <input type="number" value={wmSize} onChange={(e) => setWmSize(Math.min(120, Math.max(12, Number(e.target.value) || 12)))} min={12} max={120}
-                      aria-label={t.wmSize}
+                    <label htmlFor={wmSizeId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmSize}</label>
+                    <input id={wmSizeId} type="number" value={wmSize} onChange={(e) => setWmSize(Math.min(120, Math.max(12, Number(e.target.value) || 12)))} min={12} max={120}
                       className="input-field" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmOpacity} ({Math.round(wmOpacity * 100)}%)</label>
-                    <input type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
-                      aria-label={t.wmOpacity}
+                    <label htmlFor={wmOpacityId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
+                      {t.wmOpacity} <span aria-hidden="true">({Math.round(wmOpacity * 100)}%)</span>
+                    </label>
+                    <input id={wmOpacityId} type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
                       aria-valuetext={`${Math.round(wmOpacity * 100)}%`} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
-                    <input type="number" value={wmRotation} onChange={(e) => setWmRotation(Math.min(90, Math.max(-90, Number(e.target.value) || 0)))} min={-90} max={90}
-                      aria-label={t.wmAngle}
+                    <label htmlFor={wmAngleId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
+                    <input id={wmAngleId} type="number" value={wmRotation} onChange={(e) => setWmRotation(Math.min(90, Math.max(-90, Number(e.target.value) || 0)))} min={-90} max={90}
                       className="input-field" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmLayout}</label>
+                  <span id={wmLayoutId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmLayout}</span>
                   <div
                     role="radiogroup"
-                    aria-label={t.wmLayout}
+                    aria-labelledby={wmLayoutId}
                     onKeyDown={(e) => handleRadioGroupKeyDown(e, ["center", "diagonal", "tiled"] as const, wmPosition, setWmPosition)}
                     className="flex gap-2"
                   >
@@ -3154,9 +3176,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnSize}</label>
-                    <input type="number" value={pnSize} onChange={(e) => setPnSize(Math.min(24, Math.max(8, Number(e.target.value) || 11)))} min={8} max={24}
-                      aria-label={t.pnSize}
+                    <label htmlFor={pnSizeId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnSize}</label>
+                    <input id={pnSizeId} type="number" value={pnSize} onChange={(e) => setPnSize(Math.min(24, Math.max(8, Number(e.target.value) || 11)))} min={8} max={24}
                       className="input-field" />
                   </div>
                 </div>
