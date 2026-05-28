@@ -74,6 +74,13 @@ export const T: Record<Lang, Record<string, string>> = {
     searchPlaceholder: "도구 검색...",
     searchLabel: "도구 검색",
     clearSearch: "검색 지우기",
+    compareSupported: "지원",
+    compareUnsupported: "미지원",
+    percentUnit: "퍼센트",
+    watermarkPlaceholder: "예: CONFIDENTIAL",
+    counterChars: "자",
+    counterLines: "줄",
+    counterPages: "페이지",
     catPdf: "PDF 도구",
     catImage: "이미지 도구",
     catDocument: "문서 도구",
@@ -319,6 +326,13 @@ export const T: Record<Lang, Record<string, string>> = {
     searchPlaceholder: "Search tools...",
     searchLabel: "Search tools",
     clearSearch: "Clear search",
+    compareSupported: "Supported",
+    compareUnsupported: "Not supported",
+    percentUnit: "percent",
+    watermarkPlaceholder: "e.g. CONFIDENTIAL",
+    counterChars: "chars",
+    counterLines: "lines",
+    counterPages: "pages",
     catPdf: "PDF Tools",
     catImage: "Image Tools",
     catDocument: "Document Tools",
@@ -1279,12 +1293,10 @@ function handleRadioGroupKeyDown<T extends RadioValue>(
   const currentIndex = rawIndex === -1 ? 0 : rawIndex;
   let nextIndex: number | null = null;
 
-  if (rawIndex === -1) {
-    nextIndex = 0;
-  } else if (key === "ArrowRight" || key === "ArrowDown") {
-    nextIndex = (currentIndex + 1) % options.length;
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    nextIndex = rawIndex === -1 ? 0 : (currentIndex + 1) % options.length;
   } else if (key === "ArrowLeft" || key === "ArrowUp") {
-    nextIndex = (currentIndex - 1 + options.length) % options.length;
+    nextIndex = rawIndex === -1 ? options.length - 1 : (currentIndex - 1 + options.length) % options.length;
   } else if (key === "Home") {
     nextIndex = 0;
   } else if (key === "End") {
@@ -1762,12 +1774,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const textInputId = `${controlId}-text-input`;
   const imgScaleId = `${controlId}-img-scale`;
   const imgQualityId = `${controlId}-img-quality`;
+  const rotAngleId = `${controlId}-rot-angle`;
+  const rotScopeId = `${controlId}-rot-scope`;
+  const imgDirectionId = `${controlId}-img-direction`;
+  const imgFormatId = `${controlId}-img-format`;
   const wmTextId = `${controlId}-wm-text`;
   const wmSizeId = `${controlId}-wm-size`;
   const wmOpacityId = `${controlId}-wm-opacity`;
   const wmAngleId = `${controlId}-wm-angle`;
   const wmLayoutId = `${controlId}-wm-layout`;
+  const pnFormatId = `${controlId}-pn-format`;
   const pnSizeId = `${controlId}-pn-size`;
+  const pnPositionId = `${controlId}-pn-position`;
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -2659,11 +2677,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       <div role="cell" className="px-3 sm:px-5 py-3 text-gray-600 dark:text-slate-300">{feat}</div>
                       <div role="cell" className="px-2 sm:px-5 py-3 text-center">
                         <svg aria-hidden="true" className="w-5 h-5 text-green-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        <span className="sr-only">{lang === "ko" ? "지원" : "Yes"}</span>
+                        <span className="sr-only">{t.compareSupported}</span>
                       </div>
                       <div role="cell" className="px-2 sm:px-5 py-3 text-center">
                         <svg aria-hidden="true" className="w-5 h-5 text-red-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                        <span className="sr-only">{lang === "ko" ? "미지원" : "No"}</span>
+                        <span className="sr-only">{t.compareUnsupported}</span>
                       </div>
                     </div>
                   ))}
@@ -2839,9 +2857,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   rows={10}
                 />
                 <div className="flex justify-end gap-3 text-[10px] text-gray-400 dark:text-slate-600 font-mono">
-                  <span>{textInput.length} {lang === "ko" ? "자" : "chars"}</span>
-                  <span>{textInput.split("\n").length} {lang === "ko" ? "줄" : "lines"}</span>
-                  <span>~{Math.max(1, Math.ceil(textInput.split("\n").length / 50))} {lang === "ko" ? "페이지" : "pages"}</span>
+                  <span>{textInput.length} {t.counterChars}</span>
+                  <span>{textInput.split("\n").length} {t.counterLines}</span>
+                  <span>~{Math.max(1, Math.ceil(textInput.split("\n").length / 50))} {t.counterPages}</span>
                 </div>
               </div>
             ) : (
@@ -2964,10 +2982,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotAngle}</label>
+                    <span id={rotAngleId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotAngle}</span>
                     <div
                       role="radiogroup"
-                      aria-label={t.rotAngle}
+                      aria-labelledby={rotAngleId}
                       onKeyDown={(e) => handleRadioGroupKeyDown(e, [90, 180, 270] as const, rotateDeg, setRotateDeg)}
                       className="flex gap-2"
                     >
@@ -2985,10 +3003,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     </div>
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotScope}</label>
+                    <span id={rotScopeId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.rotScope}</span>
                     <div
                       role="radiogroup"
-                      aria-label={t.rotScope}
+                      aria-labelledby={rotScopeId}
                       onKeyDown={(e) => handleRadioGroupKeyDown(e, ["all", "specific"] as const, rotateScope, setRotateScope)}
                       className="flex gap-2"
                     >
@@ -3023,10 +3041,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             )}
             {view === "imgstitch" && files.length > 0 && (
               <div className="animate-fadeIn">
-                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgDirection}</label>
+                <span id={imgDirectionId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgDirection}</span>
                 <div
                   role="radiogroup"
-                  aria-label={t.imgDirection}
+                  aria-labelledby={imgDirectionId}
                   onKeyDown={(e) => handleRadioGroupKeyDown(e, ["vertical", "horizontal"] as const, stitchDir, setStitchDir)}
                   className="flex gap-2"
                 >
@@ -3047,10 +3065,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "imgconvert" && files.length > 0 && (
               <div className="animate-fadeIn">
-                <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgFormat}</label>
+                <span id={imgFormatId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.imgFormat}</span>
                 <div
                   role="radiogroup"
-                  aria-label={t.imgFormat}
+                  aria-labelledby={imgFormatId}
                   onKeyDown={(e) => handleRadioGroupKeyDown(e, ["png", "jpeg", "webp"] as const, imgOutputFormat, setImgOutputFormat)}
                   className="flex gap-2"
                 >
@@ -3072,10 +3090,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgresize" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label htmlFor={imgScaleId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
-                  {t.imgScale} <span aria-hidden="true">({Math.round(imgScale * 100)}%)</span>
+                  {t.imgScale} <span className="sr-only">({t.percentUnit})</span> <span aria-hidden="true">({Math.round(imgScale * 100)}%)</span>
                 </label>
                 <input id={imgScaleId} type="range" value={imgScale} onChange={(e) => setImgScale(Number(e.target.value))} min={0.1} max={2} step={0.1} className="w-full"
-                  aria-valuetext={`${Math.round(imgScale * 100)}%`} />
+                  aria-valuemin={10}
+                  aria-valuemax={200}
+                  aria-valuenow={Math.round(imgScale * 100)}
+                  aria-valuetext={`${Math.round(imgScale * 100)} ${t.percentUnit}`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>10%</span>
                   <span>100%</span>
@@ -3087,10 +3108,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view === "imgcompress" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
                 <label htmlFor={imgQualityId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
-                  {t.imgQuality} <span aria-hidden="true">({Math.round(imgQuality * 100)}%)</span>
+                  {t.imgQuality} <span className="sr-only">({t.percentUnit})</span> <span aria-hidden="true">({Math.round(imgQuality * 100)}%)</span>
                 </label>
                 <input id={imgQualityId} type="range" value={imgQuality} onChange={(e) => setImgQuality(Number(e.target.value))} min={0.1} max={1} step={0.05} className="w-full"
-                  aria-valuetext={`${Math.round(imgQuality * 100)}%`} />
+                  aria-valuemin={10}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(imgQuality * 100)}
+                  aria-valuetext={`${Math.round(imgQuality * 100)} ${t.percentUnit}`} />
                 <div className="flex justify-between text-[10px] text-gray-400 dark:text-slate-600">
                   <span>{t.maxCompress}</span>
                   <span>{t.origQuality}</span>
@@ -3102,7 +3126,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <div>
                   <label htmlFor={wmTextId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
-                  <input id={wmTextId} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.wmText}
+                  <input id={wmTextId} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.watermarkPlaceholder}
                     className="input-field" />
                   {/[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText) && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{lang === "ko" ? "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요." : "CJK characters are not supported. Please use Latin text."}</p>
@@ -3116,10 +3140,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                   <div>
                     <label htmlFor={wmOpacityId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">
-                      {t.wmOpacity} <span aria-hidden="true">({Math.round(wmOpacity * 100)}%)</span>
+                      {t.wmOpacity} <span className="sr-only">({t.percentUnit})</span> <span aria-hidden="true">({Math.round(wmOpacity * 100)}%)</span>
                     </label>
                     <input id={wmOpacityId} type="range" value={wmOpacity} onChange={(e) => setWmOpacity(Number(e.target.value))} min={0.05} max={0.5} step={0.05} className="w-full mt-3"
-                      aria-valuetext={`${Math.round(wmOpacity * 100)}%`} />
+                      aria-valuemin={5}
+                      aria-valuemax={50}
+                      aria-valuenow={Math.round(wmOpacity * 100)}
+                      aria-valuetext={`${Math.round(wmOpacity * 100)} ${t.percentUnit}`} />
                   </div>
                   <div>
                     <label htmlFor={wmAngleId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmAngle}</label>
@@ -3155,10 +3182,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnFormat}</label>
+                    <span id={pnFormatId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnFormat}</span>
                     <div
                       role="radiogroup"
-                      aria-label={t.pnFormat}
+                      aria-labelledby={pnFormatId}
                       onKeyDown={(e) => handleRadioGroupKeyDown(e, ["simple", "total"] as const, pnFormat, setPnFormat)}
                       className="flex gap-2"
                     >
@@ -3182,10 +3209,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnPosition}</label>
+                  <span id={pnPositionId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.pnPosition}</span>
                   <div
                     role="radiogroup"
-                    aria-label={t.pnPosition}
+                    aria-labelledby={pnPositionId}
                     onKeyDown={(e) =>
                       handleRadioGroupKeyDown(
                         e,
