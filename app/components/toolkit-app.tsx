@@ -218,6 +218,7 @@ export const T: Record<Lang, Record<string, string>> = {
     mergeLabel: "PDF 병합",
     mergeDesc: "여러 PDF를 하나의 파일로 합칩니다",
     splitLabel: "PDF 분할",
+    splitModeLabel: "분할 방식",
     splitDesc: "페이지 범위별로 PDF를 나눕니다",
     extractLabel: "페이지 추출",
     extractDesc: "원하는 페이지만 골라 추출합니다",
@@ -473,6 +474,7 @@ export const T: Record<Lang, Record<string, string>> = {
     mergeLabel: "Merge PDF",
     mergeDesc: "Combine multiple PDFs into one file",
     splitLabel: "Split PDF",
+    splitModeLabel: "Split method",
     splitDesc: "Divide PDF by page ranges",
     extractLabel: "Extract Pages",
     extractDesc: "Pick specific pages to extract",
@@ -1793,6 +1795,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const imgDirectionId = `${controlId}-img-direction`;
   const imgFormatId = `${controlId}-img-format`;
   const wmTextId = `${controlId}-wm-text`;
+  const wmTextWarningId = `${controlId}-wm-text-warning`;
   const wmSizeId = `${controlId}-wm-size`;
   const wmOpacityId = `${controlId}-wm-opacity`;
   const wmAngleId = `${controlId}-wm-angle`;
@@ -1801,6 +1804,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const pnFormatId = `${controlId}-pn-format`;
   const pnSizeId = `${controlId}-pn-size`;
   const pnPositionId = `${controlId}-pn-position`;
+  const hasCjkWatermarkText = /[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText);
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -2943,7 +2947,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "split" && files.length > 0 && (
               <div className="space-y-3 animate-fadeIn">
-                <span id={splitLabelId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.splitLabel}</span>
+                <span id={splitLabelId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.splitModeLabel}</span>
                 <div
                   role="radiogroup"
                   aria-labelledby={splitLabelId}
@@ -3143,9 +3147,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div>
                   <label htmlFor={wmTextId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
                   <input id={wmTextId} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.watermarkPlaceholder}
+                    aria-invalid={hasCjkWatermarkText ? true : undefined}
+                    aria-describedby={hasCjkWatermarkText ? wmTextWarningId : undefined}
                     className="input-field" />
-                  {/[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText) && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{t.wmCjkWarning}</p>
+                  {hasCjkWatermarkText && (
+                    <p id={wmTextWarningId} className="text-xs text-amber-600 dark:text-amber-400 mt-1" role="alert">
+                      {t.wmCjkWarning}
+                    </p>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -3237,7 +3245,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         setPnPosition
                       )
                     }
-                    className="flex flex-wrap gap-2"
+                    className="grid grid-cols-1 sm:grid-cols-5 gap-2"
                   >
                     {([["bottom-left", t.pnBL], ["bottom-center", t.pnBC], ["bottom-right", t.pnBR], ["top-center", t.pnTC], ["top-right", t.pnTR]] as const).map(([val, label], idx) => (
                       <button key={val} onClick={() => setPnPosition(val)}
@@ -3245,7 +3253,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                         aria-checked={pnPosition === val}
                         tabIndex={pnPosition === val ? 0 : -1}
                         data-radio-index={idx}
-                        className={`py-2 rounded-xl text-xs font-medium border transition-all
+                        className={`w-full min-h-11 px-3 py-2.5 rounded-xl text-xs font-medium border transition-all
                           ${pnPosition === val ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400" : "bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-gray-500 dark:hover:text-slate-300"}`}>
                         {label}
                       </button>
