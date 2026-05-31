@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
+import { analyzePageRangeInputForSplit, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
 
 describe("parsePageRangeGroups", () => {
   it("parses single pages and inclusive ranges", () => {
@@ -51,5 +51,33 @@ describe("parsePageRanges", () => {
 
   it("can preserve user-entered order for extraction workflows", () => {
     expect(parsePageRanges("3, 1, 3, 2-4", 5, { preserveOrder: true })).toEqual([3, 1, 2, 4]);
+  });
+});
+
+describe("analyzePageRangeInputForSplit", () => {
+  it("normalizes unsorted ranges and keeps unique coverage", () => {
+    const result = analyzePageRangeInputForSplit("5-6, 2, 3-4", 10);
+    expect(result.ranges).toEqual([
+      { start: 2, end: 2 },
+      { start: 3, end: 4 },
+      { start: 5, end: 6 },
+    ]);
+    expect(result.warningCodes).toEqual(["unordered"]);
+  });
+
+  it("flags overlaps and duplicates as merge warnings", () => {
+    const result = analyzePageRangeInputForSplit("1-5, 2-3", 10);
+    expect(result.ranges).toEqual([{ start: 1, end: 5 }]);
+    expect(result.warningCodes).toEqual(["overlapOrDuplicate"]);
+  });
+
+  it("keeps ranges without warnings when clean", () => {
+    const result = analyzePageRangeInputForSplit("1, 3-4, 6", 10);
+    expect(result.ranges).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 4 },
+      { start: 6, end: 6 },
+    ]);
+    expect(result.warningCodes).toEqual([]);
   });
 });

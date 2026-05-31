@@ -14,7 +14,14 @@ import {
   type View,
 } from "../lib/config";
 import { sanitizeOutputFilename } from "../lib/file-names";
-import { isValidPageRangeInput, parsePageRangeGroups, parsePageRanges, type PageRange } from "../lib/page-ranges";
+import {
+  analyzePageRangeInputForSplit,
+  isValidPageRangeInput,
+  parsePageRangeGroups,
+  parsePageRanges,
+  type PageRange,
+  type PageRangeAnalysisCode,
+} from "../lib/page-ranges";
 
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
 let _pdfLib: typeof import("pdf-lib") | null = null;
@@ -1927,61 +1934,34 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       </div>
     );
   };
-  const analyzeSplitRangeInput = useCallback(
-    (input: string) => {
-      const trimmed = input.trim();
-      if (!trimmed) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
-      const feedback = getRangeInputFeedback(trimmed);
-      if (feedback) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
-
-      const parsed = parsePageRangeGroups(trimmed, currentPdfPageCount);
-      if (!parsed) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
-
-      const warnings: string[] = [];
-      const sorted = [...parsed].sort((a, b) => {
-        if (a.start !== b.start) return a.start - b.start;
-        return a.end - b.end;
-      });
-
-      const wasUnsorted = parsed.some((current, idx, arr) => {
-        if (idx === 0) return false;
-        return (
-          current.start < arr[idx - 1].start ||
-          (current.start === arr[idx - 1].start && current.end < arr[idx - 1].end)
-        );
-      });
-      if (wasUnsorted) warnings.push(t.pageRangeUnordered || "The page ranges were reordered in ascending order.");
-
-      const normalized: PageRange[] = [];
-      let hasOverlapOrDuplicate = false;
-
-      for (const range of sorted) {
-        const last = normalized[normalized.length - 1];
-        if (!last || range.start > last.end) {
-          normalized.push({ ...range });
-          continue;
-        }
-
-        if (range.start <= last.end && (range.end > last.end || range.start > last.start)) {
-          hasOverlapOrDuplicate = true;
-        }
-        last.end = Math.max(last.end, range.end);
-      }
-
-      if (hasOverlapOrDuplicate) warnings.push(t.pageRangeOverlap || "Overlapping or duplicated ranges were merged.");
-      return { ranges: normalized, warnings };
-    },
-    [currentPdfPageCount, getRangeInputFeedback, t]
-  );
-
   const splitRangeLabelText = t.splitRangeLabel || "Pages to split";
   const extractRangeLabelText = t.extractRangeLabel || "Pages to extract";
   const deleteRangeLabelText = t.deleteRangeLabel || "Pages to delete";
   const rotPagesLabelText = t.rotPagesLabel || "Pages to rotate";
   const wmPreviewLabel = t.wmPreview || "Preview";
+  const splitRangeWarnings = (codes: PageRangeAnalysisCode[]) =>
+    codes.map((code) => code === "unordered"
+      ? t.pageRangeUnordered || "The page ranges were reordered in ascending order."
+      : t.pageRangeOverlap || "Overlapping or duplicated ranges were merged."
+    );
   const splitRangeAnalysis = useMemo(
-    () => splitMode === "range" ? analyzeSplitRangeInput(rangeInput) : { ranges: null as PageRange[] | null, warnings: [] as string[] },
-    [analyzeSplitRangeInput, rangeInput, splitMode]
+    () => {
+      if (splitMode !== "range") return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+      const trimmed = rangeInput.trim();
+      if (!trimmed) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+
+      const feedback = getRangeInputFeedback(trimmed);
+      if (feedback) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+
+      const analysis = analyzePageRangeInputForSplit(trimmed, currentPdfPageCount);
+      if (!analysis.ranges) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+
+      return {
+        ranges: analysis.ranges,
+        warnings: splitRangeWarnings(analysis.warningCodes),
+      };
+    },
+    [currentPdfPageCount, getRangeInputFeedback, rangeInput, splitMode, t]
   );
   const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
     () => ({

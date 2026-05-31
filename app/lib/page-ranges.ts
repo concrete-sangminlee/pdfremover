@@ -3,6 +3,13 @@ export interface PageRange {
   end: number;
 }
 
+export type PageRangeAnalysisCode = "unordered" | "overlapOrDuplicate";
+
+export interface PageRangeAnalysis {
+  ranges: PageRange[] | null;
+  warningCodes: PageRangeAnalysisCode[];
+}
+
 export function isValidPageRangeInput(input: string): boolean {
   return parsePageRangeGroupsInternal(input) !== null;
 }
@@ -62,4 +69,46 @@ export function parsePageRanges(
   }
 
   return options.preserveOrder ? pages : pages.sort((a, b) => a - b);
+}
+
+export function analyzePageRangeInputForSplit(input: string, total: number): PageRangeAnalysis {
+  const trimmed = input.trim();
+  if (!trimmed) return { ranges: null, warningCodes: [] };
+
+  const ranges = parsePageRangeGroups(trimmed, total);
+  if (!ranges) return { ranges: null, warningCodes: [] };
+
+  const warnings: PageRangeAnalysisCode[] = [];
+  const sorted = [...ranges].sort((a, b) => {
+    if (a.start !== b.start) return a.start - b.start;
+    return a.end - b.end;
+  });
+
+  const wasUnsorted = ranges.some((current, idx, arr) => {
+    if (idx === 0) return false;
+    const prev = arr[idx - 1];
+    return current.start < prev.start || (current.start === prev.start && current.end < prev.end);
+  });
+
+  if (wasUnsorted) warnings.push("unordered");
+
+  const normalized: PageRange[] = [];
+  let hasOverlapOrDuplicate = false;
+
+  for (const range of sorted) {
+    const last = normalized[normalized.length - 1];
+    if (!last || range.start > last.end) {
+      normalized.push({ ...range });
+      continue;
+    }
+
+    hasOverlapOrDuplicate = true;
+    if (range.end > last.end) {
+      last.end = range.end;
+    }
+  }
+
+  if (hasOverlapOrDuplicate) warnings.push("overlapOrDuplicate");
+
+  return { ranges: normalized, warningCodes: warnings };
 }
