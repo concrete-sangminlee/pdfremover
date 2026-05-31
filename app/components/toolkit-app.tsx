@@ -57,6 +57,8 @@ interface PdfInfo {
   size: number;
 }
 
+const getPageInfoKey = (file: File): string => `${file.name}|${file.size}|${file.lastModified}`;
+
 // ━━━ i18n ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const T: Record<Lang, Record<string, string>> = {
   ko: {
@@ -1573,8 +1575,8 @@ function FileDropzone({
                   "bg-blue-50 dark:bg-blue-950/30 text-blue-500 dark:text-blue-400"
                 }`}>{f.name.split(".").pop()?.toUpperCase().slice(0, 4) || "FILE"}</span>
                 <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{f.name}</span>
-                {pageInfo[f.name + f.size + f.lastModified] > 0 && (
-                  <span className="text-blue-400 text-[10px] font-mono flex-shrink-0">{pageInfo[f.name + f.size + f.lastModified]}p</span>
+                {pageInfo[getPageInfoKey(f)] > 0 && (
+                  <span className="text-blue-400 text-[10px] font-mono flex-shrink-0">{pageInfo[getPageInfoKey(f)]}p</span>
                 )}
                 <span className="text-gray-400 text-xs font-mono flex-shrink-0">{fmtSize(f.size)}</span>
                 {onRemove && (
@@ -1869,7 +1871,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   };
   const currentPdfPageInfoKey = useMemo(() => {
     if (!files.length) return "";
-    return files[0].name + files[0].size + files[0].lastModified;
+    return getPageInfoKey(files[0]);
   }, [files]);
   const currentPdfPageCount = useMemo(() => {
     if (!currentPdfPageInfoKey) return 0;
@@ -2132,11 +2134,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   // Get page count for uploaded files
   const loadPageInfo = async (fileList: File[]) => {
     // Only compute page count for files not already cached
-    const uncached = fileList.filter((f) => !pageInfo[f.name + f.size + f.lastModified]);
+    const uncached = fileList.filter((f) => !pageInfo[getPageInfoKey(f)]);
     if (uncached.length === 0) return;
     const entries = await Promise.all(
       uncached.map(async (f) => {
-        const key = f.name + f.size + f.lastModified;
+        const key = getPageInfoKey(f);
         return [key, await getPageCount(f)] as const;
       })
     );
@@ -3051,7 +3053,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 text-sm animate-fadeIn">
                 <span className="text-blue-700 dark:text-blue-400 font-medium">{files.length} {t.filesSelected}</span>
                 {(() => {
-                  const total = files.reduce((sum, f) => sum + (pageInfo[f.name + f.size + f.lastModified] || 0), 0);
+                  const total = files.reduce((sum, f) => sum + (pageInfo[getPageInfoKey(f)] || 0), 0);
                   return total > 0 ? <span className="text-blue-500 text-xs font-mono">{t.pagesTotalPrefix}{total}{t.pagesTotalSuffix}</span> : null;
                 })()}
               </div>
@@ -3067,7 +3069,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Page count hint for single-file tools */}
             {PAGE_INPUT_TOOLS.includes(view) && files.length === 1 && (() => {
-              const pc = pageInfo[files[0].name + files[0].size + files[0].lastModified];
+              const pc = pageInfo[getPageInfoKey(files[0])];
               return pc > 0 ? (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-xs animate-fadeIn">
                   <span className="text-gray-500 dark:text-slate-400">{t.pageCountPrefix}{pc}{t.pageCountSuffix}</span>
