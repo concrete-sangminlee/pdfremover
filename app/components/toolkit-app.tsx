@@ -7,6 +7,7 @@ import {
   PAGE_INPUT_TOOLS,
   TOOLS,
   TOOL_BY_ID,
+  normalizeToolPath,
   isImageInputTool,
   isValidTool,
   type Lang,
@@ -2107,13 +2108,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Sync URL with browser back/forward
   useEffect(() => {
-    const onPop = () => {
-      const path = window.location.pathname.slice(1);
-      if (isValidTool(path)) {
-        setView(path);
-      } else {
-        setView("home");
-      }
+  const onPop = () => {
+      setView(normalizeToolPath(window.location.pathname));
       resetStateRef.current();
       setToolSearch("");
     };

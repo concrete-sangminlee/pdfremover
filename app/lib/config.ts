@@ -81,6 +81,7 @@ const IMAGE_INPUT_TOOL_SET = new Set<Tool>(IMAGE_INPUT_TOOLS);
 const PAGE_TOOL_SET = new Set<Tool>(PAGE_INPUT_TOOLS);
 const NO_PAGE_TOOL_SET = new Set<Tool>(NO_PAGE_INFO_TOOLS);
 const NO_PRELOAD_TOOL_SET = new Set<Tool>(NO_PDF_LIB_PRELOAD_TOOLS);
+const PATH_TRIM_RE = /^\/+|\/+$/g;
 
 export function isValidTool(value: string): value is Tool {
   return VALID_TOOL_SET.has(value as Tool);
@@ -100,4 +101,20 @@ export function hasNoPageInfo(value: string): value is (typeof NO_PAGE_INFO_TOOL
 
 export function hasNoPdfLibPreload(value: string): value is (typeof NO_PDF_LIB_PRELOAD_TOOLS)[number] {
   return NO_PRELOAD_TOOL_SET.has(value as Tool);
+}
+
+export function normalizeToolPath(value: string): View {
+  if (!value) return "home";
+
+  let normalized = value.trim().toLowerCase();
+  try {
+    normalized = decodeURIComponent(normalized);
+  } catch {
+    return "home";
+  }
+
+  normalized = normalized.replace(PATH_TRIM_RE, "");
+  if (!normalized) return "home";
+
+  return isValidTool(normalized) ? normalized : "home";
 }

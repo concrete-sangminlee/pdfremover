@@ -9,6 +9,7 @@ import {
   hasNoPdfLibPreload,
   isPageInputTool,
   isValidTool,
+  normalizeToolPath,
   TOOLS,
   TOOL_BY_ID,
   VALID_TOOLS,
@@ -54,5 +55,15 @@ describe("tool config", () => {
     expect(isValidTool("home")).toBe(false);
     expect(isValidTool("COMpress")).toBe(false);
     expect(isPageInputTool("home")).toBe(false);
+  });
+
+  it("normalizes tool path safely and case-insensitively", () => {
+    expect(normalizeToolPath("")).toBe("home");
+    expect(normalizeToolPath("/split/")).toBe("split");
+    expect(normalizeToolPath(" /split ")).toBe("split");
+    expect(normalizeToolPath("SPLIT")).toBe("split");
+    expect(normalizeToolPath("invalid-tool")).toBe("home");
+    expect(normalizeToolPath("%%")).toBe("home");
+    expect(normalizeToolPath("split%2F")).toBe("split");
   });
 });
