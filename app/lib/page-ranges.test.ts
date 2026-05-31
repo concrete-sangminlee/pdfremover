@@ -163,6 +163,21 @@ describe("analyzePageRangeInputForSplit", () => {
     expect(result.warningCodes).toEqual(["unordered", "overlapOrDuplicate"]);
   });
 
+  it("handles first/last count aliases during analysis and warning detection", () => {
+    expect(analyzePageRangeInputForSplit("first-3,last-3", 5)).toEqual({
+      ranges: [{ start: 1, end: 5 }],
+      warningCodes: ["overlapOrDuplicate"],
+    });
+    expect(analyzePageRangeInputForSplit("last-2,start-2", 5)).toEqual({
+      ranges: [{ start: 1, end: 2 }, { start: 4, end: 5 }],
+      warningCodes: ["unordered"],
+    });
+    expect(analyzePageRangeInputForSplit("end-4,start-4", 3)).toEqual({
+      ranges: [{ start: 1, end: 3 }],
+      warningCodes: ["overlapOrDuplicate"],
+    });
+  });
+
   it("keeps ranges without warnings when clean", () => {
     const result = analyzePageRangeInputForSplit("1, 3-4, 6", 10);
     expect(result.ranges).toEqual([
