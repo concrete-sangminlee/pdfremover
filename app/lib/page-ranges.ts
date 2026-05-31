@@ -29,7 +29,7 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
   if (!trimmed) return null;
 
   const ranges: PageRange[] = [];
-  for (const part of trimmed.split(",")) {
+  for (const part of trimmed.split(/[,\n;]+/)) {
     const segment = part.trim();
     if (!segment) return null;
 

@@ -26,6 +26,15 @@ describe("parsePageRangeGroups", () => {
       { start: 7, end: 7 },
     ]);
   });
+
+  it("supports semicolons and line breaks as separators", () => {
+    expect(parsePageRangeGroups("1; 3 - 5\n7, 9", 10)).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 5 },
+      { start: 7, end: 7 },
+      { start: 9, end: 9 },
+    ]);
+  });
 });
 
 describe("isValidPageRangeInput", () => {
