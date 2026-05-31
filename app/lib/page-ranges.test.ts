@@ -53,6 +53,28 @@ describe("parsePageRangeGroups", () => {
     ]);
   });
 
+  it("supports pipe as a page separator", () => {
+    expect(parsePageRangeGroups("1 | 2 | 4-5", 10)).toEqual([
+      { start: 1, end: 1 },
+      { start: 2, end: 2 },
+      { start: 4, end: 5 },
+    ]);
+    expect(parsePageRangeGroups("3|1-2| 7", 10)).toEqual([
+      { start: 3, end: 3 },
+      { start: 1, end: 2 },
+      { start: 7, end: 7 },
+    ]);
+  });
+
+  it("supports full-width separators", () => {
+    expect(parsePageRangeGroups("1，2， 4-5", 10)).toEqual([
+      { start: 1, end: 1 },
+      { start: 2, end: 2 },
+      { start: 4, end: 5 },
+    ]);
+    expect(isValidPageRangeInput("3；4；5")).toBe(true);
+  });
+
   it("expands all keyword when total is provided", () => {
     expect(parsePageRangeGroups("all", 5)).toEqual([{ start: 1, end: 5 }]);
   });
@@ -124,11 +146,15 @@ describe("isValidPageRangeInput", () => {
     expect(isValidPageRangeInput("odd, 1-3")).toBe(true);
     expect(isValidPageRangeInput("1\r\n2, 3")).toBe(true);
     expect(isValidPageRangeInput("1 / 2 / 3")).toBe(true);
+    expect(isValidPageRangeInput("1 | 2 | 3")).toBe(true);
   });
 
   it("rejects malformed, empty, and reversed segments", () => {
     expect(isValidPageRangeInput("")).toBe(false);
     expect(isValidPageRangeInput("1,,")).toBe(false);
+    expect(isValidPageRangeInput("1|/2")).toBe(false);
+    expect(isValidPageRangeInput("1//2")).toBe(false);
+    expect(isValidPageRangeInput("1||2")).toBe(false);
     expect(isValidPageRangeInput(",2")).toBe(false);
     expect(isValidPageRangeInput("2-a")).toBe(false);
     expect(isValidPageRangeInput("5-3")).toBe(false);

@@ -10,6 +10,8 @@ export interface PageRangeAnalysis {
   warningCodes: PageRangeAnalysisCode[];
 }
 
+const PAGE_RANGE_SEPARATOR_SPLIT = /\s*[,;\/\r\n|，；]\s*/;
+
 export function formatPageRanges(ranges: PageRange[]): string {
   return ranges
     .map((range) => (range.start === range.end ? String(range.start) : `${range.start}-${range.end}`))
@@ -28,7 +30,7 @@ export function isValidPageRangeInput(input: string): boolean {
   const trimmed = input.trim();
   if (!trimmed) return false;
 
-  for (const part of trimmed.split(/\s*[,;\/\r\n]\s*/)) {
+  for (const part of trimmed.split(PAGE_RANGE_SEPARATOR_SPLIT)) {
     const segment = part.trim();
     if (!segment) return false;
 
@@ -66,7 +68,7 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
   if (!trimmed) return null;
 
   const ranges: PageRange[] = [];
-  for (const part of trimmed.split(/\s*[,;\/\r\n]\s*/)) {
+  for (const part of trimmed.split(PAGE_RANGE_SEPARATOR_SPLIT)) {
     const segment = part.trim();
     if (!segment) return null;
     const lower = segment.toLowerCase();
