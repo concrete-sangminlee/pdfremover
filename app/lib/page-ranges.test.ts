@@ -34,6 +34,11 @@ describe("parsePageRangeGroups", () => {
       { start: 7, end: 7 },
       { start: 9, end: 9 },
     ]);
+    expect(parsePageRangeGroups("1\r\n3-4,9", 10)).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 4 },
+      { start: 9, end: 9 },
+    ]);
   });
 
   it("expands all keyword when total is provided", () => {
@@ -105,6 +110,7 @@ describe("isValidPageRangeInput", () => {
     expect(isValidPageRangeInput("odd")).toBe(true);
     expect(isValidPageRangeInput("even, odd")).toBe(true);
     expect(isValidPageRangeInput("odd, 1-3")).toBe(true);
+    expect(isValidPageRangeInput("1\r\n2, 3")).toBe(true);
   });
 
   it("rejects malformed, empty, and reversed segments", () => {
