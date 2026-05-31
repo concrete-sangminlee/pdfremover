@@ -423,14 +423,14 @@ export const T: Record<Lang, Record<string, string>> = {
     allPages: "Every Page",
     rangePlaceholder: "e.g. all, 1-3, 4-6, 7-10",
     splitRangeLabel: "Pages to split",
-    pagesPlaceholder: "e.g. 1, 3, 5, 7-10",
+    pagesPlaceholder: "e.g. all, 1, 3, 5, 7-10",
     extractRangeLabel: "Pages to extract",
     rotAngle: "Rotation",
     rotScope: "Scope",
     rotAll: "All",
     rotSpecific: "Specific",
     rotPagesLabel: "Pages to rotate",
-    rotPagesPlaceholder: "e.g. 1, 3, 5-7",
+    rotPagesPlaceholder: "e.g. all, 1, 3, 5-7",
     wmText: "Watermark text",
     wmSize: "Size",
     wmOpacity: "Opacity",
@@ -454,8 +454,8 @@ export const T: Record<Lang, Record<string, string>> = {
     pageInfoLoading: "Loading page info…",
     pageRangeFormatInvalid: "Enter page numbers or ranges separated by commas/semicolons/new lines. Use 'all' for the full range.",
     pageRangeOutOfBounds: "The range exceeds this PDF's page count.",
-    pageRangeUnordered: "The page ranges were reordered in ascending order.",
-    pageRangeOverlap: "Overlapping or duplicated ranges were merged.",
+    pageRangeUnordered: "The page ranges were normalized to ascending order.",
+    pageRangeOverlap: "Overlapping or duplicated ranges were merged into distinct ranges.",
     rangeNormalized: "Normalized ranges",
     extractInvalid: "Please enter valid page numbers.",
     compressAlready: "This file is already optimized. No further compression possible.",
@@ -1947,8 +1947,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const wmPreviewLabel = t.wmPreview || "Preview";
   const pageRangeWarnings = (codes: PageRangeAnalysisCode[]) =>
     codes.map((code) => code === "unordered"
-      ? t.pageRangeUnordered || "The page ranges were reordered in ascending order."
-      : t.pageRangeOverlap || "Overlapping or duplicated ranges were merged."
+      ? t.pageRangeUnordered || "The page ranges were normalized to ascending order."
+      : t.pageRangeOverlap || "Overlapping or duplicated ranges were merged into distinct ranges."
     );
   const analyzeRangeInput = useCallback(
     (input: string) => {
