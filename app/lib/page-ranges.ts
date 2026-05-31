@@ -25,7 +25,27 @@ export function rangeToFileLabel(start: number, end: number): string {
 }
 
 export function isValidPageRangeInput(input: string): boolean {
-  return parsePageRangeGroupsInternal(input, Number.MAX_SAFE_INTEGER) !== null;
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+
+  for (const part of trimmed.split(/[,\n;]+/)) {
+    const segment = part.trim();
+    if (!segment) return false;
+
+    const lower = segment.toLowerCase();
+    if (["all", "odd", "even"].includes(lower)) {
+      continue;
+    }
+
+    const match = segment.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!match) return false;
+
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    if (start < 1 || end < 1 || start > end) return false;
+  }
+
+  return true;
 }
 
 export function parsePageRangeGroups(input: string, total: number): PageRange[] | null {
@@ -44,6 +64,22 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
     if (lower === "all") {
       if (typeof total !== "number" || total <= 0) return null;
       ranges.push({ start: 1, end: total });
+      continue;
+    }
+
+    if (lower === "odd") {
+      if (typeof total !== "number" || total <= 0) return null;
+      for (let page = 1; page <= total; page += 2) {
+        ranges.push({ start: page, end: page });
+      }
+      continue;
+    }
+
+    if (lower === "even") {
+      if (typeof total !== "number" || total <= 0) return null;
+      for (let page = 2; page <= total; page += 2) {
+        ranges.push({ start: page, end: page });
+      }
       continue;
     }
 

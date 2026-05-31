@@ -44,6 +44,19 @@ describe("parsePageRangeGroups", () => {
     expect(parsePageRangeGroups("ALL", 5)).toEqual([{ start: 1, end: 5 }]);
   });
 
+  it("supports odd and even keywords", () => {
+    expect(parsePageRangeGroups("odd", 6)).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 3 },
+      { start: 5, end: 5 },
+    ]);
+    expect(parsePageRangeGroups("even", 6)).toEqual([
+      { start: 2, end: 2 },
+      { start: 4, end: 4 },
+      { start: 6, end: 6 },
+    ]);
+  });
+
 });
 
 describe("isValidPageRangeInput", () => {
@@ -51,6 +64,9 @@ describe("isValidPageRangeInput", () => {
     expect(isValidPageRangeInput("1")).toBe(true);
     expect(isValidPageRangeInput("1, 3-5, 7")).toBe(true);
     expect(isValidPageRangeInput("all")).toBe(true);
+    expect(isValidPageRangeInput("odd")).toBe(true);
+    expect(isValidPageRangeInput("even, odd")).toBe(true);
+    expect(isValidPageRangeInput("odd, 1-3")).toBe(true);
   });
 
   it("rejects malformed, empty, and reversed segments", () => {
@@ -70,6 +86,11 @@ describe("parsePageRanges", () => {
 
   it("can preserve user-entered order for extraction workflows", () => {
     expect(parsePageRanges("3, 1, 3, 2-4", 5, { preserveOrder: true })).toEqual([3, 1, 2, 4]);
+  });
+
+  it("expands odd and even keywords into full odd/even page lists", () => {
+    expect(parsePageRanges("odd", 6)).toEqual([1, 3, 5]);
+    expect(parsePageRanges("even,2-3", 6, { preserveOrder: true })).toEqual([2, 4, 6, 3]);
   });
 });
 
