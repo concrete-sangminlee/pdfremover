@@ -16,6 +16,7 @@ import {
 import { sanitizeOutputFilename } from "../lib/file-names";
 import {
   analyzePageRangeInputForSplit,
+  formatPageRanges,
   isValidPageRangeInput,
   parsePageRangeGroups,
   parsePageRanges,
@@ -185,6 +186,7 @@ export const T: Record<Lang, Record<string, string>> = {
     pageRangeOutOfBounds: "PDF 페이지 수를 초과한 범위입니다.",
     pageRangeUnordered: "페이지 입력 범위를 오름차순으로 재정렬했습니다.",
     pageRangeOverlap: "겹치거나 중복된 범위는 병합해 분할합니다.",
+    rangeNormalized: "정규화된 범위",
     extractInvalid: "유효한 페이지 번호를 입력해주세요.",
     compressAlready: "이 파일은 이미 최적화되어 있어 추가 압축이 어렵습니다.",
     compressSaved: "절약!",
@@ -452,6 +454,7 @@ export const T: Record<Lang, Record<string, string>> = {
     pageRangeOutOfBounds: "The range exceeds this PDF's page count.",
     pageRangeUnordered: "The page ranges were reordered in ascending order.",
     pageRangeOverlap: "Overlapping or duplicated ranges were merged.",
+    rangeNormalized: "Normalized ranges",
     extractInvalid: "Please enter valid page numbers.",
     compressAlready: "This file is already optimized. No further compression possible.",
     compressSaved: "saved!",
@@ -1979,6 +1982,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     () => analyzeRangeInput(deleteInput),
     [analyzeRangeInput, deleteInput]
   );
+  const normalizeRangeText = (ranges: PageRange[] | null) => ranges
+    ? `${t.rangeNormalized || "Normalized ranges"}: ${formatPageRanges(ranges)}`
+    : "";
   const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
     () => ({
       home: ({}) => false,
@@ -3103,6 +3109,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       {...rangeInputAria(rangeInput, splitRangeFeedbackId, splitRangeAnalysis.warnings.length > 0)}
                     />
                     {renderRangeInputFeedbackWithWarnings(rangeInput, splitRangeFeedbackId, splitRangeAnalysis.warnings)}
+                    {splitRangeAnalysis.warnings.length > 0 && splitRangeAnalysis.ranges && (
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        {normalizeRangeText(splitRangeAnalysis.ranges)}
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -3122,6 +3133,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {...rangeInputAria(pagesInput, extractRangeFeedbackId, extractRangeAnalysis.warnings.length > 0)}
                 />
                 {renderRangeInputFeedbackWithWarnings(pagesInput, extractRangeFeedbackId, extractRangeAnalysis.warnings)}
+                {extractRangeAnalysis.warnings.length > 0 && extractRangeAnalysis.ranges && (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    {normalizeRangeText(extractRangeAnalysis.ranges)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -3139,6 +3155,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {...rangeInputAria(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings.length > 0)}
                 />
                 {renderRangeInputFeedbackWithWarnings(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings)}
+                {deleteRangeAnalysis.warnings.length > 0 && deleteRangeAnalysis.ranges && (
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    {normalizeRangeText(deleteRangeAnalysis.ranges)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -3202,6 +3223,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       {...rangeInputAria(rotatePagesInput, rotateRangeFeedbackId, rotateRangeAnalysis.warnings.length > 0)}
                     />
                     {renderRangeInputFeedbackWithWarnings(rotatePagesInput, rotateRangeFeedbackId, rotateRangeAnalysis.warnings)}
+                    {rotateRangeAnalysis.warnings.length > 0 && rotateRangeAnalysis.ranges && (
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        {normalizeRangeText(rotateRangeAnalysis.ranges)}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

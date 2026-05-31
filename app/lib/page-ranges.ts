@@ -10,6 +10,12 @@ export interface PageRangeAnalysis {
   warningCodes: PageRangeAnalysisCode[];
 }
 
+export function formatPageRanges(ranges: PageRange[]): string {
+  return ranges
+    .map((range) => (range.start === range.end ? String(range.start) : `${range.start}-${range.end}`))
+    .join(", ");
+}
+
 export function isValidPageRangeInput(input: string): boolean {
   return parsePageRangeGroupsInternal(input) !== null;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzePageRangeInputForSplit, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
+import { analyzePageRangeInputForSplit, formatPageRanges, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
 
 describe("parsePageRangeGroups", () => {
   it("parses single pages and inclusive ranges", () => {
@@ -88,5 +88,19 @@ describe("analyzePageRangeInputForSplit", () => {
       { start: 6, end: 6 },
     ]);
     expect(result.warningCodes).toEqual([]);
+  });
+});
+
+describe("formatPageRanges", () => {
+  it("formats mixed single-page and span ranges as compact strings", () => {
+    expect(formatPageRanges([
+      { start: 1, end: 1 },
+      { start: 3, end: 4 },
+      { start: 6, end: 9 },
+    ])).toBe("1, 3-4, 6-9");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(formatPageRanges([])).toBe("");
   });
 });
