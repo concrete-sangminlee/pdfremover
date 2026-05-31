@@ -193,6 +193,11 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges("1|3 /5\uFF0C7\uFF1B9", 20, { preserveOrder: true })).toEqual([1, 3, 5, 7, 9]);
     expect(parsePageRanges("1 / first - 2 / 3-4", 10, { preserveOrder: true })).toEqual([1, 2, 3, 4]);
   });
+
+  it("supports unicode slash variants in mixed separators", () => {
+    expect(parsePageRanges("1\uFF0F2\uFF3C4,7", 10, { preserveOrder: true })).toEqual([1, 2, 4, 7]);
+    expect(parsePageRanges("1\uFF0F2\uFF5C3", 10, { preserveOrder: true })).toEqual([1, 2, 3]);
+  });
 });
 
 describe("analyzePageRangeInputForSplit", () => {

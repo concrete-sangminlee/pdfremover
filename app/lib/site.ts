@@ -10,8 +10,12 @@ export function normalizeSiteUrl(value: string | undefined) {
       return FALLBACK_SITE_URL;
     }
 
+    const isDefaultPort =
+      (url.protocol === "http:" && url.port === "80") || (url.protocol === "https:" && url.port === "443");
+    const port = url.port && !isDefaultPort ? `:${url.port}` : "";
     const pathname = url.pathname.replace(/\/+$/, "");
-    return `${url.origin}${pathname === "/" ? "" : pathname}`;
+    const normalizedPath = pathname === "/" ? "" : pathname;
+    return `${url.protocol}//${url.hostname.toLowerCase()}${port}${normalizedPath}`;
   } catch {
     return FALLBACK_SITE_URL;
   }

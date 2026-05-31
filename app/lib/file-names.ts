@@ -23,11 +23,39 @@ const RESERVED_WINDOWS_NAMES = new Set([
   "lpt9",
 ]);
 
-const MAX_FILENAME_LENGTH = 180;
+const MAX_FILENAME_LENGTH_BYTES = 180;
+const TEXT_ENCODER = new TextEncoder();
+const FORWARD_SLASH = "\u002F";
+const FULL_WIDTH_SLASH = "\uFF0F";
+const FULL_WIDTH_BACKSLASH = "\uFF3C";
+const DIVISION_SLASH = "\u2215";
+const FRACTION_SLASH = "\u2044";
+
+const UNICODE_CONTROL_PATTERN = /[\u0000-\u001F\u007F-\u009F\u00AD\u200B-\u200F\uFEFF]/g;
+
+function isUtf8ByteLengthTooLong(value: string): boolean {
+  return TEXT_ENCODER.encode(value).length > MAX_FILENAME_LENGTH_BYTES;
+}
+
+function truncateUtf8ToMaxBytes(value: string, maxBytes: number): string {
+  if (TEXT_ENCODER.encode(value).length <= maxBytes) return value;
+
+  let safe = value;
+  while (safe && TEXT_ENCODER.encode(safe).length > maxBytes) {
+    safe = safe.slice(0, -1);
+  }
+  return safe || "file";
+}
 
 function sanitizeSegment(value: string): string {
-  const cleaned = value
+  const normalized = value.normalize("NFKC");
+  const cleaned = normalized
     .replace(/[<>:"/\\|?*\x00-\x1F\x7F]/g, "_")
+    .replace(UNICODE_CONTROL_PATTERN, "_")
+    .replace(
+      new RegExp(`[${FORWARD_SLASH}${FULL_WIDTH_SLASH}${FULL_WIDTH_BACKSLASH}${DIVISION_SLASH}${FRACTION_SLASH}]`, "g"),
+      "_"
+    )
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^[.\s]+|[.\s]+$/g, "");
@@ -46,11 +74,16 @@ export function sanitizeOutputFilename(filename: string, fallback = "file") {
   const dot = safe.lastIndexOf(".");
   const basename = (dot > 0 ? safe.slice(0, dot) : safe).toLowerCase();
   const prefixed = RESERVED_WINDOWS_NAMES.has(basename) ? `_${safe}` : safe;
-  if (prefixed.length <= MAX_FILENAME_LENGTH) return prefixed;
+  if (!isUtf8ByteLengthTooLong(prefixed)) return prefixed;
 
   const outputDot = prefixed.lastIndexOf(".");
   const ext = outputDot > 0 && outputDot < prefixed.length - 1 ? prefixed.slice(outputDot) : "";
   const stem = outputDot > 0 ? prefixed.slice(0, outputDot) : prefixed;
-  const maxStemLength = Math.max(1, MAX_FILENAME_LENGTH - ext.length);
-  return `${stem.slice(0, maxStemLength)}${ext}` || fallback;
+  const extByteLength = TEXT_ENCODER.encode(ext).length;
+  if (extByteLength > MAX_FILENAME_LENGTH_BYTES - 1) {
+    return truncateUtf8ToMaxBytes("file", MAX_FILENAME_LENGTH_BYTES);
+  }
+
+  const maxStemLength = Math.max(1, MAX_FILENAME_LENGTH_BYTES - extByteLength);
+  return `${truncateUtf8ToMaxBytes(stem, maxStemLength)}${ext}` || "file";
 }

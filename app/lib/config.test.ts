@@ -5,6 +5,9 @@ import {
   NO_PDF_LIB_PRELOAD_TOOLS,
   PAGE_INPUT_TOOLS,
   isImageInputTool,
+  hasNoPageInfo,
+  hasNoPdfLibPreload,
+  isPageInputTool,
   isValidTool,
   TOOLS,
   TOOL_BY_ID,
@@ -36,5 +39,20 @@ describe("tool config", () => {
     expect(isValidTool("missing-tool")).toBe(false);
     expect(isImageInputTool("img2pdf")).toBe(true);
     expect(isImageInputTool("home")).toBe(false);
+    expect(isImageInputTool("docx2html")).toBe(false);
+    expect(isPageInputTool("split")).toBe(true);
+    expect(isPageInputTool("img2pdf")).toBe(false);
+    expect(isPageInputTool("docx2html")).toBe(false);
+    expect(hasNoPageInfo("img2pdf")).toBe(true);
+    expect(hasNoPageInfo("split")).toBe(false);
+    expect(hasNoPdfLibPreload("imgcompress")).toBe(true);
+    expect(hasNoPdfLibPreload("split")).toBe(false);
+  });
+
+  it("handles odd and malformed values explicitly", () => {
+    expect(isValidTool("")).toBe(false);
+    expect(isValidTool("home")).toBe(false);
+    expect(isValidTool("COMpress")).toBe(false);
+    expect(isPageInputTool("home")).toBe(false);
   });
 });

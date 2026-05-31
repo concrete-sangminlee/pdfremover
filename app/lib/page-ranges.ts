@@ -12,8 +12,14 @@ export interface PageRangeAnalysis {
 
 const FULL_WIDTH_COMMA = "\uFF0C";
 const FULL_WIDTH_SEMICOLON = "\uFF1B";
+const FULL_WIDTH_SLASH = "\uFF0F";
+const FULL_WIDTH_BACKSLASH = "\uFF3C";
+const FULL_WIDTH_VERTICAL_BAR = "\uFF5C";
+const IDEOGRAPHIC_COMMA = "\u3001";
+const ARABIC_COMMA = "\u060C";
+const ARABIC_SEMICOLON = "\u061B";
 const PAGE_RANGE_SEPARATOR_SPLIT = new RegExp(
-  `\\s*[,;\\/\\r\\n|${FULL_WIDTH_COMMA}${FULL_WIDTH_SEMICOLON}]\\s*`
+  `\\s*[,;/|\\r\\n${FULL_WIDTH_COMMA}${FULL_WIDTH_SEMICOLON}${IDEOGRAPHIC_COMMA}${ARABIC_COMMA}${ARABIC_SEMICOLON}${FULL_WIDTH_SLASH}${FULL_WIDTH_BACKSLASH}${FULL_WIDTH_VERTICAL_BAR}]\\s*`
 );
 export function formatPageRanges(ranges: PageRange[]): string {
   return ranges

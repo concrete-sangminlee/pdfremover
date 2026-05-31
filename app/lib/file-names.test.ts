@@ -31,8 +31,19 @@ describe("sanitizeOutputFilename", () => {
     expect(result).toBe("a".repeat(180));
   });
 
+  it("sanitizes slash-like unicode characters", () => {
+    expect(sanitizeOutputFilename("path\u2044to\\file.txt")).toBe("path_to_file.txt");
+  });
+
   it("sanitizes fallback names before using them", () => {
     expect(sanitizeOutputFilename("", "inva/lid.txt")).toBe("inva_lid.txt");
     expect(sanitizeOutputFilename("", "///")).toBe("file");
+  });
+
+  it("truncates by UTF-8 byte length while preserving extension", () => {
+    const longKoreanName = `${"한".repeat(130)}.pdf`;
+    const result = sanitizeOutputFilename(longKoreanName);
+    expect(result.endsWith(".pdf")).toBe(true);
+    expect(new TextEncoder().encode(result).length).toBeLessThanOrEqual(180);
   });
 });

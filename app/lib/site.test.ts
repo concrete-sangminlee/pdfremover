@@ -12,9 +12,18 @@ describe("normalizeSiteUrl", () => {
     expect(normalizeSiteUrl("https://example.com/tools/")).toBe("https://example.com/tools");
   });
 
+  it("normalizes host casing and strips default ports", () => {
+    expect(normalizeSiteUrl("HTTPS://Example.COM:443/Tools/")).toBe("https://example.com/Tools");
+    expect(normalizeSiteUrl("HTTP://Example.COM:80/Tools/")).toBe("http://example.com/Tools");
+  });
+
   it("rejects invalid or unsupported schemes", () => {
     expect(normalizeSiteUrl("ftp://example.com")).toBe("https://pdfcontrol.vercel.app");
     expect(normalizeSiteUrl("file:///tmp/site")).toBe("https://pdfcontrol.vercel.app");
+  });
+
+  it("drops query and hash from normalized URLs", () => {
+    expect(normalizeSiteUrl("https://example.com/path?x=1#section")).toBe("https://example.com/path");
   });
 
   it("normalizes whitespace around site URLs", () => {

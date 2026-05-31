@@ -76,10 +76,28 @@ export const NO_PAGE_INFO_TOOLS: readonly Tool[] = [...IMAGE_INPUT_TOOLS, "docx2
 export const NO_PDF_LIB_PRELOAD_TOOLS: readonly Tool[] = ["imgcompress", "imgresize", "imgconvert", "imgstitch", "pdftext", "docx2html", "pdf2img"];
 export const PAGE_INPUT_TOOLS: readonly Tool[] = ["split", "extract", "delete", "rotate"];
 
+const VALID_TOOL_SET = new Set<Tool>(VALID_TOOLS);
+const IMAGE_INPUT_TOOL_SET = new Set<Tool>(IMAGE_INPUT_TOOLS);
+const PAGE_TOOL_SET = new Set<Tool>(PAGE_INPUT_TOOLS);
+const NO_PAGE_TOOL_SET = new Set<Tool>(NO_PAGE_INFO_TOOLS);
+const NO_PRELOAD_TOOL_SET = new Set<Tool>(NO_PDF_LIB_PRELOAD_TOOLS);
+
 export function isValidTool(value: string): value is Tool {
-  return VALID_TOOLS.includes(value as Tool);
+  return VALID_TOOL_SET.has(value as Tool);
 }
 
-export function isImageInputTool(value: View): boolean {
-  return (IMAGE_INPUT_TOOLS as readonly View[]).includes(value);
+export function isImageInputTool(value: View): value is (typeof IMAGE_INPUT_TOOLS)[number] {
+  return IMAGE_INPUT_TOOL_SET.has(value as Tool);
+}
+
+export function isPageInputTool(value: string): value is (typeof PAGE_INPUT_TOOLS)[number] {
+  return PAGE_TOOL_SET.has(value as Tool);
+}
+
+export function hasNoPageInfo(value: string): value is (typeof NO_PAGE_INFO_TOOLS)[number] {
+  return NO_PAGE_TOOL_SET.has(value as Tool);
+}
+
+export function hasNoPdfLibPreload(value: string): value is (typeof NO_PDF_LIB_PRELOAD_TOOLS)[number] {
+  return NO_PRELOAD_TOOL_SET.has(value as Tool);
 }
