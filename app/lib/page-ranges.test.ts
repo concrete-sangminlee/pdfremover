@@ -193,6 +193,13 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges("1-30000", 30000)).toEqual([]);
   });
 
+  it("accepts page ranges up to the expanded-page cap", () => {
+    const result = parsePageRanges("1-20000", 20000);
+    expect(result.length).toBe(20000);
+    expect(result[0]).toBe(1);
+    expect(result[19999]).toBe(20000);
+  });
+
   it("supports mixed separators in expansion", () => {
     expect(parsePageRanges("1|3 /5\uFF0C7\uFF1B9", 20, { preserveOrder: true })).toEqual([1, 3, 5, 7, 9]);
     expect(parsePageRanges("1 / first - 2 / 3-4", 10, { preserveOrder: true })).toEqual([1, 2, 3, 4]);
