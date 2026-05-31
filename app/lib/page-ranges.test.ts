@@ -66,6 +66,16 @@ describe("parsePageRangeGroups", () => {
     ]);
   });
 
+  it("supports first/last count aliases", () => {
+    expect(parsePageRangeGroups("first-3", 5)).toEqual([{ start: 1, end: 3 }]);
+    expect(parsePageRangeGroups("last-2", 7)).toEqual([{ start: 6, end: 7 }]);
+    expect(parsePageRangeGroups("start-4", 3)).toEqual([{ start: 1, end: 3 }]);
+    expect(parsePageRangeGroups("end-4", 3)).toEqual([{ start: 1, end: 3 }]);
+    expect(parsePageRangeGroups("first-1,last-1", 10)).toEqual([{ start: 1, end: 1 }, { start: 10, end: 10 }]);
+    expect(parsePageRangeGroups("first-0", 10)).toBeNull();
+    expect(parsePageRangeGroups("last-0", 10)).toBeNull();
+  });
+
 });
 
 describe("isValidPageRangeInput", () => {
@@ -75,6 +85,14 @@ describe("isValidPageRangeInput", () => {
     expect(isValidPageRangeInput("all")).toBe(true);
     expect(isValidPageRangeInput("first")).toBe(true);
     expect(isValidPageRangeInput("last")).toBe(true);
+    expect(isValidPageRangeInput("start")).toBe(true);
+    expect(isValidPageRangeInput("end")).toBe(true);
+    expect(isValidPageRangeInput("first-3")).toBe(true);
+    expect(isValidPageRangeInput("last-4")).toBe(true);
+    expect(isValidPageRangeInput("start-2")).toBe(true);
+    expect(isValidPageRangeInput("end-2")).toBe(true);
+    expect(isValidPageRangeInput("first-0")).toBe(false);
+    expect(isValidPageRangeInput("last-0")).toBe(false);
     expect(isValidPageRangeInput("odd")).toBe(true);
     expect(isValidPageRangeInput("even, odd")).toBe(true);
     expect(isValidPageRangeInput("odd, 1-3")).toBe(true);
@@ -107,6 +125,12 @@ describe("parsePageRanges", () => {
   it("expands first and last keywords with preserveOrder", () => {
     expect(parsePageRanges("first,last", 7, { preserveOrder: true })).toEqual([1, 7]);
     expect(parsePageRanges("2,first,6, last", 7, { preserveOrder: true })).toEqual([2, 1, 6, 7]);
+  });
+
+  it("supports first/last count aliases in page expansion", () => {
+    expect(parsePageRanges("first-3", 7, { preserveOrder: true })).toEqual([1, 2, 3]);
+    expect(parsePageRanges("start-2,last-2", 7, { preserveOrder: true })).toEqual([1, 2, 6, 7]);
+    expect(parsePageRanges("end-3", 5)).toEqual([3, 4, 5]);
   });
 });
 

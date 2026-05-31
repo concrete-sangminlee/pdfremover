@@ -33,7 +33,16 @@ export function isValidPageRangeInput(input: string): boolean {
     if (!segment) return false;
 
     const lower = segment.toLowerCase();
-    if (["all", "odd", "even", "first", "last"].includes(lower)) {
+    if (["all", "odd", "even", "first", "last", "start", "end"].includes(lower)) {
+      continue;
+    }
+
+    const rangeCountKeywordMatch = lower.match(/^(first|last|start|end)-(\d+)$/);
+    if (rangeCountKeywordMatch) {
+      const count = Number(rangeCountKeywordMatch[2]);
+      if (!Number.isInteger(count) || count <= 0) {
+        return false;
+      }
       continue;
     }
 
@@ -83,15 +92,30 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
       continue;
     }
 
-    if (lower === "first") {
+    if (["first", "start"].includes(lower)) {
       if (typeof total !== "number" || total <= 0) return null;
       ranges.push({ start: 1, end: 1 });
       continue;
     }
 
-    if (lower === "last") {
+    if (["last", "end"].includes(lower)) {
       if (typeof total !== "number" || total <= 0) return null;
       ranges.push({ start: total, end: total });
+      continue;
+    }
+
+    const rangeCountKeywordMatch = lower.match(/^(first|start|last|end)-(\d+)$/);
+    if (rangeCountKeywordMatch) {
+      const keyword = rangeCountKeywordMatch[1];
+      const count = Number(rangeCountKeywordMatch[2]);
+      if (!Number.isInteger(count) || count <= 0 || typeof total !== "number" || total <= 0) return null;
+
+      if (keyword === "first" || keyword === "start") {
+        ranges.push({ start: 1, end: Math.min(total, count) });
+      } else {
+        const start = Math.max(1, total - count + 1);
+        ranges.push({ start, end: total });
+      }
       continue;
     }
 
