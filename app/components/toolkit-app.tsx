@@ -17,6 +17,7 @@ import { sanitizeOutputFilename } from "../lib/file-names";
 import {
   analyzePageRangeInputForSplit,
   formatPageRanges,
+  countPagesInRanges,
   isValidPageRangeInput,
   parsePageRangeGroups,
   parsePageRanges,
@@ -1983,7 +1984,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     [analyzeRangeInput, deleteInput]
   );
   const normalizeRangeText = (ranges: PageRange[] | null) => ranges
-    ? `${t.rangeNormalized || "Normalized ranges"}: ${formatPageRanges(ranges)}`
+    ? `${t.rangeNormalized || "Normalized ranges"}: ${formatPageRanges(ranges)} (${countPagesInRanges(ranges)} ${t.counterPages})`
     : "";
   const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
     () => ({

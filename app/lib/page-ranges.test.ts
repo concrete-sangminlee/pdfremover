@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzePageRangeInputForSplit, formatPageRanges, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
+import { analyzePageRangeInputForSplit, countPagesInRanges, formatPageRanges, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
 
 describe("parsePageRangeGroups", () => {
   it("parses single pages and inclusive ranges", () => {
@@ -111,5 +111,15 @@ describe("formatPageRanges", () => {
 
   it("returns empty string for empty input", () => {
     expect(formatPageRanges([])).toBe("");
+  });
+});
+
+describe("countPagesInRanges", () => {
+  it("returns total page count across merged ranges", () => {
+    expect(countPagesInRanges([
+      { start: 1, end: 1 },
+      { start: 3, end: 4 },
+      { start: 6, end: 9 },
+    ])).toBe(7);
   });
 });

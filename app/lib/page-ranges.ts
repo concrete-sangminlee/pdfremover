@@ -16,6 +16,10 @@ export function formatPageRanges(ranges: PageRange[]): string {
     .join(", ");
 }
 
+export function countPagesInRanges(ranges: PageRange[]): number {
+  return ranges.reduce((total, range) => total + (range.end - range.start + 1), 0);
+}
+
 export function isValidPageRangeInput(input: string): boolean {
   return parsePageRangeGroupsInternal(input) !== null;
 }
