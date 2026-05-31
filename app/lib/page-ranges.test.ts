@@ -71,6 +71,8 @@ describe("parsePageRangeGroups", () => {
     expect(parsePageRangeGroups("last-2", 7)).toEqual([{ start: 6, end: 7 }]);
     expect(parsePageRangeGroups("start-4", 3)).toEqual([{ start: 1, end: 3 }]);
     expect(parsePageRangeGroups("end-4", 3)).toEqual([{ start: 1, end: 3 }]);
+    expect(parsePageRangeGroups("first - 2", 5)).toEqual([{ start: 1, end: 2 }]);
+    expect(parsePageRangeGroups("last - 2", 5)).toEqual([{ start: 4, end: 5 }]);
     expect(parsePageRangeGroups("first-1,last-1", 10)).toEqual([{ start: 1, end: 1 }, { start: 10, end: 10 }]);
     expect(parsePageRangeGroups("first-0", 10)).toBeNull();
     expect(parsePageRangeGroups("last-0", 10)).toBeNull();
@@ -131,6 +133,7 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges("first-3", 7, { preserveOrder: true })).toEqual([1, 2, 3]);
     expect(parsePageRanges("start-2,last-2", 7, { preserveOrder: true })).toEqual([1, 2, 6, 7]);
     expect(parsePageRanges("end-3", 5)).toEqual([3, 4, 5]);
+    expect(parsePageRanges("first - 2, end - 1", 10, { preserveOrder: true })).toEqual([1, 2, 10]);
   });
 });
 

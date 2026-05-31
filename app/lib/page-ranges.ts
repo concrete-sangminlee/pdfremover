@@ -37,7 +37,7 @@ export function isValidPageRangeInput(input: string): boolean {
       continue;
     }
 
-    const rangeCountKeywordMatch = lower.match(/^(first|last|start|end)-(\d+)$/);
+    const rangeCountKeywordMatch = lower.match(/^(first|last|start|end)\s*-\s*(\d+)$/);
     if (rangeCountKeywordMatch) {
       const count = Number(rangeCountKeywordMatch[2]);
       if (!Number.isInteger(count) || count <= 0) {
@@ -104,7 +104,7 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
       continue;
     }
 
-    const rangeCountKeywordMatch = lower.match(/^(first|start|last|end)-(\d+)$/);
+    const rangeCountKeywordMatch = lower.match(/^(first|start|last|end)\s*-\s*(\d+)$/);
     if (rangeCountKeywordMatch) {
       const keyword = rangeCountKeywordMatch[1];
       const count = Number(rangeCountKeywordMatch[2]);
