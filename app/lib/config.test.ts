@@ -4,6 +4,8 @@ import {
   NO_PAGE_INFO_TOOLS,
   NO_PDF_LIB_PRELOAD_TOOLS,
   PAGE_INPUT_TOOLS,
+  isImageInputTool,
+  isValidTool,
   TOOLS,
   TOOL_BY_ID,
   VALID_TOOLS,
@@ -27,5 +29,12 @@ describe("tool config", () => {
     for (const group of groups) {
       expect(group.every((tool) => registered.has(tool))).toBe(true);
     }
+  });
+
+  it("validates tool ids and image-tool view detection", () => {
+    expect(isValidTool("split")).toBe(true);
+    expect(isValidTool("missing-tool")).toBe(false);
+    expect(isImageInputTool("img2pdf")).toBe(true);
+    expect(isImageInputTool("home")).toBe(false);
   });
 });
