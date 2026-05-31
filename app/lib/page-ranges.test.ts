@@ -240,6 +240,25 @@ describe("analyzePageRangeInputForSplit", () => {
     ]);
     expect(result.warningCodes).toEqual([]);
   });
+
+  it("supports full-width and pipe separators in split analysis", () => {
+    const result = analyzePageRangeInputForSplit("1/3|5,7", 10);
+    expect(result.ranges).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 3 },
+      { start: 5, end: 5 },
+      { start: 7, end: 7 },
+    ]);
+    expect(result.warningCodes).toEqual([]);
+
+    const chineseResult = analyzePageRangeInputForSplit("1，3；5", 10);
+    expect(chineseResult.ranges).toEqual([
+      { start: 1, end: 1 },
+      { start: 3, end: 3 },
+      { start: 5, end: 5 },
+    ]);
+    expect(chineseResult.warningCodes).toEqual([]);
+  });
 });
 
 describe("formatPageRanges", () => {
