@@ -144,17 +144,21 @@ export const T: Record<Lang, Record<string, string>> = {
     rangeMode: "범위 지정",
     allPages: "모든 페이지 개별",
     rangePlaceholder: "예: 1-3, 4-6, 7-10",
+    splitRangeLabel: "분할할 페이지",
     pagesPlaceholder: "예: 1, 3, 5, 7-10",
+    extractRangeLabel: "추출할 페이지",
     rotAngle: "회전 각도",
     rotScope: "적용 범위",
     rotAll: "전체",
     rotSpecific: "특정",
+    rotPagesLabel: "회전할 페이지",
     rotPagesPlaceholder: "예: 1, 3, 5-7",
     wmText: "워터마크 텍스트",
     wmSize: "크기",
     wmOpacity: "투명도",
     wmAngle: "각도",
     wmLayout: "배치",
+    wmPreview: "미리보기",
     wmCenter: "중앙",
     wmDiagonal: "대각선",
     wmTiled: "반복 패턴",
@@ -167,10 +171,13 @@ export const T: Record<Lang, Record<string, string>> = {
     pnTC: "상단 중앙",
     pnTR: "상단 우",
     deletePlaceholder: "삭제할 페이지 (예: 2, 5, 8-10)",
+    deleteRangeLabel: "삭제할 페이지",
     infoInvalid: "PDF 정보를 읽을 수 없습니다.",
     pageInfoLoading: "페이지 정보 불러오는 중…",
     pageRangeFormatInvalid: "페이지 번호 또는 범위를 쉼표로 구분해 입력해주세요.",
     pageRangeOutOfBounds: "PDF 페이지 수를 초과한 범위입니다.",
+    pageRangeUnordered: "페이지 입력 범위를 오름차순으로 재정렬했습니다.",
+    pageRangeOverlap: "겹치거나 중복된 범위는 병합해 분할합니다.",
     extractInvalid: "유효한 페이지 번호를 입력해주세요.",
     compressAlready: "이 파일은 이미 최적화되어 있어 추가 압축이 어렵습니다.",
     compressSaved: "절약!",
@@ -404,17 +411,21 @@ export const T: Record<Lang, Record<string, string>> = {
     rangeMode: "By Range",
     allPages: "Every Page",
     rangePlaceholder: "e.g. 1-3, 4-6, 7-10",
+    splitRangeLabel: "Pages to split",
     pagesPlaceholder: "e.g. 1, 3, 5, 7-10",
+    extractRangeLabel: "Pages to extract",
     rotAngle: "Rotation",
     rotScope: "Scope",
     rotAll: "All",
     rotSpecific: "Specific",
+    rotPagesLabel: "Pages to rotate",
     rotPagesPlaceholder: "e.g. 1, 3, 5-7",
     wmText: "Watermark text",
     wmSize: "Size",
     wmOpacity: "Opacity",
     wmAngle: "Angle",
     wmLayout: "Layout",
+    wmPreview: "Preview",
     wmCenter: "Center",
     wmDiagonal: "Diagonal",
     wmTiled: "Tiled",
@@ -427,10 +438,13 @@ export const T: Record<Lang, Record<string, string>> = {
     pnTC: "Top C",
     pnTR: "Top R",
     deletePlaceholder: "Pages to delete (e.g. 2, 5, 8-10)",
+    deleteRangeLabel: "Pages to delete",
     infoInvalid: "Unable to read PDF information.",
     pageInfoLoading: "Loading page info…",
     pageRangeFormatInvalid: "Enter page numbers or ranges separated by commas.",
     pageRangeOutOfBounds: "The range exceeds this PDF's page count.",
+    pageRangeUnordered: "The page ranges were reordered in ascending order.",
+    pageRangeOverlap: "Overlapping or duplicated ranges were merged.",
     extractInvalid: "Please enter valid page numbers.",
     compressAlready: "This file is already optimized. No further compression possible.",
     compressSaved: "saved!",
@@ -1800,7 +1814,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const wmOpacityId = `${controlId}-wm-opacity`;
   const wmAngleId = `${controlId}-wm-angle`;
   const wmLayoutId = `${controlId}-wm-layout`;
+  const wmPreviewId = `${controlId}-wm-preview`;
   const splitLabelId = `${controlId}-split-label`;
+  const splitRangeId = `${controlId}-split-range`;
+  const splitRangeFeedbackId = `${controlId}-split-range-feedback`;
+  const extractRangeId = `${controlId}-extract-range`;
+  const extractRangeFeedbackId = `${controlId}-extract-range-feedback`;
+  const rotateRangeId = `${controlId}-rotate-range`;
+  const rotateRangeFeedbackId = `${controlId}-rotate-range-feedback`;
+  const deleteRangeId = `${controlId}-delete-range`;
+  const deleteRangeFeedbackId = `${controlId}-delete-range-feedback`;
   const pnFormatId = `${controlId}-pn-format`;
   const pnSizeId = `${controlId}-pn-size`;
   const pnPositionId = `${controlId}-pn-position`;
@@ -1812,6 +1835,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Search ref for "/" shortcut
   const searchRef = useRef<HTMLInputElement>(null);
+  const splitRangeInputRef = useRef<HTMLInputElement>(null);
+  const extractRangeInputRef = useRef<HTMLInputElement>(null);
+  const rotateRangeInputRef = useRef<HTMLInputElement>(null);
+  const deleteRangeInputRef = useRef<HTMLInputElement>(null);
+  const wmTextInputRef = useRef<HTMLInputElement>(null);
   const goHomeRef = useRef<() => void>(() => {});
   const resetStateRef = useRef<() => void>(() => {});
   type ExecuteValidationContext = {
@@ -1856,33 +1884,112 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     },
     [currentPdfPageCount, isCurrentPdfPageInfoLoaded, isRangeInputValidWithTotal, t]
   );
-  const rangeInputAria = (input: string, feedbackId: string) => {
+  const rangeInputAria = (input: string, feedbackId: string, hasAdditionalFeedback = false) => {
     const feedback = getRangeInputFeedback(input);
     return {
       "aria-invalid": feedback?.tone === "error" ? true : undefined,
-      "aria-describedby": feedback ? feedbackId : undefined,
+      "aria-describedby": feedback || hasAdditionalFeedback ? feedbackId : undefined,
     } as const;
   };
   const renderRangeInputFeedback = (input: string, feedbackId: string) => {
     const feedback = getRangeInputFeedback(input);
     if (!feedback) return null;
-    const className =
-      feedback.tone === "warning"
-        ? "text-xs text-amber-500 dark:text-amber-400"
-        : "text-xs text-red-500 dark:text-red-400";
     return (
-      <p id={feedbackId} className={className} role={feedback.tone === "error" ? "alert" : "status"} aria-live="polite">
+      <p id={feedbackId} className={feedback.tone === "warning"
+        ? "text-xs text-amber-500 dark:text-amber-400"
+        : "text-xs text-red-500 dark:text-red-400"} role={feedback.tone === "error" ? "alert" : "status"} aria-live="polite">
         {feedback.text}
       </p>
     );
   };
+  const renderRangeInputFeedbackWithWarnings = (
+    input: string,
+    feedbackId: string,
+    warnings: string[]
+  ) => {
+    const feedback = getRangeInputFeedback(input);
+    if (!feedback && !warnings.length) return null;
+    const tone = feedback?.tone === "error" ? "error" : "warning";
+    return (
+      <div id={feedbackId} role={tone === "error" ? "alert" : "status"} aria-live="polite" className="space-y-1">
+        {feedback && (
+          <p className={feedback.tone === "warning"
+            ? "text-xs text-amber-500 dark:text-amber-400"
+            : "text-xs text-red-500 dark:text-red-400"}>
+            {feedback.text}
+          </p>
+        )}
+        {warnings.map((warning) => (
+          <p className="text-xs text-amber-500 dark:text-amber-400" key={warning}>
+            {warning}
+          </p>
+        ))}
+      </div>
+    );
+  };
+  const analyzeSplitRangeInput = useCallback(
+    (input: string) => {
+      const trimmed = input.trim();
+      if (!trimmed) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+      const feedback = getRangeInputFeedback(trimmed);
+      if (feedback) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+
+      const parsed = parsePageRangeGroups(trimmed, currentPdfPageCount);
+      if (!parsed) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
+
+      const warnings: string[] = [];
+      const sorted = [...parsed].sort((a, b) => {
+        if (a.start !== b.start) return a.start - b.start;
+        return a.end - b.end;
+      });
+
+      const wasUnsorted = parsed.some((current, idx, arr) => {
+        if (idx === 0) return false;
+        return (
+          current.start < arr[idx - 1].start ||
+          (current.start === arr[idx - 1].start && current.end < arr[idx - 1].end)
+        );
+      });
+      if (wasUnsorted) warnings.push(t.pageRangeUnordered || "The page ranges were reordered in ascending order.");
+
+      const normalized: PageRange[] = [];
+      let hasOverlapOrDuplicate = false;
+
+      for (const range of sorted) {
+        const last = normalized[normalized.length - 1];
+        if (!last || range.start > last.end) {
+          normalized.push({ ...range });
+          continue;
+        }
+
+        if (range.start <= last.end && (range.end > last.end || range.start > last.start)) {
+          hasOverlapOrDuplicate = true;
+        }
+        last.end = Math.max(last.end, range.end);
+      }
+
+      if (hasOverlapOrDuplicate) warnings.push(t.pageRangeOverlap || "Overlapping or duplicated ranges were merged.");
+      return { ranges: normalized, warnings };
+    },
+    [currentPdfPageCount, getRangeInputFeedback, t]
+  );
+
+  const splitRangeLabelText = t.splitRangeLabel || "Pages to split";
+  const extractRangeLabelText = t.extractRangeLabel || "Pages to extract";
+  const deleteRangeLabelText = t.deleteRangeLabel || "Pages to delete";
+  const rotPagesLabelText = t.rotPagesLabel || "Pages to rotate";
+  const wmPreviewLabel = t.wmPreview || "Preview";
+  const splitRangeAnalysis = useMemo(
+    () => splitMode === "range" ? analyzeSplitRangeInput(rangeInput) : { ranges: null as PageRange[] | null, warnings: [] as string[] },
+    [analyzeSplitRangeInput, rangeInput, splitMode]
+  );
   const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
     () => ({
       home: ({}) => false,
       unlock: ({ processing, filesCount }) => !processing && filesCount > 0,
       merge: ({ processing, filesCount }) => !processing && filesCount >= 2,
-      split: ({ processing, filesCount, splitMode, rangeInput }) =>
-        !processing && filesCount > 0 && (splitMode === "all" || isRangeInputValidWithTotal(rangeInput)),
+      split: ({ processing, filesCount, splitMode }) =>
+        !processing && filesCount > 0 && (splitMode === "all" || splitRangeAnalysis.ranges !== null),
       extract: ({ processing, filesCount, pagesInput }) => !processing && filesCount > 0 && isRangeInputValidWithTotal(pagesInput),
       rotate: ({ processing, filesCount, rotateScope, rotatePagesInput }) =>
         !processing &&
@@ -1905,7 +2012,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       pdf2img: ({ processing, filesCount }) => !processing && filesCount > 0,
       img2pdf: ({ processing, filesCount }) => !processing && filesCount > 0,
     }),
-    [isRangeInputValidWithTotal]
+    [isRangeInputValidWithTotal, splitRangeAnalysis.ranges]
   );
 
   // Basic keyboard shortcuts (Escape, /)
@@ -1927,6 +2034,24 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   useEffect(() => {
     if (view !== "home" && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) getPdfLib();
   }, [view]);
+
+  // Focus the primary input when switching tools/modes for better keyboard flow
+  useEffect(() => {
+    if (processing || files.length === 0) return;
+    requestAnimationFrame(() => {
+      if (view === "split" && splitMode === "range") {
+        splitRangeInputRef.current?.focus();
+      } else if (view === "extract") {
+        extractRangeInputRef.current?.focus();
+      } else if (view === "rotate" && rotateScope === "specific") {
+        rotateRangeInputRef.current?.focus();
+      } else if (view === "delete") {
+        deleteRangeInputRef.current?.focus();
+      } else if (view === "watermark") {
+        wmTextInputRef.current?.focus();
+      }
+    });
+  }, [processing, view, splitMode, rotateScope, files.length]);
 
   const addHistory = useCallback((action: string, file: string, ok: boolean, toolId?: string) => {
     setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
@@ -2158,8 +2283,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const { buffer: buf, info } = await loadPdfForOperation(files[0]);
           const ranges = splitMode === "all"
             ? Array.from({ length: info.pages }, (_, i) => ({ start: i + 1, end: i + 1 }))
-            : parsePageRangeGroups(rangeInput, info.pages);
-          if (!ranges) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
+            : splitRangeAnalysis.ranges && splitRangeAnalysis.ranges.length > 0
+              ? splitRangeAnalysis.ranges
+              : parsePageRangeGroups(rangeInput, info.pages);
+          if (!ranges || ranges.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           const results = await splitPDF(buf, ranges);
           setResultMulti(results);
           setMessage({ type: "success", text: `${results.length}${t.msgSplit}` });
@@ -2968,11 +3095,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 {splitMode === "range" && (
                   <>
-                    <input type="text" value={rangeInput} onChange={(e) => setRangeInput(e.target.value)}
+                    <label htmlFor={splitRangeId} className="sr-only">{splitRangeLabelText}</label>
+                    <input
+                      id={splitRangeId}
+                      ref={splitRangeInputRef}
+                      type="text"
+                      value={rangeInput}
+                      onChange={(e) => setRangeInput(e.target.value)}
                       placeholder={t.rangePlaceholder}
                       className="input-field"
-                      {...rangeInputAria(rangeInput, "split-range-feedback")} />
-                    {renderRangeInputFeedback(rangeInput, "split-range-feedback")}
+                      {...rangeInputAria(rangeInput, splitRangeFeedbackId, splitRangeAnalysis.warnings.length > 0)}
+                    />
+                    {renderRangeInputFeedbackWithWarnings(rangeInput, splitRangeFeedbackId, splitRangeAnalysis.warnings)}
                   </>
                 )}
               </div>
@@ -2980,21 +3114,35 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {view === "extract" && files.length > 0 && (
               <div className="space-y-1 animate-fadeIn">
-                <input type="text" value={pagesInput} onChange={(e) => setPagesInput(e.target.value)}
+                <label htmlFor={extractRangeId} className="sr-only">{extractRangeLabelText}</label>
+                <input
+                  id={extractRangeId}
+                  ref={extractRangeInputRef}
+                  type="text"
+                  value={pagesInput}
+                  onChange={(e) => setPagesInput(e.target.value)}
                   placeholder={t.pagesPlaceholder}
                   className="input-field"
-                  {...rangeInputAria(pagesInput, "extract-pages-feedback")} />
-                {renderRangeInputFeedback(pagesInput, "extract-pages-feedback")}
+                  {...rangeInputAria(pagesInput, extractRangeFeedbackId)}
+                />
+                {renderRangeInputFeedback(pagesInput, extractRangeFeedbackId)}
               </div>
             )}
 
             {view === "delete" && files.length > 0 && (
               <div className="space-y-1 animate-fadeIn">
-                <input type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)}
+                <label htmlFor={deleteRangeId} className="sr-only">{deleteRangeLabelText}</label>
+                <input
+                  id={deleteRangeId}
+                  ref={deleteRangeInputRef}
+                  type="text"
+                  value={deleteInput}
+                  onChange={(e) => setDeleteInput(e.target.value)}
                   placeholder={t.deletePlaceholder}
                   className="input-field"
-                  {...rangeInputAria(deleteInput, "delete-pages-feedback")} />
-                {renderRangeInputFeedback(deleteInput, "delete-pages-feedback")}
+                  {...rangeInputAria(deleteInput, deleteRangeFeedbackId)}
+                />
+                {renderRangeInputFeedback(deleteInput, deleteRangeFeedbackId)}
               </div>
             )}
 
@@ -3046,11 +3194,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 {rotateScope === "specific" && (
                   <div className="space-y-1">
-                    <input type="text" value={rotatePagesInput} onChange={(e) => setRotatePagesInput(e.target.value)}
+                    <label htmlFor={rotateRangeId} className="sr-only">{rotPagesLabelText}</label>
+                    <input
+                      id={rotateRangeId}
+                      ref={rotateRangeInputRef}
+                      type="text"
+                      value={rotatePagesInput}
+                      onChange={(e) => setRotatePagesInput(e.target.value)}
                       placeholder={t.rotPagesPlaceholder}
                       className="input-field"
-                      {...rangeInputAria(rotatePagesInput, "rotate-pages-feedback")} />
-                    {renderRangeInputFeedback(rotatePagesInput, "rotate-pages-feedback")}
+                      {...rangeInputAria(rotatePagesInput, rotateRangeFeedbackId)}
+                    />
+                    {renderRangeInputFeedback(rotatePagesInput, rotateRangeFeedbackId)}
                   </div>
                 )}
               </div>
@@ -3146,7 +3301,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-3 animate-fadeIn">
                 <div>
                   <label htmlFor={wmTextId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
-                  <input id={wmTextId} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.watermarkPlaceholder}
+                  <input id={wmTextId} ref={wmTextInputRef} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.watermarkPlaceholder}
                     aria-invalid={hasCjkWatermarkText ? true : undefined}
                     aria-describedby={hasCjkWatermarkText ? wmTextWarningId : undefined}
                     className="input-field" />
@@ -3155,6 +3310,61 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       {t.wmCjkWarning}
                     </p>
                   )}
+                </div>
+                <div className="space-y-2" aria-hidden="true">
+                  <span id={wmPreviewId} className="text-xs text-gray-400 dark:text-slate-500 block">{wmPreviewLabel}</span>
+                  <div className="relative w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-gradient-to-b from-white to-gray-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden aspect-[4/3]">
+                    {wmPosition === "tiled" ? (
+                      <div className="absolute inset-0 p-2 sm:p-3 text-xs sm:text-sm text-gray-400 dark:text-slate-500">
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <span
+                            key={i}
+                            className="absolute inline-block whitespace-nowrap"
+                            style={{
+                              left: `${(i % 6) * 16 + 2}%`,
+                              top: `${Math.floor(i / 6) * 22}%`,
+                              transform: `rotate(${wmRotation}deg)`,
+                              fontSize: `${Math.max(10, wmSize * 0.35)}px`,
+                              opacity: Math.min(1, wmOpacity + 0.2),
+                              color: "rgba(100,116,139,0.7)",
+                            }}
+                          >
+                            {wmText || t.watermarkPlaceholder}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0">
+                        <span
+                          className="absolute text-gray-400 dark:text-slate-500 select-none font-semibold whitespace-nowrap"
+                          style={{
+                            left: "50%",
+                            top: "50%",
+                            transform: `translate(-50%, -50%) rotate(${wmRotation}deg)`,
+                            fontSize: `${Math.max(14, wmSize)}px`,
+                            opacity: wmOpacity,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {wmText || t.watermarkPlaceholder}
+                        </span>
+                        {wmPosition === "diagonal" && (
+                          <span
+                            className="absolute text-gray-400 dark:text-slate-500 select-none font-semibold whitespace-nowrap"
+                            style={{
+                              left: "15%",
+                              top: "65%",
+                              transform: `rotate(${wmRotation - 40}deg)`,
+                              fontSize: `${Math.max(12, wmSize * 0.8)}px`,
+                              opacity: wmOpacity * 0.85,
+                            }}
+                          >
+                            {wmText || t.watermarkPlaceholder}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
