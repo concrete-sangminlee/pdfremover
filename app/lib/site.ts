@@ -6,6 +6,10 @@ export function normalizeSiteUrl(value: string | undefined) {
 
   try {
     const url = new URL(trimmed);
+    if (!/^(https?:)$/.test(url.protocol)) {
+      return FALLBACK_SITE_URL;
+    }
+
     const pathname = url.pathname.replace(/\/+$/, "");
     return `${url.origin}${pathname === "/" ? "" : pathname}`;
   } catch {
