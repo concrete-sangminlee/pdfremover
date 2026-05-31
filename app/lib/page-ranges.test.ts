@@ -40,6 +40,10 @@ describe("parsePageRangeGroups", () => {
     expect(parsePageRangeGroups("all", 5)).toEqual([{ start: 1, end: 5 }]);
   });
 
+  it("allows uppercase all keyword", () => {
+    expect(parsePageRangeGroups("ALL", 5)).toEqual([{ start: 1, end: 5 }]);
+  });
+
 });
 
 describe("isValidPageRangeInput", () => {
