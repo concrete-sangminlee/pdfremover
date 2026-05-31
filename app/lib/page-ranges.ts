@@ -28,7 +28,7 @@ export function isValidPageRangeInput(input: string): boolean {
   const trimmed = input.trim();
   if (!trimmed) return false;
 
-  for (const part of trimmed.split(/\s*[,;\n]\s*/)) {
+  for (const part of trimmed.split(/\s*[,;\/\r\n]\s*/)) {
     const segment = part.trim();
     if (!segment) return false;
 
@@ -66,7 +66,7 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
   if (!trimmed) return null;
 
   const ranges: PageRange[] = [];
-  for (const part of trimmed.split(/\s*[,;\n]\s*/)) {
+  for (const part of trimmed.split(/\s*[,;\/\r\n]\s*/)) {
     const segment = part.trim();
     if (!segment) return null;
     const lower = segment.toLowerCase();
