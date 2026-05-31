@@ -3119,7 +3119,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   onChange={(e) => setPagesInput(e.target.value)}
                   placeholder={t.pagesPlaceholder}
                   className="input-field"
-                  {...rangeInputAria(pagesInput, extractRangeFeedbackId)}
+                  {...rangeInputAria(pagesInput, extractRangeFeedbackId, extractRangeAnalysis.warnings.length > 0)}
                 />
                 {renderRangeInputFeedbackWithWarnings(pagesInput, extractRangeFeedbackId, extractRangeAnalysis.warnings)}
               </div>
@@ -3136,7 +3136,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   onChange={(e) => setDeleteInput(e.target.value)}
                   placeholder={t.deletePlaceholder}
                   className="input-field"
-                  {...rangeInputAria(deleteInput, deleteRangeFeedbackId)}
+                  {...rangeInputAria(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings.length > 0)}
                 />
                 {renderRangeInputFeedbackWithWarnings(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings)}
               </div>
@@ -3199,7 +3199,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       onChange={(e) => setRotatePagesInput(e.target.value)}
                       placeholder={t.rotPagesPlaceholder}
                       className="input-field"
-                      {...rangeInputAria(rotatePagesInput, rotateRangeFeedbackId)}
+                      {...rangeInputAria(rotatePagesInput, rotateRangeFeedbackId, rotateRangeAnalysis.warnings.length > 0)}
                     />
                     {renderRangeInputFeedbackWithWarnings(rotatePagesInput, rotateRangeFeedbackId, rotateRangeAnalysis.warnings)}
                   </div>
