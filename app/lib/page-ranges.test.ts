@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzePageRangeInputForSplit, countPagesInRanges, formatPageRanges, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges } from "./page-ranges";
+import { analyzePageRangeInputForSplit, countPagesInRanges, formatPageRanges, isValidPageRangeInput, parsePageRangeGroups, parsePageRanges, rangeToFileLabel } from "./page-ranges";
 
 describe("parsePageRangeGroups", () => {
   it("parses single pages and inclusive ranges", () => {
@@ -131,5 +131,15 @@ describe("countPagesInRanges", () => {
       { start: 3, end: 4 },
       { start: 6, end: 9 },
     ])).toBe(7);
+  });
+});
+
+describe("rangeToFileLabel", () => {
+  it("returns a single-page file label", () => {
+    expect(rangeToFileLabel(4, 4)).toBe("page_4.pdf");
+  });
+
+  it("returns a range file label", () => {
+    expect(rangeToFileLabel(2, 5)).toBe("pages_2-5.pdf");
   });
 });

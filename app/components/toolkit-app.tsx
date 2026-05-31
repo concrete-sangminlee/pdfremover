@@ -18,6 +18,7 @@ import {
   analyzePageRangeInputForSplit,
   formatPageRanges,
   countPagesInRanges,
+  rangeToFileLabel,
   isValidPageRangeInput,
   parsePageRangeGroups,
   parsePageRanges,
@@ -942,7 +943,8 @@ async function splitPDF(
     const indices = Array.from({ length: end - start + 1 }, (_, i) => start - 1 + i);
     const pages = await newDoc.copyPages(doc, indices);
     pages.forEach((p) => newDoc.addPage(p));
-    results.push({ name: `pages_${start}-${end}.pdf`, data: await newDoc.save() });
+    const fileName = rangeToFileLabel(start, end);
+    results.push({ name: fileName, data: await newDoc.save() });
   }
   return results;
 }

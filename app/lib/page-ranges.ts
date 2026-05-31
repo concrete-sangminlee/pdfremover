@@ -20,6 +20,10 @@ export function countPagesInRanges(ranges: PageRange[]): number {
   return ranges.reduce((total, range) => total + (range.end - range.start + 1), 0);
 }
 
+export function rangeToFileLabel(start: number, end: number): string {
+  return start === end ? `page_${start}.pdf` : `pages_${start}-${end}.pdf`;
+}
+
 export function isValidPageRangeInput(input: string): boolean {
   return parsePageRangeGroupsInternal(input, Number.MAX_SAFE_INTEGER) !== null;
 }
