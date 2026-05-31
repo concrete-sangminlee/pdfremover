@@ -189,6 +189,10 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges("center,middle, 4-4", 10)).toEqual([4, 5]);
   });
 
+  it("guards against oversized expanded page ranges", () => {
+    expect(parsePageRanges("1-30000", 30000)).toEqual([]);
+  });
+
   it("supports mixed separators in expansion", () => {
     expect(parsePageRanges("1|3 /5\uFF0C7\uFF1B9", 20, { preserveOrder: true })).toEqual([1, 3, 5, 7, 9]);
     expect(parsePageRanges("1 / first - 2 / 3-4", 10, { preserveOrder: true })).toEqual([1, 2, 3, 4]);

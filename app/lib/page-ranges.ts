@@ -18,6 +18,7 @@ const FULL_WIDTH_VERTICAL_BAR = "\uFF5C";
 const IDEOGRAPHIC_COMMA = "\u3001";
 const ARABIC_COMMA = "\u060C";
 const ARABIC_SEMICOLON = "\u061B";
+const MAX_EXPANDED_PAGES = 20000;
 const PAGE_RANGE_SEPARATOR_SPLIT = new RegExp(
   `\\s*[,;/|\\r\\n${FULL_WIDTH_COMMA}${FULL_WIDTH_SEMICOLON}${IDEOGRAPHIC_COMMA}${ARABIC_COMMA}${ARABIC_SEMICOLON}${FULL_WIDTH_SLASH}${FULL_WIDTH_BACKSLASH}${FULL_WIDTH_VERTICAL_BAR}]\\s*`
 );
@@ -170,6 +171,11 @@ export function parsePageRanges(
   const seen = new Set<number>();
   const pages: number[] = [];
   for (const { start, end } of ranges) {
+    const rangeCount = end - start + 1;
+    if (pages.length + rangeCount > MAX_EXPANDED_PAGES) {
+      return [];
+    }
+
     for (let i = start; i <= end; i++) {
       if (!seen.has(i)) {
         seen.add(i);
