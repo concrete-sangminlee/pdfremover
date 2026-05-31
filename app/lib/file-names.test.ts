@@ -19,4 +19,15 @@ describe("sanitizeOutputFilename", () => {
     expect(result).toHaveLength(180);
     expect(result.endsWith(".pdf")).toBe(true);
   });
+
+  it("strips reserved control characters including DEL", () => {
+    const del = String.fromCharCode(127);
+    expect(sanitizeOutputFilename(`bad${del}name.txt`)).toBe("bad_name.txt");
+  });
+
+  it("truncates correctly when extension is missing", () => {
+    const result = sanitizeOutputFilename("a".repeat(220));
+    expect(result).toHaveLength(180);
+    expect(result).toBe("a".repeat(180));
+  });
 });
