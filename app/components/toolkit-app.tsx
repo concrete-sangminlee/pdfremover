@@ -2145,6 +2145,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     // Validate files based on current tool
     let validFiles: File[];
     let nextMessage: { type: "success" | "error" | "warning"; text: string } | null = null;
+    if (view === "home") return;
     if (isImageInputTool(view)) {
       validFiles = newFiles.filter(isImageFile);
       const rejected = newFiles.length - validFiles.length;
@@ -2182,7 +2183,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setMessage(nextMessage);
     setConfirmDelete(false);
     clearResults();
-    if (view !== "home" && !NO_PAGE_INFO_TOOLS.includes(view)) loadPageInfo(validFiles);
+    if (!NO_PAGE_INFO_TOOLS.includes(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
