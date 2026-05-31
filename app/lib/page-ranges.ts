@@ -33,7 +33,7 @@ export function isValidPageRangeInput(input: string): boolean {
     if (!segment) return false;
 
     const lower = segment.toLowerCase();
-    if (["all", "odd", "even", "first", "last", "start", "end"].includes(lower)) {
+    if (["all", "odd", "even", "first", "last", "start", "end", "middle", "center"].includes(lower)) {
       continue;
     }
 
@@ -101,6 +101,13 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
     if (["last", "end"].includes(lower)) {
       if (typeof total !== "number" || total <= 0) return null;
       ranges.push({ start: total, end: total });
+      continue;
+    }
+
+    if (["middle", "center"].includes(lower)) {
+      if (typeof total !== "number" || total <= 0) return null;
+      const mid = Math.floor(total / 2) + (total % 2);
+      ranges.push({ start: mid, end: mid });
       continue;
     }
 

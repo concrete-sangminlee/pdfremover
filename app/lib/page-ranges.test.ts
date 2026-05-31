@@ -78,6 +78,11 @@ describe("parsePageRangeGroups", () => {
     expect(parsePageRangeGroups("last-0", 10)).toBeNull();
   });
 
+  it("supports middle/center aliases", () => {
+    expect(parsePageRangeGroups("middle", 5)).toEqual([{ start: 3, end: 3 }]);
+    expect(parsePageRangeGroups("center", 10)).toEqual([{ start: 5, end: 5 }]);
+  });
+
 });
 
 describe("isValidPageRangeInput", () => {
@@ -95,6 +100,8 @@ describe("isValidPageRangeInput", () => {
     expect(isValidPageRangeInput("end-2")).toBe(true);
     expect(isValidPageRangeInput("first-0")).toBe(false);
     expect(isValidPageRangeInput("last-0")).toBe(false);
+    expect(isValidPageRangeInput("middle")).toBe(true);
+    expect(isValidPageRangeInput("center")).toBe(true);
     expect(isValidPageRangeInput("odd")).toBe(true);
     expect(isValidPageRangeInput("even, odd")).toBe(true);
     expect(isValidPageRangeInput("odd, 1-3")).toBe(true);
@@ -134,6 +141,7 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges("start-2,last-2", 7, { preserveOrder: true })).toEqual([1, 2, 6, 7]);
     expect(parsePageRanges("end-3", 5)).toEqual([3, 4, 5]);
     expect(parsePageRanges("first - 2, end - 1", 10, { preserveOrder: true })).toEqual([1, 2, 10]);
+    expect(parsePageRanges("center,middle, 4-4", 10)).toEqual([4, 5]);
   });
 });
 
