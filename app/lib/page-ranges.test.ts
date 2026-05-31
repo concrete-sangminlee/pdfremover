@@ -57,6 +57,15 @@ describe("parsePageRangeGroups", () => {
     ]);
   });
 
+  it("supports first and last keywords", () => {
+    expect(parsePageRangeGroups("first", 5)).toEqual([{ start: 1, end: 1 }]);
+    expect(parsePageRangeGroups("last", 5)).toEqual([{ start: 5, end: 5 }]);
+    expect(parsePageRangeGroups("first,last", 5)).toEqual([
+      { start: 1, end: 1 },
+      { start: 5, end: 5 },
+    ]);
+  });
+
 });
 
 describe("isValidPageRangeInput", () => {
@@ -64,6 +73,8 @@ describe("isValidPageRangeInput", () => {
     expect(isValidPageRangeInput("1")).toBe(true);
     expect(isValidPageRangeInput("1, 3-5, 7")).toBe(true);
     expect(isValidPageRangeInput("all")).toBe(true);
+    expect(isValidPageRangeInput("first")).toBe(true);
+    expect(isValidPageRangeInput("last")).toBe(true);
     expect(isValidPageRangeInput("odd")).toBe(true);
     expect(isValidPageRangeInput("even, odd")).toBe(true);
     expect(isValidPageRangeInput("odd, 1-3")).toBe(true);
@@ -91,6 +102,11 @@ describe("parsePageRanges", () => {
   it("expands odd and even keywords into full odd/even page lists", () => {
     expect(parsePageRanges("odd", 6)).toEqual([1, 3, 5]);
     expect(parsePageRanges("even,2-3", 6, { preserveOrder: true })).toEqual([2, 4, 6, 3]);
+  });
+
+  it("expands first and last keywords with preserveOrder", () => {
+    expect(parsePageRanges("first,last", 7, { preserveOrder: true })).toEqual([1, 7]);
+    expect(parsePageRanges("2,first,6, last", 7, { preserveOrder: true })).toEqual([2, 1, 6, 7]);
   });
 });
 

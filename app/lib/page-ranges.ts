@@ -28,12 +28,12 @@ export function isValidPageRangeInput(input: string): boolean {
   const trimmed = input.trim();
   if (!trimmed) return false;
 
-  for (const part of trimmed.split(/[,\n;]+/)) {
+  for (const part of trimmed.split(/\s*[,;\n]\s*/)) {
     const segment = part.trim();
     if (!segment) return false;
 
     const lower = segment.toLowerCase();
-    if (["all", "odd", "even"].includes(lower)) {
+    if (["all", "odd", "even", "first", "last"].includes(lower)) {
       continue;
     }
 
@@ -57,7 +57,7 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
   if (!trimmed) return null;
 
   const ranges: PageRange[] = [];
-  for (const part of trimmed.split(/[,\n;]+/)) {
+  for (const part of trimmed.split(/\s*[,;\n]\s*/)) {
     const segment = part.trim();
     if (!segment) return null;
     const lower = segment.toLowerCase();
@@ -80,6 +80,18 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
       for (let page = 2; page <= total; page += 2) {
         ranges.push({ start: page, end: page });
       }
+      continue;
+    }
+
+    if (lower === "first") {
+      if (typeof total !== "number" || total <= 0) return null;
+      ranges.push({ start: 1, end: 1 });
+      continue;
+    }
+
+    if (lower === "last") {
+      if (typeof total !== "number" || total <= 0) return null;
+      ranges.push({ start: total, end: total });
       continue;
     }
 
