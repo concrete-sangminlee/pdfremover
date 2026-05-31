@@ -10,8 +10,11 @@ export interface PageRangeAnalysis {
   warningCodes: PageRangeAnalysisCode[];
 }
 
-const PAGE_RANGE_SEPARATOR_SPLIT = /\s*[,;\/\r\n|，；]\s*/;
-
+const FULL_WIDTH_COMMA = "\uFF0C";
+const FULL_WIDTH_SEMICOLON = "\uFF1B";
+const PAGE_RANGE_SEPARATOR_SPLIT = new RegExp(
+  `\\s*[,;\\/\\r\\n|${FULL_WIDTH_COMMA}${FULL_WIDTH_SEMICOLON}]\\s*`
+);
 export function formatPageRanges(ranges: PageRange[]): string {
   return ranges
     .map((range) => (range.start === range.end ? String(range.start) : `${range.start}-${range.end}`))

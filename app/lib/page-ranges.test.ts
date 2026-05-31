@@ -67,12 +67,12 @@ describe("parsePageRangeGroups", () => {
   });
 
   it("supports full-width separators", () => {
-    expect(parsePageRangeGroups("1，2， 4-5", 10)).toEqual([
+    expect(parsePageRangeGroups("1\uFF0C2\uFF1B4-5", 10)).toEqual([
       { start: 1, end: 1 },
       { start: 2, end: 2 },
       { start: 4, end: 5 },
     ]);
-    expect(isValidPageRangeInput("3；4；5")).toBe(true);
+    expect(isValidPageRangeInput("3\uFF0C4\uFF1B5")).toBe(true);
   });
 
   it("expands all keyword when total is provided", () => {
@@ -190,7 +190,7 @@ describe("parsePageRanges", () => {
   });
 
   it("supports mixed separators in expansion", () => {
-    expect(parsePageRanges("1|3 /5，7;9", 20, { preserveOrder: true })).toEqual([1, 3, 5, 7, 9]);
+    expect(parsePageRanges("1|3 /5\uFF0C7\uFF1B9", 20, { preserveOrder: true })).toEqual([1, 3, 5, 7, 9]);
     expect(parsePageRanges("1 / first - 2 / 3-4", 10, { preserveOrder: true })).toEqual([1, 2, 3, 4]);
   });
 });
@@ -256,7 +256,7 @@ describe("analyzePageRangeInputForSplit", () => {
     ]);
     expect(result.warningCodes).toEqual([]);
 
-    const chineseResult = analyzePageRangeInputForSplit("1，3；5", 10);
+    const chineseResult = analyzePageRangeInputForSplit("1\uFF0C3\uFF1B5", 10);
     expect(chineseResult.ranges).toEqual([
       { start: 1, end: 1 },
       { start: 3, end: 3 },
