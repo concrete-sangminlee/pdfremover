@@ -30,4 +30,9 @@ describe("sanitizeOutputFilename", () => {
     expect(result).toHaveLength(180);
     expect(result).toBe("a".repeat(180));
   });
+
+  it("sanitizes fallback names before using them", () => {
+    expect(sanitizeOutputFilename("", "inva/lid.txt")).toBe("inva_lid.txt");
+    expect(sanitizeOutputFilename("", "///")).toBe("file");
+  });
 });

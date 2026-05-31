@@ -25,14 +25,24 @@ const RESERVED_WINDOWS_NAMES = new Set([
 
 const MAX_FILENAME_LENGTH = 180;
 
-export function sanitizeOutputFilename(filename: string, fallback = "file") {
-  const cleaned = filename
+function sanitizeSegment(value: string): string {
+  const cleaned = value
     .replace(/[<>:"/\\|?*\x00-\x1F\x7F]/g, "_")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^[.\s]+|[.\s]+$/g, "");
 
-  const safe = cleaned || fallback;
+  const withoutPunctuation = cleaned.replace(/[-_\. ]/g, "");
+  if (!withoutPunctuation) return "";
+
+  return cleaned;
+}
+
+export function sanitizeOutputFilename(filename: string, fallback = "file") {
+  const cleaned = sanitizeSegment(filename);
+  const safeFallback = sanitizeSegment(fallback) || "file";
+
+  const safe = cleaned || safeFallback || "file";
   const dot = safe.lastIndexOf(".");
   const basename = (dot > 0 ? safe.slice(0, dot) : safe).toLowerCase();
   const prefixed = RESERVED_WINDOWS_NAMES.has(basename) ? `_${safe}` : safe;
