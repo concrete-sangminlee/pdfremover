@@ -6,6 +6,9 @@ export function normalizeSiteUrl(value: string | undefined) {
 
   try {
     const url = new URL(trimmed);
+    if (url.username || url.password || !url.hostname) {
+      return FALLBACK_SITE_URL;
+    }
     if (!/^(https?:)$/.test(url.protocol)) {
       return FALLBACK_SITE_URL;
     }

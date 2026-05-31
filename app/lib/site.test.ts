@@ -22,6 +22,10 @@ describe("normalizeSiteUrl", () => {
     expect(normalizeSiteUrl("file:///tmp/site")).toBe("https://pdfcontrol.vercel.app");
   });
 
+  it("rejects URLs that include user credentials", () => {
+    expect(normalizeSiteUrl("https://user:pass@example.com")).toBe("https://pdfcontrol.vercel.app");
+  });
+
   it("drops query and hash from normalized URLs", () => {
     expect(normalizeSiteUrl("https://example.com/path?x=1#section")).toBe("https://example.com/path");
   });
