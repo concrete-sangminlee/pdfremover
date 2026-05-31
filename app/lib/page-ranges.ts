@@ -21,7 +21,7 @@ export function countPagesInRanges(ranges: PageRange[]): number {
 }
 
 export function isValidPageRangeInput(input: string): boolean {
-  return parsePageRangeGroupsInternal(input) !== null;
+  return parsePageRangeGroupsInternal(input, Number.MAX_SAFE_INTEGER) !== null;
 }
 
 export function parsePageRangeGroups(input: string, total: number): PageRange[] | null {
@@ -36,6 +36,12 @@ function parsePageRangeGroupsInternal(input: string, total?: number): PageRange[
   for (const part of trimmed.split(/[,\n;]+/)) {
     const segment = part.trim();
     if (!segment) return null;
+    const lower = segment.toLowerCase();
+    if (lower === "all") {
+      if (typeof total !== "number" || total <= 0) return null;
+      ranges.push({ start: 1, end: total });
+      continue;
+    }
 
     const match = segment.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
     if (!match) return null;

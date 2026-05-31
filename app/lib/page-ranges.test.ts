@@ -35,12 +35,18 @@ describe("parsePageRangeGroups", () => {
       { start: 9, end: 9 },
     ]);
   });
+
+  it("expands all keyword when total is provided", () => {
+    expect(parsePageRangeGroups("all", 5)).toEqual([{ start: 1, end: 5 }]);
+  });
+
 });
 
 describe("isValidPageRangeInput", () => {
   it("validates numeric pages and ranges with optional whitespace", () => {
     expect(isValidPageRangeInput("1")).toBe(true);
     expect(isValidPageRangeInput("1, 3-5, 7")).toBe(true);
+    expect(isValidPageRangeInput("all")).toBe(true);
   });
 
   it("rejects malformed, empty, and reversed segments", () => {
