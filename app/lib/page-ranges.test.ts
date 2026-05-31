@@ -71,6 +71,15 @@ describe("analyzePageRangeInputForSplit", () => {
     expect(result.warningCodes).toEqual(["overlapOrDuplicate"]);
   });
 
+  it("reports both unordered and overlap warnings together", () => {
+    const result = analyzePageRangeInputForSplit("4-6, 1-3, 2-3", 10);
+    expect(result.ranges).toEqual([
+      { start: 1, end: 3 },
+      { start: 4, end: 6 },
+    ]);
+    expect(result.warningCodes).toEqual(["unordered", "overlapOrDuplicate"]);
+  });
+
   it("keeps ranges without warnings when clean", () => {
     const result = analyzePageRangeInputForSplit("1, 3-4, 6", 10);
     expect(result.ranges).toEqual([

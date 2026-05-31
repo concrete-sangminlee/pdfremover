@@ -1939,17 +1939,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const deleteRangeLabelText = t.deleteRangeLabel || "Pages to delete";
   const rotPagesLabelText = t.rotPagesLabel || "Pages to rotate";
   const wmPreviewLabel = t.wmPreview || "Preview";
-  const splitRangeWarnings = (codes: PageRangeAnalysisCode[]) =>
+  const pageRangeWarnings = (codes: PageRangeAnalysisCode[]) =>
     codes.map((code) => code === "unordered"
       ? t.pageRangeUnordered || "The page ranges were reordered in ascending order."
       : t.pageRangeOverlap || "Overlapping or duplicated ranges were merged."
     );
-  const splitRangeAnalysis = useMemo(
-    () => {
-      if (splitMode !== "range") return { ranges: null as PageRange[] | null, warnings: [] as string[] };
-      const trimmed = rangeInput.trim();
+  const analyzeRangeInput = useCallback(
+    (input: string) => {
+      const trimmed = input.trim();
       if (!trimmed) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
-
       const feedback = getRangeInputFeedback(trimmed);
       if (feedback) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
 
@@ -1958,10 +1956,28 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
       return {
         ranges: analysis.ranges,
-        warnings: splitRangeWarnings(analysis.warningCodes),
+        warnings: pageRangeWarnings(analysis.warningCodes),
       };
     },
-    [currentPdfPageCount, getRangeInputFeedback, rangeInput, splitMode, t]
+    [currentPdfPageCount, getRangeInputFeedback, pageRangeWarnings, t]
+  );
+  const splitRangeAnalysis = useMemo(
+    () => splitMode === "range"
+      ? analyzeRangeInput(rangeInput)
+      : { ranges: null as PageRange[] | null, warnings: [] as string[] },
+    [analyzeRangeInput, rangeInput, splitMode]
+  );
+  const extractRangeAnalysis = useMemo(
+    () => analyzeRangeInput(pagesInput),
+    [analyzeRangeInput, pagesInput]
+  );
+  const rotateRangeAnalysis = useMemo(
+    () => rotateScope === "specific" ? analyzeRangeInput(rotatePagesInput) : { ranges: null as PageRange[] | null, warnings: [] as string[] },
+    [analyzeRangeInput, rotatePagesInput, rotateScope]
+  );
+  const deleteRangeAnalysis = useMemo(
+    () => analyzeRangeInput(deleteInput),
+    [analyzeRangeInput, deleteInput]
   );
   const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
     () => ({
@@ -3105,7 +3121,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   className="input-field"
                   {...rangeInputAria(pagesInput, extractRangeFeedbackId)}
                 />
-                {renderRangeInputFeedback(pagesInput, extractRangeFeedbackId)}
+                {renderRangeInputFeedbackWithWarnings(pagesInput, extractRangeFeedbackId, extractRangeAnalysis.warnings)}
               </div>
             )}
 
@@ -3122,7 +3138,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   className="input-field"
                   {...rangeInputAria(deleteInput, deleteRangeFeedbackId)}
                 />
-                {renderRangeInputFeedback(deleteInput, deleteRangeFeedbackId)}
+                {renderRangeInputFeedbackWithWarnings(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings)}
               </div>
             )}
 
@@ -3185,7 +3201,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       className="input-field"
                       {...rangeInputAria(rotatePagesInput, rotateRangeFeedbackId)}
                     />
-                    {renderRangeInputFeedback(rotatePagesInput, rotateRangeFeedbackId)}
+                    {renderRangeInputFeedbackWithWarnings(rotatePagesInput, rotateRangeFeedbackId, rotateRangeAnalysis.warnings)}
                   </div>
                 )}
               </div>
