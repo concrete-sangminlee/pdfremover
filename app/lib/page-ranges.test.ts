@@ -188,6 +188,11 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges("first - 2, end - 1", 10, { preserveOrder: true })).toEqual([1, 2, 10]);
     expect(parsePageRanges("center,middle, 4-4", 10)).toEqual([4, 5]);
   });
+
+  it("supports mixed separators in expansion", () => {
+    expect(parsePageRanges("1|3 /5，7;9", 20, { preserveOrder: true })).toEqual([1, 3, 5, 7, 9]);
+    expect(parsePageRanges("1 / first - 2 / 3-4", 10, { preserveOrder: true })).toEqual([1, 2, 3, 4]);
+  });
 });
 
 describe("analyzePageRangeInputForSplit", () => {
