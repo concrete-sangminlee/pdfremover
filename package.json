@@ -34,16 +34,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "next build",
-    "verify": "npm run typecheck && npm test && npm audit && npm run build",
+    "verify:static": "node scripts/verify-static-pages.mjs",
+    "verify": "npm run typecheck && npm test && npm audit --audit-level=moderate && npm run build && npm run verify:static",
     "start": "next start"
   },
   "dependencies": {
-    "dompurify": "^3.4.4",
+    "dompurify": "^3.4.8",
     "jszip": "^3.10.1",
     "mammoth": "^1.12.0",
-    "next": "^16.2.6",
+    "next": "^16.2.7",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.5.207",
+    "pdfjs-dist": "5.6.205",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -53,15 +54,15 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10",
-    "postcss": "8.5.14",
+    "postcss": "8.5.15",
     "tailwindcss": "^3.4.0",
     "typescript": "^5",
     "vitest": "^4.1.6"
   },
   "overrides": {
-    "postcss": "8.5.14"
+    "postcss": "8.5.15"
   },
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=20.19.0"
   }
 }

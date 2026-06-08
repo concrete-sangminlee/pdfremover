@@ -128,7 +128,7 @@ Most online document tools upload your files to remote servers. **FileForge proc
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.19+
 - npm or yarn
 
 ### Development
@@ -139,7 +139,7 @@ git clone https://github.com/concrete-sangminlee/pdfremover.git
 cd pdfremover
 
 # Install dependencies
-npm install
+npm install --include=dev
 
 # Start development server
 npm run dev
