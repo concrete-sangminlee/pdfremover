@@ -31,11 +31,12 @@
   ],
   "scripts": {
     "dev": "next dev",
+    "verify:node": "node scripts/validate-node-version.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "next build",
     "verify:static": "node scripts/verify-static-pages.mjs",
-    "verify": "npm run typecheck && npm test && npm audit --audit-level=moderate && npm run build && npm run verify:static",
+    "verify": "npm run verify:node && npm run typecheck && npm test && npm audit --audit-level=moderate && npm run build && npm run verify:static",
     "start": "next start"
   },
   "dependencies": {
