@@ -138,8 +138,8 @@ Most online document tools upload your files to remote servers. **FileForge proc
 git clone https://github.com/concrete-sangminlee/pdfremover.git
 cd pdfremover
 
-# Install dependencies
-npm ci
+# Install dependencies (include dev dependencies for typecheck/tests/verification)
+npm ci --include=dev
 
 # Node.js version is controlled in .nvmrc (`22.13.0`)
 # Keep dependency graph reproducible in CI and local checks

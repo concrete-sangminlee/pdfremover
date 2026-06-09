@@ -1,32 +1,33 @@
 import fs from "node:fs";
-
-function extractMajor(versionLike) {
-  const match = versionLike.trim().match(/^(\d+)\.(\d+)\.(\d+)/);
-  if (!match) {
-    throw new Error(`Invalid Node version format: "${versionLike}"`);
-  }
-  return Number(match[1]);
-}
+import { coerce, satisfies } from "semver";
 
 const nvm = fs.readFileSync(".nvmrc", "utf8").trim();
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const engine = String(pkg?.engines?.node || "").trim();
 
-const nvmMajor = extractMajor(nvm);
 if (!engine) {
   throw new Error("package.json does not define engines.node");
 }
 
-const engineMatch = engine.match(/[0-9]+\.[0-9]+\.[0-9]+/);
-if (!engineMatch) {
-  throw new Error(`Unsupported engines.node format: "${engine}"`);
+const nvmVersion = coerce(nvm);
+if (!nvmVersion) {
+  throw new Error(`Invalid .nvmrc version format: "${nvm}"`);
 }
-const engineMajor = extractMajor(engineMatch[0]);
+
+if (!satisfies(nvmVersion.version, engine)) {
+  throw new Error(`Node version policy mismatch: .nvmrc "${nvm}" does not satisfy package engines "${engine}".`);
+}
+
+const nvmMajor = nvmVersion.major;
+const engineMajorMatch = engine.match(/\d+/);
+const engineMajor = Number(engineMajorMatch?.[0] ?? nvmMajor);
+
+if (!Number.isFinite(nvmMajor) || !Number.isFinite(engineMajor)) {
+  throw new Error("Failed to parse numeric Node major versions");
+}
 
 if (nvmMajor < engineMajor) {
-  throw new Error(
-    `Node major version mismatch: .nvmrc (${nvmMajor}) is lower than package engines.node (${engineMajor}).`
-  );
+  throw new Error(`Node major version mismatch: .nvmrc (${nvmMajor}) is lower than package engines.node (${engineMajor}).`);
 }
 
-console.log(`Node version policy aligned (engine major ${engineMajor}, .nvmrc ${nvmMajor}).`);
+console.log(`Node version policy aligned (engine ${engine}, .nvmrc ${nvmVersion.version}).`);
