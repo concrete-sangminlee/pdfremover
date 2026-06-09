@@ -1892,17 +1892,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       "aria-describedby": feedback || hasAdditionalFeedback ? feedbackId : undefined,
     } as const;
   };
-  const renderRangeInputFeedback = (input: string, feedbackId: string) => {
-    const feedback = getRangeInputFeedback(input);
-    if (!feedback) return null;
-    return (
-      <p id={feedbackId} className={feedback.tone === "warning"
-        ? "text-xs text-amber-500 dark:text-amber-400"
-        : "text-xs text-red-500 dark:text-red-400"} role={feedback.tone === "error" ? "alert" : "status"} aria-live="polite">
-        {feedback.text}
-      </p>
-    );
-  };
   const renderRangeInputFeedbackWithWarnings = (
     input: string,
     feedbackId: string,
