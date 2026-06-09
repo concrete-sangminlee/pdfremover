@@ -200,11 +200,15 @@ export function analyzePageRangeInputForSplit(input: string, total: number): Pag
     return a.end - b.end;
   });
 
-  const wasUnsorted = ranges.some((current, idx, arr) => {
-    if (idx === 0) return false;
-    const prev = arr[idx - 1];
-    return current.start < prev.start || (current.start === prev.start && current.end < prev.end);
-  });
+  let wasUnsorted = false;
+  let prevRange: PageRange | undefined;
+  for (const current of ranges) {
+    if (prevRange && (current.start < prevRange.start || (current.start === prevRange.start && current.end < prevRange.end))) {
+      wasUnsorted = true;
+      break;
+    }
+    prevRange = current;
+  }
 
   if (wasUnsorted) warnings.push("unordered");
 
@@ -212,7 +216,7 @@ export function analyzePageRangeInputForSplit(input: string, total: number): Pag
   let hasOverlapOrDuplicate = false;
 
   for (const range of sorted) {
-    const last = normalized[normalized.length - 1];
+    const last = normalized.at(-1);
     if (!last || range.start > last.end) {
       normalized.push({ ...range });
       continue;

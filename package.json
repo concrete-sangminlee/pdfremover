@@ -34,6 +34,7 @@
     "verify:node": "node scripts/validate-node-version.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "typecheck:strict": "tsc --noEmit --noUncheckedIndexedAccess --exactOptionalPropertyTypes",
     "test": "vitest run",
     "build": "next build",
     "verify:static": "node scripts/verify-static-pages.mjs",
