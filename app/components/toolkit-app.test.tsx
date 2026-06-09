@@ -12,10 +12,13 @@ describe("toolkit translations", () => {
   it("has labels and descriptions for every registered tool", () => {
     for (const lang of LANGS) {
       for (const tool of TOOLS) {
-        expect(T[lang][tool.labelKey], `${lang}.${tool.labelKey}`).toBeTypeOf("string");
-        expect(T[lang][tool.labelKey].trim(), `${lang}.${tool.labelKey}`).not.toBe("");
-        expect(T[lang][tool.descKey], `${lang}.${tool.descKey}`).toBeTypeOf("string");
-        expect(T[lang][tool.descKey].trim(), `${lang}.${tool.descKey}`).not.toBe("");
+        const bundle = T[lang];
+        const label = bundle[tool.labelKey as keyof typeof bundle];
+        const desc = bundle[tool.descKey as keyof typeof bundle];
+        expect(label, `${lang}.${tool.labelKey}`).toBeTypeOf("string");
+        expect(label.trim(), `${lang}.${tool.labelKey}`).not.toBe("");
+        expect(desc, `${lang}.${tool.descKey}`).toBeTypeOf("string");
+        expect(desc.trim(), `${lang}.${tool.descKey}`).not.toBe("");
       }
     }
   });

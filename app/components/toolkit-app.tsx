@@ -47,7 +47,7 @@ interface HistoryItem {
   action: string;
   file: string;
   ok: boolean;
-  toolId?: string;
+  toolId: Tool;
 }
 
 interface PdfInfo {
@@ -63,8 +63,7 @@ interface PdfInfo {
 const getPageInfoKey = (file: File): string => `${file.name}|${file.size}|${file.lastModified}`;
 
 // ━━━ i18n ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-export const T: Record<Lang, Record<string, string>> = {
-  ko: {
+const _koTranslations = {
     heroTag: "올인원 문서 솔루션",
     heroTitle1: "File",
     heroTitle2: "Forge",
@@ -331,8 +330,13 @@ export const T: Record<Lang, Record<string, string>> = {
     errDocxOnly: "DOCX 파일만 업로드할 수 있습니다.",
     errPdfOnly: "PDF 파일만 업로드할 수 있습니다.",
     warnLargeFile: "대용량 파일은 처리 시간이 길어질 수 있습니다.",
-  },
-  en: {
+} as const;
+
+export type TranslationKey = keyof typeof _koTranslations;
+export type TranslationBundle = Record<TranslationKey, string>;
+export const koTranslations: TranslationBundle = _koTranslations;
+
+const enTranslations: TranslationBundle = {
     heroTag: "All-in-One Document Solution",
     heroTitle1: "File",
     heroTitle2: "Forge",
@@ -583,18 +587,22 @@ export const T: Record<Lang, Record<string, string>> = {
     msgImgConverted: " images converted!",
     msgImgResized: " images resized!",
     msgPdfToImgDone: " pages converted to images!",
-    msgImgToPdfDone: " images converted to PDF!",
-    confirmDeleteBtn: "Confirm Delete",
-    maxCompress: "Max compression",
-    origQuality: "Original quality",
-    toolCount: " tools",
-    imgStitchWarn: "Please upload 2 or more images.",
-    errImgOnly: "Only image files are supported (JPG, PNG, WebP).",
-    errHtmlOnly: "Only HTML files are supported.",
-    errDocxOnly: "Only DOCX files are supported.",
-    errPdfOnly: "Only PDF files are supported.",
-    warnLargeFile: "Large files may take longer to process.",
-  },
+  msgImgToPdfDone: " images converted to PDF!",
+  confirmDeleteBtn: "Confirm Delete",
+  maxCompress: "Max compression",
+  origQuality: "Original quality",
+  toolCount: " tools",
+  imgStitchWarn: "Please upload 2 or more images.",
+  errImgOnly: "Only image files are supported (JPG, PNG, WebP).",
+  errHtmlOnly: "Only HTML files are supported.",
+  errDocxOnly: "Only DOCX files are supported.",
+  errPdfOnly: "Only PDF files are supported.",
+  warnLargeFile: "Large files may take longer to process.",
+};
+
+export const T: { [L in Lang]: TranslationBundle } = {
+  ko: koTranslations,
+  en: enTranslations,
 };
 
 // ━━━ Helpers ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1321,10 +1329,14 @@ function handleRadioGroupKeyDown<T extends RadioValue>(
   if (nextIndex === null) return;
   event.preventDefault();
 
-  onChange(options[nextIndex]);
+  const nextValue = options[nextIndex];
+  if (nextValue === undefined) return;
+
+  onChange(nextValue);
   const group = event.currentTarget;
   requestAnimationFrame(() => {
-    group.querySelector<HTMLElement>(`[data-radio-index="${nextIndex}"]`)?.focus();
+    const nextButton = group.querySelector(`[data-radio-index="${nextIndex}"]`) as HTMLElement | null;
+    nextButton?.focus();
   });
 }
 
@@ -1463,13 +1475,13 @@ function FileDropzone({
   acceptType = ".pdf",
 }: {
   files: File[];
-  onSelect: (f: File[]) => void;
-  onRemove?: (i: number) => void;
-  onReorder?: (from: number, to: number) => void;
-  multiple?: boolean;
+  onSelect: (f: File[]) => void | Promise<void>;
+  onRemove?: ((i: number) => void) | undefined;
+  onReorder?: ((from: number, to: number) => void) | undefined;
+  multiple?: boolean | undefined;
   pageInfo: Record<string, number>;
-  t: Record<string, string>;
-  acceptType?: string;
+  t: TranslationBundle;
+  acceptType?: string | undefined;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -1498,9 +1510,9 @@ function FileDropzone({
             e.target.value = "";
           }}
         />
-        {files.length === 0 ? (
-          <>
-            <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
+            {files.length === 0 ? (
+              <>
+                <svg aria-hidden="true" className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-slate-600" fill="none" viewBox="0 0 48 48" stroke="currentColor" strokeWidth="1.5">
               {acceptType.includes("image/") ? (
                 <>
                   <rect x="6" y="6" width="36" height="36" rx="4" />
@@ -1518,16 +1530,17 @@ function FileDropzone({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M24 22v12m0 0l-4-4m4 4l4-4" />
                 </>
               )}
-            </svg>
-            <p className="text-gray-500 dark:text-slate-400 text-sm font-medium">
-              {(() => {
-                const fileType = acceptType.includes("image/") ? (t.uploadHint.includes("PDF") ? t.uploadHint.replace("PDF ", "") : t.uploadHint)
-                  : acceptType.includes(".docx") ? t.uploadHint.replace("PDF", "DOCX")
-                  : acceptType.includes(".html") ? t.uploadHint.replace("PDF", "HTML")
-                  : t.uploadHint;
+                </svg>
+                <p className="text-gray-500 dark:text-slate-400 text-sm font-medium">
+                  {(() => {
+                const uploadHint = t.uploadHint || "";
+                const fileType = acceptType.includes("image/") ? (uploadHint.includes("PDF") ? uploadHint.replace("PDF ", "") : uploadHint)
+                  : acceptType.includes(".docx") ? uploadHint.replace("PDF", "DOCX")
+                  : acceptType.includes(".html") ? uploadHint.replace("PDF", "HTML")
+                  : uploadHint;
                 return fileType;
               })()} <span className="text-blue-600 dark:text-blue-400 font-semibold">{t.uploadClick}</span>{t.uploadSuffix}
-            </p>
+                </p>
             <button type="button" onClick={(e) => { e.stopPropagation(); ref.current?.click(); }}
               className="mt-3 px-5 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-sm transition-all">
               {t.uploadClick}
@@ -1562,9 +1575,12 @@ function FileDropzone({
                   "bg-blue-50 dark:bg-blue-950/30 text-blue-500 dark:text-blue-400"
                 }`}>{f.name.split(".").pop()?.toUpperCase().slice(0, 4) || "FILE"}</span>
                 <span className="text-gray-800 dark:text-slate-200 text-sm font-medium flex-1 truncate">{f.name}</span>
-                {pageInfo[getPageInfoKey(f)] > 0 && (
-                  <span className="text-blue-400 text-[10px] font-mono flex-shrink-0">{pageInfo[getPageInfoKey(f)]}p</span>
-                )}
+                {(() => {
+                  const pageCount = pageInfo[getPageInfoKey(f)] ?? 0;
+                  return pageCount > 0 ? (
+                    <span className="text-blue-400 text-[10px] font-mono flex-shrink-0">{pageCount}p</span>
+                  ) : null;
+                })()}
                 <span className="text-gray-400 text-xs font-mono flex-shrink-0">{fmtSize(f.size)}</span>
                 {onRemove && (
                   <button
@@ -1612,7 +1628,7 @@ function AccentButton({ children, onClick, disabled = false, loading = false }: 
   );
 }
 
-function ProgressBar({ progress, label }: { progress?: number; label?: string }) {
+function ProgressBar({ progress, label }: { progress?: number | undefined; label?: string | undefined }) {
   const determinate = progress !== undefined && progress >= 0;
   const clamped = determinate ? Math.min(100, Math.max(0, progress!)) : undefined;
   return (
@@ -1805,6 +1821,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [procTime, setProcTime] = useState<number | null>(null);
 
   const t = T[lang];
+  const tx = useCallback((key: string, fallback = "") => t[key as TranslationKey] ?? fallback, [t]);
   const controlId = useId();
   const searchInputId = `${controlId}-tool-search`;
   const compareTitleId = `${controlId}-compare-title`;
@@ -1856,16 +1873,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     textInput: string;
   };
   const currentPdfPageInfoKey = useMemo(() => {
-    if (!files.length) return "";
+    if (!files.length || !files[0]) return undefined;
     return getPageInfoKey(files[0]);
   }, [files]);
   const currentPdfPageCount = useMemo(() => {
     if (!currentPdfPageInfoKey) return 0;
-    return pageInfo[currentPdfPageInfoKey] || 0;
+    return pageInfo[currentPdfPageInfoKey] ?? 0;
   }, [currentPdfPageInfoKey, pageInfo]);
   const isCurrentPdfPageInfoLoaded = useMemo(
     () =>
-      Boolean(currentPdfPageInfoKey) &&
+      !!currentPdfPageInfoKey &&
       Object.prototype.hasOwnProperty.call(pageInfo, currentPdfPageInfoKey),
     [currentPdfPageInfoKey, pageInfo]
   );
@@ -1967,7 +1984,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const normalizeRangeText = (ranges: PageRange[] | null) => ranges
     ? `${t.rangeNormalized || "Normalized ranges"}: ${formatPageRanges(ranges)} (${countPagesInRanges(ranges)} ${t.counterPages})`
     : "";
-  const executeValidators: Record<string, (ctx: ExecuteValidationContext) => boolean> = useMemo(
+  type ExecuteValidator = (ctx: ExecuteValidationContext) => boolean;
+  const executeValidators: Record<View, ExecuteValidator> = useMemo(
     () => ({
       home: ({}) => false,
       unlock: ({ processing, filesCount }) => !processing && filesCount > 0,
@@ -2022,7 +2040,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     });
   }, [processing, view, splitMode, rotateScope, files.length]);
 
-  const addHistory = useCallback((action: string, file: string, ok: boolean, toolId?: string) => {
+  const addHistory = useCallback((action: string, file: string, ok: boolean, toolId: Tool) => {
     setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
   }, []);
 
@@ -2105,12 +2123,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const reorderFiles = (from: number, to: number) => {
     setFiles((prev) => {
       const next = [...prev];
-      const [item] = next.splice(from, 1);
+      const item = next[from];
+      if (!item) return prev;
+      next.splice(from, 1);
       next.splice(to, 0, item);
       return next;
     });
   };
   const activeTool = view === "home" ? undefined : TOOL_BY_ID[view];
+  const toolActionLabel = activeTool ? tx(activeTool.labelKey, activeTool.labelEn) : t.execute;
 
   // Get page count for uploaded files
   const loadPageInfo = useCallback(async (fileList: File[]) => {
@@ -2176,8 +2197,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
     if (view === "info" && validFiles.length > 0) {
       try {
-        const buf = await validFiles[0].arrayBuffer();
-        setPdfInfoResult(await getPdfInfo(buf, validFiles[0].size));
+        const mainFile = validFiles[0];
+        if (!mainFile) return;
+        const buf = await mainFile.arrayBuffer();
+        setPdfInfoResult(await getPdfInfo(buf, mainFile.size));
       } catch {
         setMessage({ type: "error", text: t.infoInvalid });
       }
@@ -2208,14 +2231,20 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // ─── Execute ───
   const execute = useCallback(async () => {
+    if (view === "home") return;
     if (files.length === 0 && view !== "txt2pdf") return;
+    if (!activeTool) return;
+    const tool = view;
+    const firstFile = files[0];
+    if (tool !== "txt2pdf" && !firstFile) return;
+    const toolLabel = activeTool ? tx(activeTool.labelKey, activeTool.labelEn) : "";
     const startTime = performance.now();
     setProcessing(true);
     setMessage(null);
     setResultName("");
     clearResults();
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
-    if (view !== "home" && !_pdfLib && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) {
+    if (!_pdfLib && !NO_PDF_LIB_PRELOAD_TOOLS.includes(tool)) {
       setMessage({ type: "warning", text: t.engineLoading });
       await getPdfLib();
       setMessage(null);
@@ -2223,29 +2252,29 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
     let completed = false;
     try {
-      const toolLabel = t[activeTool?.labelKey || ""] || "";
       const recordSuccess = (fileLabel: string) => {
         completed = true;
-        addHistory(toolLabel, fileLabel, true, view);
+        addHistory(toolLabel, fileLabel, true, activeTool.id);
       };
       switch (view) {
         case "unlock": {
           if (files.length === 1) {
-            const buf = await files[0].arrayBuffer();
+            const file = firstFile as File;
+            const buf = await file.arrayBuffer();
             const data = await unlockPDF(buf);
             setResultData(data);
-            setResultName(replaceExtension(files[0].name, "_unlocked.pdf"));
+            setResultName(replaceExtension(file.name, "_unlocked.pdf"));
             setMessage({ type: "success", text: t.msgUnlocked });
-            recordSuccess(files[0].name);
+            recordSuccess(file.name);
           } else {
             // Batch unlock with progress
             const results: { name: string; data: Uint8Array }[] = [];
-            for (let idx = 0; idx < files.length; idx++) {
+            for (const [idx, file] of files.entries()) {
               setBatchProgress(Math.round((idx / files.length) * 100));
               setMessage({ type: "warning", text: `${t.msgBatchProcess} ${idx + 1}/${files.length}...` });
-              const buf = await files[idx].arrayBuffer();
+              const buf = await file.arrayBuffer();
               const data = await unlockPDF(buf);
-              results.push({ name: replaceExtension(files[idx].name, "_unlocked.pdf"), data });
+              results.push({ name: replaceExtension(file.name, "_unlocked.pdf"), data });
             }
             setBatchProgress(100);
             setResultMulti(results);
@@ -2265,7 +2294,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "split": {
-          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
+          const file = firstFile as File;
+          const { buffer: buf, info } = await loadPdfForOperation(file);
           const ranges = splitMode === "all"
             ? Array.from({ length: info.pages }, (_, i) => ({ start: i + 1, end: i + 1 }))
             : splitRangeAnalysis.ranges && splitRangeAnalysis.ranges.length > 0
@@ -2275,22 +2305,24 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           const results = await splitPDF(buf, ranges);
           setResultMulti(results);
           setMessage({ type: "success", text: `${results.length}${t.msgSplit}` });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "extract": {
-          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
+          const file = firstFile as File;
+          const { buffer: buf, info } = await loadPdfForOperation(file);
           const pages = parsePageRanges(pagesInput, info.pages, { preserveOrder: true });
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           const data = await extractPages(buf, pages);
           setResultData(data);
-          setResultName(replaceExtension(files[0].name, "_extracted.pdf"));
+          setResultName(replaceExtension(file.name, "_extracted.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgExtracted}` });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "rotate": {
-          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
+          const file = firstFile as File;
+          const { buffer: buf, info } = await loadPdfForOperation(file);
           let pageNums: number[] | undefined;
           if (rotateScope === "specific" && rotatePagesInput) {
             pageNums = parsePageRanges(rotatePagesInput, info.pages);
@@ -2298,45 +2330,48 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           }
           const data = await rotatePages(buf, rotateDeg, pageNums);
           setResultData(data);
-          setResultName(replaceExtension(files[0].name, "_rotated.pdf"));
+          setResultName(replaceExtension(file.name, "_rotated.pdf"));
           setMessage({ type: "success", text: `${rotateDeg}°${t.msgRotated}` });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "compress": {
-          const buf = await files[0].arrayBuffer();
+          const file = firstFile as File;
+          const buf = await file.arrayBuffer();
           const data = await compressPDF(buf);
-          const saved = files[0].size - data.length;
+          const saved = file.size - data.length;
           if (saved > 0) {
             setResultData(data);
-            setResultName(replaceExtension(files[0].name, "_compressed.pdf"));
-            setCompressionInfo({ before: files[0].size, after: data.length });
-            setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${Math.round((saved / files[0].size) * 100)}% ${t.compressPercent})` });
+            setResultName(replaceExtension(file.name, "_compressed.pdf"));
+            setCompressionInfo({ before: file.size, after: data.length });
+            setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${Math.round((saved / file.size) * 100)}% ${t.compressPercent})` });
           } else {
             setResultData(new Uint8Array(buf));
-            setResultName(files[0].name);
+            setResultName(file.name);
             setMessage({ type: "warning", text: t.compressAlready });
           }
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "watermark": {
-          const buf = await files[0].arrayBuffer();
+          const file = firstFile as File;
+          const buf = await file.arrayBuffer();
           const data = await addWatermark(buf, wmText, wmSize, wmOpacity, wmRotation, wmPosition);
           setResultData(data);
-          setResultName(replaceExtension(files[0].name, "_watermarked.pdf"));
+          setResultName(replaceExtension(file.name, "_watermarked.pdf"));
           setMessage({ type: "success", text: t.msgWatermarked });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "pagenum": {
-          const buf = await files[0].arrayBuffer();
+          const file = firstFile as File;
+          const buf = await file.arrayBuffer();
           const data = await addPageNumbers(buf, pnFormat, pnPosition, pnSize);
           setResultData(data);
-          setResultName(replaceExtension(files[0].name, "_numbered.pdf"));
+          setResultName(replaceExtension(file.name, "_numbered.pdf"));
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${info.pages}${t.msgNumbered}` });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "delete": {
@@ -2347,7 +2382,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             return;
           }
           setConfirmDelete(false);
-          const { buffer: buf, info } = await loadPdfForOperation(files[0]);
+          const file = firstFile as File;
+          const { buffer: buf, info } = await loadPdfForOperation(file);
           const pages = parsePageRanges(deleteInput, info.pages);
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
           if (pages.length >= info.pages) {
@@ -2356,9 +2392,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           }
           const data = await deletePagesFromPDF(buf, pages);
           setResultData(data);
-          setResultName(replaceExtension(files[0].name, "_edited.pdf"));
+          setResultName(replaceExtension(file.name, "_edited.pdf"));
           setMessage({ type: "success", text: `${pages.length}${t.msgDeleted} (${info.pages - pages.length}${t.msgRemaining})` });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "imgstitch": {
@@ -2381,14 +2417,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
         case "imgconvert": {
           const results: { name: string; data: Uint8Array }[] = [];
-          for (let fi = 0; fi < files.length; fi++) {
+          for (const [fi, file] of files.entries()) {
             setBatchProgress(Math.round((fi / files.length) * 100));
-            results.push(await convertImageFormat(files[fi], imgOutputFormat));
+            results.push(await convertImageFormat(file, imgOutputFormat));
           }
           setBatchProgress(100);
           if (results.length === 1) {
-            setResultData(results[0].data);
-            setResultName(results[0].name);
+            const result = results[0];
+            if (!result) break;
+            setResultData(result.data);
+            setResultName(result.name);
           } else {
             setResultMulti(results);
           }
@@ -2397,26 +2435,29 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "html2pdf": {
-          const text = await files[0].text();
+          const file = firstFile as File;
+          const text = await file.text();
           if (!text.trim()) { setMessage({ type: "warning", text: t.msgEmptyHtml }); break; }
           const data = await htmlToPdf(text);
           setResultData(data);
-          setResultName(replaceExtension(files[0].name, ".pdf"));
+          setResultName(replaceExtension(file.name, ".pdf"));
           setMessage({ type: "success", text: t.msgHtmlDone });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "imgresize": {
           const results: { name: string; data: Uint8Array }[] = [];
-          for (let fi = 0; fi < files.length; fi++) {
+          for (const [fi, file] of files.entries()) {
             setBatchProgress(Math.round((fi / files.length) * 100));
-            const r = await resizeImage(files[fi], imgScale);
+            const r = await resizeImage(file, imgScale);
             results.push({ name: r.name, data: r.data });
           }
           setBatchProgress(100);
           if (results.length === 1) {
-            setResultData(results[0].data);
-            setResultName(results[0].name);
+            const result = results[0];
+            if (!result) break;
+            setResultData(result.data);
+            setResultName(result.name);
           } else {
             setResultMulti(results);
           }
@@ -2427,17 +2468,19 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         case "imgcompress": {
           const results: { name: string; data: Uint8Array }[] = [];
           let totalBefore = 0, totalAfter = 0;
-          for (let fi = 0; fi < files.length; fi++) {
+          for (const [fi, file] of files.entries()) {
             setBatchProgress(Math.round((fi / files.length) * 100));
-            const r = await compressImage(files[fi], imgQuality);
+            const r = await compressImage(file, imgQuality);
             results.push({ name: r.name, data: r.data });
             totalBefore += r.before;
             totalAfter += r.after;
           }
           setBatchProgress(100);
           if (results.length === 1) {
-            setResultData(results[0].data);
-            setResultName(results[0].name);
+            const result = results[0];
+            if (!result) break;
+            setResultData(result.data);
+            setResultName(result.name);
           } else {
             setResultMulti(results);
           }
@@ -2451,34 +2494,37 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "pdftext": {
-          const buf = await files[0].arrayBuffer();
+          const file = firstFile as File;
+          const buf = await file.arrayBuffer();
           const text = await extractPdfText(buf);
           setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${escapeHtml(text)}</pre>`);
           setMessage({ type: "success", text: t.msgTextExtracted });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "docx2html": {
-          const buf = await files[0].arrayBuffer();
+          const file = firstFile as File;
+          const buf = await file.arrayBuffer();
           const html = await docxToHtml(buf);
           setHtmlPreview(html);
           setMessage({ type: "success", text: t.msgDocxDone });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "pdf2img": {
-          const buf = await files[0].arrayBuffer();
+          const file = firstFile as File;
+          const buf = await file.arrayBuffer();
           setMessage({ type: "warning", text: t.msgPdfToImg });
           const images = await pdfToImages(buf, (pct) => setBatchProgress(pct));
           setResultMulti(images);
           setMessage({ type: "success", text: `${images.length}${t.msgPdfToImgDone}` });
-          recordSuccess(files[0].name);
+          recordSuccess(file.name);
           break;
         }
         case "img2pdf": {
           const data = await imagesToPDF(files);
           setResultData(data);
-          setResultName(files.length === 1 ? replaceExtension(files[0].name, ".pdf") : `${files.length}_images.pdf`);
+          setResultName(files.length === 1 ? replaceExtension((firstFile as File).name, ".pdf") : `${files.length}_images.pdf`);
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${files.length}${t.msgImgToPdfDone} (${info.pages}p)` });
           recordSuccess(`${files.length} images`);
@@ -2498,7 +2544,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }
       }
       setMessage({ type: "error", text: errMsg });
-      if (files[0]) addHistory(t[activeTool?.labelKey || ""] || "", files[0].name, false, view);
+      if (tool === "txt2pdf") {
+        addHistory(toolLabel, "text input", false, tool);
+        return;
+      }
+      const failedFile = files[0];
+      if (failedFile) addHistory(toolLabel, failedFile.name, false, tool);
     } finally {
       setProcessing(false);
       setBatchProgress(-1);
@@ -2539,6 +2590,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     wmText,
     stitchDir,
     t,
+    tx,
   ]);
 
   const canExecute = (executeValidators[view] || executeValidators.home)({
@@ -2700,7 +2752,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && toolSearch) {
                     const match = TOOLS.find((td) =>
-                      t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) ||
+                      tx(td.labelKey).toLowerCase().includes(toolSearch.toLowerCase()) ||
                       td.labelEn.toLowerCase().includes(toolSearch.toLowerCase())
                     );
                     if (match) { goTool(match.id); setToolSearch(""); }
@@ -2727,9 +2779,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {(["pdf", "image", "document"] as const).map((cat) => {
               const catTools = TOOLS.filter((td) => td.category === cat && (
                 !toolSearch ||
-                t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) ||
+                tx(td.labelKey).toLowerCase().includes(toolSearch.toLowerCase()) ||
                 td.labelEn.toLowerCase().includes(toolSearch.toLowerCase()) ||
-                t[td.descKey].toLowerCase().includes(toolSearch.toLowerCase())
+                tx(td.descKey).toLowerCase().includes(toolSearch.toLowerCase())
               ));
               if (catTools.length === 0) return null;
               const catLabel = cat === "pdf" ? t.catPdf : cat === "image" ? t.catImage : t.catDocument;
@@ -2744,16 +2796,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       <button key={td.id} onClick={() => goTool(td.id)}
                         style={!toolSearch ? { "--stagger-i": idx } as React.CSSProperties : undefined}
                         className="tool-card p-5 sm:p-6 text-left group relative overflow-hidden"
-                        aria-label={`${t[td.labelKey]} - ${t[td.descKey]}`}>
+                        aria-label={`${tx(td.labelKey)} - ${tx(td.descKey)}`}>
                         <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-3 sm:mb-4 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300"
                           style={{ background: `${td.hex}12`, border: `1px solid ${td.hex}15` }}>
                           {td.icon}
                         </div>
                         <h3 className="text-[13px] sm:text-sm font-bold tracking-tight text-gray-900 dark:text-slate-100 mb-0.5 flex items-center gap-1.5">
-                          {t[td.labelKey]}
+                           {tx(td.labelKey)}
                           {td.isNew && <span className="text-[7px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white leading-none">NEW</span>}
                         </h3>
-                        <p className="text-[11px] text-gray-400 dark:text-slate-500 leading-relaxed mt-1 line-clamp-2">{t[td.descKey]}</p>
+                        <p className="text-[11px] text-gray-400 dark:text-slate-500 leading-relaxed mt-1 line-clamp-2">{tx(td.descKey)}</p>
                         {/* Hover gradient overlay */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-[20px]"
                           style={{ background: `linear-gradient(135deg, ${td.hex}06 0%, ${td.hex}02 100%)` }} />
@@ -2766,7 +2818,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
               );
             })}
-            {toolSearch && TOOLS.filter((td) => t[td.labelKey].toLowerCase().includes(toolSearch.toLowerCase()) || td.labelEn.toLowerCase().includes(toolSearch.toLowerCase()) || t[td.descKey].toLowerCase().includes(toolSearch.toLowerCase())).length === 0 && (
+            {toolSearch && TOOLS.filter((td) => tx(td.labelKey).toLowerCase().includes(toolSearch.toLowerCase()) || td.labelEn.toLowerCase().includes(toolSearch.toLowerCase()) || tx(td.descKey).toLowerCase().includes(toolSearch.toLowerCase())).length === 0 && (
               <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">
                 {t.noResults}
               </div>
@@ -2902,7 +2954,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{t.footerTools}</h4>
                   <ul className="space-y-2">
                     {TOOLS.slice(0, 10).map((td) => (
-                      <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t[td.labelKey]}</button></li>
+                       <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{tx(td.labelKey)}</button></li>
                     ))}
                   </ul>
                 </div>
@@ -2910,7 +2962,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <h4 className="text-xs font-semibold text-gray-800 dark:text-slate-200 uppercase tracking-wider mb-3">{t.footerImgDoc}</h4>
                   <ul className="space-y-2">
                     {TOOLS.slice(10).map((td) => (
-                      <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{t[td.labelKey]}</button></li>
+                       <li key={td.id}><button onClick={() => goTool(td.id)} className="text-xs text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">{tx(td.labelKey)}</button></li>
                     ))}
                   </ul>
                 </div>
@@ -2965,16 +3017,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <h1 className="text-xl font-bold tracking-tight dark:text-white">{t[activeTool.labelKey]}</h1>
+                    <h1 className="text-xl font-bold tracking-tight dark:text-white">{tx(activeTool.labelKey)}</h1>
                     <span className="text-[10px] text-gray-300 dark:text-slate-600 uppercase tracking-wider font-medium">{activeTool.labelEn}</span>
                   </div>
-                  <p className="text-sm text-gray-400 dark:text-slate-400">{t[activeTool.descKey]}</p>
+                  <p className="text-sm text-gray-400 dark:text-slate-400">{tx(activeTool.descKey)}</p>
                 </div>
                 <button
                   onClick={async () => {
                     if (navigator.share) {
                       try {
-                        await navigator.share({ title: `${t[activeTool.labelKey]} — FileForge`, url: window.location.href });
+                        await navigator.share({ title: `${tx(activeTool.labelKey)} — FileForge`, url: window.location.href });
                         return;
                       } catch (err) {
                         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -3071,12 +3123,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Page count hint for single-file tools */}
             {PAGE_INPUT_TOOLS.includes(view) && files.length === 1 && (() => {
-              const pc = pageInfo[getPageInfoKey(files[0])];
+              const firstFile = files[0];
+              if (!firstFile) return null;
+              const pc = pageInfo[getPageInfoKey(firstFile)] ?? 0;
               return pc > 0 ? (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-xs animate-fadeIn">
                   <span className="text-gray-500 dark:text-slate-400">{t.pageCountPrefix}{pc}{t.pageCountSuffix}</span>
                   <span className="text-gray-300 dark:text-slate-600">|</span>
-                  <span className="text-gray-400 dark:text-slate-500 font-mono">{fmtSize(files[0].size)}</span>
+                  <span className="text-gray-400 dark:text-slate-500 font-mono">{fmtSize(firstFile.size)}</span>
                 </div>
               ) : null;
             })()}
@@ -3506,7 +3560,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {view !== "info" && (files.length > 0 || view === "txt2pdf") && (
               <div className="relative">
                 <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
-                  {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+                  {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
                 </AccentButton>
                 {canExecute && !processing && (
                   <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 font-mono hidden sm:inline">Ctrl+Enter</kbd>
@@ -3569,7 +3623,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   </button>
                 )}
                 {/* Image grid preview for image results */}
-                {resultMulti.length > 0 && isPreviewableImage(resultMulti[0].name) && (
+                {resultMulti.length > 0 && (() => {
+                  const firstResult = resultMulti[0];
+                  if (!firstResult) return false;
+                  return isPreviewableImage(firstResult.name);
+                })() && (
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 rounded-xl overflow-hidden">
                     {resultMulti.slice(0, 8).map((r, i) => (
                       <ResultImagePreview key={`${r.name}-${i}`} result={r} index={i} downloadLabel={t.download} />
@@ -3685,7 +3743,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     style={{ background: `${td.hex}10` }}>
                     {td.icon}
                   </div>
-                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400">{t[td.labelKey]}</span>
+                  <span className="text-xs font-medium text-gray-600 dark:text-slate-400">{tx(td.labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -3710,7 +3768,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 : "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
             }`}
           >
-            {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : `${t[activeTool?.labelKey || ""]} ${t.execute}`}
+            {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
           </button>
         </div>
       )}
