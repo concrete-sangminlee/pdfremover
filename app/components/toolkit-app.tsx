@@ -1150,7 +1150,7 @@ async function extractPdfText(data: ArrayBuffer): Promise<string> {
     }
     return pages.join("\n\n");
   } finally {
-    await doc.destroy();
+    await loadingTask.destroy();
   }
 }
 
@@ -1194,7 +1194,7 @@ async function pdfToImages(data: ArrayBuffer, onProgress?: (pct: number) => void
     onProgress?.(100);
     return results;
   } finally {
-    await doc.destroy();
+    await loadingTask.destroy();
   }
 }
 
