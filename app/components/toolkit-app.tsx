@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useId, useMemo } from "react";
+import NextImage from "next/image";
 import {
   NO_PAGE_INFO_TOOLS,
   NO_PDF_LIB_PRELOAD_TOOLS,
@@ -1401,7 +1402,16 @@ function Toast({
 function ImgThumb({ file }: { file: File }) {
   const url = useMemo(() => URL.createObjectURL(file), [file]);
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
-  return <img src={url} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />;
+  return (
+    <NextImage
+      src={url}
+      alt=""
+      width={32}
+      height={32}
+      className="w-8 h-8 rounded object-cover flex-shrink-0"
+      unoptimized
+    />
+  );
 }
 
 function ResultImagePreview({
@@ -1425,7 +1435,15 @@ function ResultImagePreview({
     <button onClick={() => download(result.data, result.name, mime)}
       aria-label={`${downloadLabel}: ${result.name}`}
       className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-800 rounded-lg overflow-hidden group hover:ring-2 hover:ring-blue-400 transition-all">
-      <img src={url} alt="" aria-hidden="true" className="w-full h-full object-cover" />
+      <NextImage
+        src={url}
+        alt=""
+        aria-hidden="true"
+        fill
+        sizes="(min-width: 1024px) 120px, (min-width: 640px) 15vw, 30vw"
+        className="w-full h-full object-cover"
+        unoptimized
+      />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
         <svg aria-hidden="true" className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
       </div>
@@ -1644,16 +1662,21 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 function AnimatedCounter({ target }: { target: number }) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
-    let start = 0;
+    const normalizedTarget = Math.max(0, target);
+    let raf = 0;
+    const start = performance.now();
     const duration = 600;
-    const step = Math.max(1, Math.floor(target / (duration / 16)));
-    const interval = setInterval(() => {
-      start += step;
-      if (start >= target) { setCount(target); clearInterval(interval); }
-      else setCount(start);
-    }, 16);
-    return () => clearInterval(interval);
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const ratio = normalizedTarget === 0 ? 1 : Math.min(1, elapsed / duration);
+      const nextCount = Math.round(ratio * normalizedTarget);
+      setCount(nextCount);
+      if (ratio < 1) {
+        raf = requestAnimationFrame(animate);
+      }
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
   }, [target]);
   return <>{count}</>;
 }
@@ -1712,29 +1735,29 @@ export const RELATED_TOOLS: Record<Tool, Tool[]> = {
 // ━━━ Main Page ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export default function ToolkitApp({ initialTool = "home" }: { initialTool?: View }) {
   const [view, setView] = useState<View>(initialTool);
-  const [lang, setLang] = useState<Lang>("ko");
-  const [dark, setDark] = useState(false);
+  const [lang, setLang] = useState<Lang>(() => {
+    if (typeof window === "undefined") return "ko";
+    return detectLang();
+  });
+  const [dark, setDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    let storedDark: string | null = null;
+    try {
+      storedDark = localStorage.getItem("pdftk_dark");
+    } catch {}
+    if (storedDark !== null) return storedDark === "true";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [toolSearch, setToolSearch] = useState("");
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "warning"; text: string } | null>(null);
-  const [processCount, setProcessCount] = useState(0);
+  const [processCount, setProcessCount] = useState(() => loadNumberStorage("pdftk_count", 0));
   const [pageInfo, setPageInfo] = useState<Record<string, number>>({});
 
-  // Hydrate non-sensitive preferences from localStorage on mount
   useEffect(() => {
-    setLang(detectLang());
-    setProcessCount(loadNumberStorage("pdftk_count", 0));
     try { localStorage.removeItem("pdftk_history"); } catch {}
-    // Dark mode: check stored preference or system preference
-    let storedDark: string | null = null;
-    try { storedDark = localStorage.getItem("pdftk_dark"); } catch {}
-    if (storedDark !== null) {
-      setDark(storedDark === "true");
-    } else {
-      setDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
   }, []);
 
   // Persist non-sensitive preferences only.
@@ -1813,10 +1836,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const pnPositionId = `${controlId}-pn-position`;
   const hasUnsupportedWatermarkText = Boolean(wmText.trim()) && !isValidWatermarkText(wmText);
 
-  useEffect(() => {
-    setConfirmDelete(false);
-  }, [deleteInput, files, view]);
-
   // Search ref for "/" shortcut
   const searchRef = useRef<HTMLInputElement>(null);
   const splitRangeInputRef = useRef<HTMLInputElement>(null);
@@ -1824,8 +1843,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const rotateRangeInputRef = useRef<HTMLInputElement>(null);
   const deleteRangeInputRef = useRef<HTMLInputElement>(null);
   const wmTextInputRef = useRef<HTMLInputElement>(null);
-  const goHomeRef = useRef<() => void>(() => {});
-  const resetStateRef = useRef<() => void>(() => {});
   type ExecuteValidationContext = {
     processing: boolean;
     filesCount: number;
@@ -1916,11 +1933,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const deleteRangeLabelText = t.deleteRangeLabel || "Pages to delete";
   const rotPagesLabelText = t.rotPagesLabel || "Pages to rotate";
   const wmPreviewLabel = t.wmPreview || "Preview";
-  const pageRangeWarnings = (codes: PageRangeAnalysisCode[]) =>
+  const pageRangeWarnings = useCallback((codes: PageRangeAnalysisCode[]) =>
     codes.map((code) => code === "unordered"
       ? t.pageRangeUnordered || "The page ranges were normalized to ascending order."
       : t.pageRangeOverlap || "Overlapping or duplicated ranges were merged into distinct ranges."
-    );
+    ),
+    [t]
+  );
   const analyzeRangeInput = useCallback(
     (input: string) => {
       const trimmed = input.trim();
@@ -1931,12 +1950,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       const analysis = analyzePageRangeInputForSplit(trimmed, currentPdfPageCount);
       if (!analysis.ranges) return { ranges: null as PageRange[] | null, warnings: [] as string[] };
 
-      return {
-        ranges: analysis.ranges,
-        warnings: pageRangeWarnings(analysis.warningCodes),
-      };
-    },
-    [currentPdfPageCount, getRangeInputFeedback, pageRangeWarnings, t]
+    return {
+      ranges: analysis.ranges,
+      warnings: pageRangeWarnings(analysis.warningCodes),
+    };
+  },
+    [currentPdfPageCount, getRangeInputFeedback, pageRangeWarnings]
   );
   const splitRangeAnalysis = useMemo(
     () => splitMode === "range"
@@ -1991,21 +2010,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     [isRangeInputValidWithTotal, splitRangeAnalysis.ranges]
   );
 
-  // Basic keyboard shortcuts (Escape, /)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-      if (e.key === "Escape" && view !== "home" && !processing) goHomeRef.current();
-      if (e.key === "/" && view === "home" && !isInput) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [view, processing]);
-
   // Preload pdf-lib when entering a tool page (skip for tools that don't need it)
   useEffect(() => {
     if (view !== "home" && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) getPdfLib();
@@ -2033,7 +2037,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
   }, []);
 
-  const clearResults = () => {
+  const clearResults = useCallback(() => {
     setResultData(null);
     setResultMulti([]);
     setPdfInfoResult(null);
@@ -2041,9 +2045,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setHtmlPreview(null);
     setProcTime(null);
     setBatchProgress(-1);
-  };
+  }, []);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setFiles([]);
     setMessage(null);
     setResultName("");
@@ -2055,37 +2059,60 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setPageInfo({});
     setConfirmDelete(false);
     clearResults();
-  };
-  resetStateRef.current = resetState;
+  }, [clearResults]);
 
-  const goTool = (tool: Tool) => {
+  const setDeleteInputValue = useCallback((nextValue: string) => {
+    setDeleteInput(nextValue);
+    setConfirmDelete(false);
+  }, []);
+
+  const goTool = useCallback((tool: Tool) => {
     setView(tool);
     resetState();
     setToolSearch("");
     window.history.pushState(null, "", `/${tool}`);
     window.scrollTo(0, 0);
-  };
-  const goHome = () => {
+  }, [resetState]);
+  const goHome = useCallback(() => {
     setView("home");
     resetState();
     setToolSearch("");
     window.history.pushState(null, "", "/");
     window.scrollTo(0, 0);
-  };
-  goHomeRef.current = goHome;
+  }, [resetState]);
 
   // Sync URL with browser back/forward
   useEffect(() => {
-  const onPop = () => {
+    const onPop = () => {
       setView(normalizeToolPath(window.location.pathname));
-      resetStateRef.current();
+      resetState();
       setToolSearch("");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [resetState]);
 
-  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
+  // Basic keyboard shortcuts (Escape, /)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      if (e.key === "Escape" && view !== "home" && !processing) {
+        goHome();
+      }
+      if (e.key === "/" && view === "home" && !isInput) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [goHome, processing, searchRef, view]);
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setConfirmDelete(false);
+  };
   const reorderFiles = (from: number, to: number) => {
     setFiles((prev) => {
       const next = [...prev];
@@ -2094,9 +2121,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       return next;
     });
   };
+  const activeTool = view === "home" ? undefined : TOOL_BY_ID[view];
 
   // Get page count for uploaded files
-  const loadPageInfo = async (fileList: File[]) => {
+  const loadPageInfo = useCallback(async (fileList: File[]) => {
     // Only compute page count for files not already cached
     const uncached = fileList.filter((f) => !pageInfo[getPageInfoKey(f)]);
     if (uncached.length === 0) return;
@@ -2107,9 +2135,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       })
     );
     setPageInfo((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
-  };
+  }, [pageInfo]);
 
-  const handleFiles = async (newFiles: File[]) => {
+  const handleFiles = useCallback(async (newFiles: File[]) => {
     // Validate files based on current tool
     let validFiles: File[];
     let nextMessage: { type: "success" | "error" | "warning"; text: string } | null = null;
@@ -2165,13 +2193,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         setMessage({ type: "error", text: t.infoInvalid });
       }
     }
-  };
+  }, [clearResults, loadPageInfo, t, view]);
 
-  // Clipboard paste support for image tools (uses refs to avoid stale closures)
-  const filesRef = useRef(files);
-  const handleFilesRef = useRef(handleFiles);
-  filesRef.current = files;
-  handleFilesRef.current = handleFiles;
+  // Clipboard paste support for image tools
   useEffect(() => {
     if (!isImageInputTool(view)) return;
     const handler = (e: ClipboardEvent) => {
@@ -2186,15 +2210,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
       if (imageFiles.length > 0) {
         e.preventDefault();
-        handleFilesRef.current([...filesRef.current, ...imageFiles]);
+        handleFiles([...files, ...imageFiles]);
       }
     };
     window.addEventListener("paste", handler);
     return () => window.removeEventListener("paste", handler);
-  }, [view]);
+  }, [handleFiles, files, view]);
 
   // ─── Execute ───
-  const execute = async () => {
+  const execute = useCallback(async () => {
     if (files.length === 0 && view !== "txt2pdf") return;
     const startTime = performance.now();
     setProcessing(true);
@@ -2497,10 +2521,36 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         }, 100);
       }
     }
-  };
-
-  const executeRef = useRef(execute);
-  executeRef.current = execute;
+  }, [
+    addHistory,
+    activeTool,
+    clearResults,
+    confirmDelete,
+    deleteInput,
+    files,
+    imgOutputFormat,
+    imgQuality,
+    imgScale,
+    pagesInput,
+    pnFormat,
+    pnPosition,
+    pnSize,
+    rangeInput,
+    rotateDeg,
+    rotatePagesInput,
+    rotateScope,
+    splitMode,
+    splitRangeAnalysis.ranges,
+    textInput,
+    view,
+    wmOpacity,
+    wmPosition,
+    wmRotation,
+    wmSize,
+    wmText,
+    stitchDir,
+    t,
+  ]);
 
   const canExecute = (executeValidators[view] || executeValidators.home)({
     filesCount: files.length,
@@ -2515,19 +2565,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     processing,
   });
 
-  const activeTool = view === "home" ? undefined : TOOL_BY_ID[view];
-
   // Ctrl+Enter to execute (must be after canExecute/execute are defined)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && view !== "home" && canExecute && !processing) {
         e.preventDefault();
-        executeRef.current();
+        execute();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [view, canExecute, processing]);
+  }, [execute, view, canExecute, processing]);
 
   // Header rendered inline (depends on goHome, view, t, lang, setLang)
   const headerEl = (
@@ -3004,7 +3052,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Clear button */}
             {files.length > 0 && !processing && !resultData && resultMulti.length === 0 && (
-              <button onClick={() => { setFiles([]); setMessage(null); setPageInfo({}); }}
+              <button onClick={resetState}
                 className="text-xs text-gray-400 hover:text-red-500 transition-colors self-end">
                 {t.clearFiles}
               </button>
@@ -3115,15 +3163,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
               <div className="space-y-1 animate-fadeIn">
                 <label htmlFor={deleteRangeId} className="sr-only">{deleteRangeLabelText}</label>
                 <input
-                  id={deleteRangeId}
-                  ref={deleteRangeInputRef}
-                  type="text"
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value)}
-                  placeholder={t.deletePlaceholder}
-                  className="input-field"
-                  {...rangeInputAria(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings.length > 0)}
-                />
+                    id={deleteRangeId}
+                    ref={deleteRangeInputRef}
+                    type="text"
+                    value={deleteInput}
+                   onChange={(e) => setDeleteInputValue(e.target.value)}
+                    placeholder={t.deletePlaceholder}
+                    className="input-field"
+                    {...rangeInputAria(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings.length > 0)}
+                  />
                 {renderRangeInputFeedbackWithWarnings(deleteInput, deleteRangeFeedbackId, deleteRangeAnalysis.warnings)}
                 {deleteRangeAnalysis.warnings.length > 0 && deleteRangeAnalysis.ranges && (
                   <p className="text-xs text-gray-500 dark:text-slate-400">
