@@ -47,6 +47,14 @@ function truncateUtf8ToMaxBytes(value: string, maxBytes: number): string {
   return safe || "file";
 }
 
+function appendSuffixBeforeExtension(filename: string, suffix: string): string {
+  const dot = filename.lastIndexOf(".");
+  const ext = dot > 0 && dot < filename.length - 1 ? filename.slice(dot) : "";
+  const stem = dot > 0 ? filename.slice(0, dot) : filename;
+  const maxStemBytes = Math.max(1, MAX_FILENAME_LENGTH_BYTES - TEXT_ENCODER.encode(`${suffix}${ext}`).length);
+  return `${truncateUtf8ToMaxBytes(stem, maxStemBytes)}${suffix}${ext}`;
+}
+
 function sanitizeSegment(value: string): string {
   const normalized = value.normalize("NFKC");
   const cleaned = normalized
@@ -86,4 +94,21 @@ export function sanitizeOutputFilename(filename: string, fallback = "file") {
 
   const maxStemLength = Math.max(1, MAX_FILENAME_LENGTH_BYTES - extByteLength);
   return `${truncateUtf8ToMaxBytes(stem, maxStemLength)}${ext}` || "file";
+}
+
+export function uniqueOutputFilename(filename: string, seen: Set<string>) {
+  const safeName = sanitizeOutputFilename(filename);
+  let candidate = safeName;
+  let index = 2;
+
+  while (seen.has(candidate)) {
+    candidate = sanitizeOutputFilename(
+      appendSuffixBeforeExtension(safeName, ` (${index})`),
+      `file (${index})`
+    );
+    index += 1;
+  }
+
+  seen.add(candidate);
+  return candidate;
 }

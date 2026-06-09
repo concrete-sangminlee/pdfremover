@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TOOLS } from "../lib/config";
-import { T } from "./toolkit-app";
+import { TOOL_BY_ID, TOOLS, VALID_TOOLS } from "../lib/config";
+import { RELATED_TOOLS, T } from "./toolkit-app";
 
 const LANGS = ["ko", "en"] as const;
 
@@ -24,6 +24,23 @@ describe("toolkit translations", () => {
     for (const lang of LANGS) {
       for (const [key, value] of Object.entries(T[lang])) {
         expect(value, `${lang}.${key}`).not.toContain("\uFFFD");
+      }
+    }
+  });
+});
+
+describe("related tools", () => {
+  it("keeps recommendations complete and valid for every tool", () => {
+    expect(Object.keys(RELATED_TOOLS).sort()).toEqual([...VALID_TOOLS].sort());
+
+    for (const tool of TOOLS) {
+      const related = RELATED_TOOLS[tool.id];
+      expect(related, tool.id).toHaveLength(4);
+      expect(new Set(related).size, tool.id).toBe(related.length);
+      expect(related, tool.id).not.toContain(tool.id);
+
+      for (const relatedTool of related) {
+        expect(TOOL_BY_ID[relatedTool], `${tool.id} -> ${relatedTool}`).toBeDefined();
       }
     }
   });

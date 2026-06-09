@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeOutputFilename } from "./file-names";
+import { sanitizeOutputFilename, uniqueOutputFilename } from "./file-names";
 
 describe("sanitizeOutputFilename", () => {
   it("removes path separators and reserved filename characters", () => {
@@ -45,5 +45,26 @@ describe("sanitizeOutputFilename", () => {
     const result = sanitizeOutputFilename(longKoreanName);
     expect(result.endsWith(".pdf")).toBe(true);
     expect(new TextEncoder().encode(result).length).toBeLessThanOrEqual(180);
+  });
+});
+
+describe("uniqueOutputFilename", () => {
+  it("deduplicates sanitized output names without collisions", () => {
+    const seen = new Set<string>();
+
+    expect(uniqueOutputFilename("file.pdf", seen)).toBe("file.pdf");
+    expect(uniqueOutputFilename("file.pdf", seen)).toBe("file (2).pdf");
+    expect(uniqueOutputFilename("file (2).pdf", seen)).toBe("file (2) (2).pdf");
+  });
+
+  it("keeps duplicate suffixes within the UTF-8 byte limit", () => {
+    const seen = new Set<string>();
+    const longName = `${"a".repeat(220)}.pdf`;
+
+    expect(uniqueOutputFilename(longName, seen)).toHaveLength(180);
+
+    const duplicate = uniqueOutputFilename(longName, seen);
+    expect(duplicate.endsWith(" (2).pdf")).toBe(true);
+    expect(new TextEncoder().encode(duplicate).length).toBeLessThanOrEqual(180);
   });
 });

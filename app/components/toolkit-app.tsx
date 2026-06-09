@@ -14,7 +14,7 @@ import {
   type Tool,
   type View,
 } from "../lib/config";
-import { sanitizeOutputFilename } from "../lib/file-names";
+import { sanitizeOutputFilename, uniqueOutputFilename } from "../lib/file-names";
 import {
   analyzePageRangeInputForSplit,
   formatPageRanges,
@@ -26,6 +26,7 @@ import {
   type PageRange,
   type PageRangeAnalysisCode,
 } from "../lib/page-ranges";
+import { isPdfStandardLatinText, needsImagePdfRendering } from "../lib/text";
 
 // Lazy-load pdf-lib and jszip — only when user actually uses a tool (~325KB saved on homepage)
 let _pdfLib: typeof import("pdf-lib") | null = null;
@@ -100,7 +101,7 @@ export const T: Record<Lang, Record<string, string>> = {
     pagesTotalSuffix: "페이지",
     pageCountPrefix: "이 PDF는 ",
     pageCountSuffix: "페이지입니다",
-    wmCjkWarning: "한글/한자/일본어는 지원되지 않습니다. 영문으로 입력해주세요.",
+    wmCjkWarning: "워터마크는 영문/라틴 문자만 지원됩니다.",
     catPdf: "PDF 도구",
     catImage: "이미지 도구",
     catDocument: "문서 도구",
@@ -368,7 +369,7 @@ export const T: Record<Lang, Record<string, string>> = {
     pagesTotalSuffix: " pages total",
     pageCountPrefix: "This PDF has ",
     pageCountSuffix: " pages",
-    wmCjkWarning: "CJK characters are not supported. Please use Latin text.",
+    wmCjkWarning: "Only Latin text is supported for PDF watermarks.",
     catPdf: "PDF Tools",
     catImage: "Image Tools",
     catDocument: "Document Tools",
@@ -644,19 +645,6 @@ function isHtmlFile(file: File) {
   return name.endsWith(".html") || name.endsWith(".htm") || file.type === "text/html";
 }
 
-function uniqueFilename(filename: string, seen: Map<string, number>) {
-  const safeName = sanitizeOutputFilename(filename);
-  const count = seen.get(safeName) ?? 0;
-  seen.set(safeName, count + 1);
-  if (count === 0) return safeName;
-
-  const dot = safeName.lastIndexOf(".");
-  const suffix = ` (${count + 1})`;
-  return dot > 0
-    ? `${safeName.slice(0, dot)}${suffix}${safeName.slice(dot)}`
-    : `${safeName}${suffix}`;
-}
-
 function replaceExtension(filename: string, replacement: string) {
   const dot = filename.lastIndexOf(".");
   const output = dot > 0 ? `${filename.slice(0, dot)}${replacement}` : `${filename}${replacement}`;
@@ -686,23 +674,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 function isValidWatermarkText(text: string): boolean {
-  if (!text.trim()) return false;
-  for (const ch of text) {
-    const code = ch.codePointAt(0);
-    if (
-      code === undefined ||
-      !(
-        code === 9 ||
-        code === 10 ||
-        code === 13 ||
-        (code >= 32 && code <= 126) ||
-        (code >= 160 && code <= 255)
-      )
-    ) {
-      return false;
-    }
-  }
-  return true;
+  return Boolean(text.trim()) && isPdfStandardLatinText(text);
 }
 
 async function loadPdfForOperation(file: File): Promise<{ buffer: ArrayBuffer; info: PdfInfo }> {
@@ -739,8 +711,8 @@ function download(data: Uint8Array, filename: string, mime = "application/pdf") 
 async function downloadZip(files: { name: string; data: Uint8Array }[], zipName = "fileforge_output.zip") {
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
-  const seen = new Map<string, number>();
-  files.forEach((f) => zip.file(uniqueFilename(f.name, seen), toArrayBuffer(f.data)));
+  const seen = new Set<string>();
+  files.forEach((f) => zip.file(uniqueOutputFilename(f.name, seen), toArrayBuffer(f.data)));
   const blob = await zip.generateAsync({ type: "blob" });
   downloadBlob(blob, sanitizeOutputFilename(zipName, "fileforge_output.zip"));
 }
@@ -777,10 +749,6 @@ function escapeHtml(text: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function needsImagePdfRendering(text: string) {
-  return /[^\t\n\r\x20-\x7E\xA0-\xFF]/.test(text);
 }
 
 function normalizePdfText(text: string) {
@@ -1718,7 +1686,7 @@ function detectLang(): Lang {
 }
 
 // ━━━ Related tools map (extracted from render for performance) ━━━
-const RELATED_TOOLS: Record<Tool, Tool[]> = {
+export const RELATED_TOOLS: Record<Tool, Tool[]> = {
   unlock: ["merge", "compress", "info", "split"],
   merge: ["split", "compress", "pagenum", "unlock"],
   split: ["merge", "extract", "delete", "pagenum"],
@@ -1843,7 +1811,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const pnFormatId = `${controlId}-pn-format`;
   const pnSizeId = `${controlId}-pn-size`;
   const pnPositionId = `${controlId}-pn-position`;
-  const hasCjkWatermarkText = /[가-힣ㄱ-ㅎㅏ-ㅣ\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(wmText);
+  const hasUnsupportedWatermarkText = Boolean(wmText.trim()) && !isValidWatermarkText(wmText);
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -3326,10 +3294,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                 <div>
                   <label htmlFor={wmTextId} className="text-xs text-gray-400 dark:text-slate-500 mb-1.5 block font-medium">{t.wmText}</label>
                   <input id={wmTextId} ref={wmTextInputRef} type="text" value={wmText} onChange={(e) => setWmText(e.target.value)} placeholder={t.watermarkPlaceholder}
-                    aria-invalid={hasCjkWatermarkText ? true : undefined}
-                    aria-describedby={hasCjkWatermarkText ? wmTextWarningId : undefined}
+                    aria-invalid={hasUnsupportedWatermarkText ? true : undefined}
+                    aria-describedby={hasUnsupportedWatermarkText ? wmTextWarningId : undefined}
                     className="input-field" />
-                  {hasCjkWatermarkText && (
+                  {hasUnsupportedWatermarkText && (
                     <p id={wmTextWarningId} className="text-xs text-amber-600 dark:text-amber-400 mt-1" role="alert">
                       {t.wmCjkWarning}
                     </p>
