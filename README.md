@@ -139,9 +139,11 @@ git clone https://github.com/concrete-sangminlee/pdfremover.git
 cd pdfremover
 
 # Install dependencies
-npm install --include=dev
+npm ci
 
 # Node.js version is controlled in .nvmrc (`22.13.0`)
+# Keep dependency graph reproducible in CI and local checks
+npm run verify
 
 # Start development server
 npm run dev

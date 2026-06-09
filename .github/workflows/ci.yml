@@ -5,41 +5,33 @@ on:
     branches: [main, claude/*]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # CI is pinned to Node.js 22.x to match runtime requirements and pdfjs 6.x minimum engine.
+  # CI follows .nvmrc so local and CI Node versions stay aligned.
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22]
-    permissions:
-      contents: read
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js from .nvmrc
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --include=dev
+        run: npm ci
 
-      - name: Type check
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Security audit
-        run: npm audit --audit-level=moderate
-
-      - name: Build
-        run: npm run build
-
-      - name: Verify static pages
-        run: npm run verify:static
+      - name: Verify project
+        run: npm run verify
