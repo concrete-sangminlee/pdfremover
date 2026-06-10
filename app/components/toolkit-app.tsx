@@ -17,8 +17,10 @@ import {
 } from "../lib/config";
 import { sanitizeOutputFilename, uniqueOutputFilename } from "../lib/file-names";
 import {
+  assertNotAborted,
   classifyExecutionError,
-  processFileBatch,
+  isAbortError,
+  processFileBatchWithErrors,
 } from "../lib/operation-utils";
 import {
   analyzePageRangeInputForSplit,
@@ -63,6 +65,18 @@ interface PdfInfo {
   encrypted: boolean;
   size: number;
 }
+
+interface BatchFailureInfo {
+  index: number;
+  fileName: string;
+  reason: string;
+}
+
+type BatchSummaryResult<T> = {
+  values: T[];
+  failures: BatchFailureInfo[];
+  aborted: boolean;
+};
 
 const getPageInfoKey = (file: File): string => `${file.name}|${file.size}|${file.lastModified}`;
 
@@ -308,6 +322,13 @@ const _koTranslations = {
     infoYes: "예",
     infoNo: "아니오",
     msgBatchProcess: "처리 중",
+    cancel: "취소",
+    msgBatchSummary: "총 {total}개 중 {ok}개 처리 완료.",
+    msgBatchSummaryWithFailures: "총 {total}개 중 {ok}개 처리, {failed}개 실패.",
+    msgBatchCancelled: "일괄 처리 취소",
+    msgBatchCancelledSummary: "일괄 처리 중단: {processed}/{total}개",
+    msgBatchFailedTitle: "실패 파일",
+    msgBatchAllFailed: "모든 파일 처리에 실패했습니다.",
     msgBatchUnlocked: "개 파일 잠금해제 완료!",
     msgStitched: "개 이미지 합치기 완료!",
     msgTxtDone: "텍스트 → PDF 변환 완료!",
@@ -576,6 +597,13 @@ const enTranslations: TranslationBundle = {
     infoYes: "Yes",
     infoNo: "No",
     msgBatchProcess: "Processing",
+    cancel: "Cancel",
+    msgBatchSummary: "{ok} of {total} files processed.",
+    msgBatchSummaryWithFailures: "{ok} of {total} files processed, {failed} failed.",
+    msgBatchCancelled: "Batch processing cancelled",
+    msgBatchCancelledSummary: "Batch cancelled after {processed}/{total} files",
+    msgBatchFailedTitle: "Failed files",
+    msgBatchAllFailed: "All files failed to process.",
     msgBatchUnlocked: " files unlocked!",
     msgStitched: " images stitched!",
     msgTxtDone: "Text converted to PDF!",
@@ -1814,6 +1842,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [stitchDir, setStitchDir] = useState<"vertical" | "horizontal">("vertical");
   const [batchProgress, setBatchProgress] = useState<number>(-1);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [batchFailures, setBatchFailures] = useState<BatchFailureInfo[]>([]);
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -1823,6 +1852,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [compressionInfo, setCompressionInfo] = useState<{ before: number; after: number } | null>(null);
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
   const [procTime, setProcTime] = useState<number | null>(null);
+  const batchAbortRef = useRef<AbortController | null>(null);
 
   const t = T[lang];
   const tx = useCallback((key: string, fallback = "") => t[key as TranslationKey] ?? fallback, [t]);
@@ -2054,6 +2084,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setPdfInfoResult(null);
     setCompressionInfo(null);
     setHtmlPreview(null);
+    setBatchFailures([]);
     setProcTime(null);
     setBatchProgress(-1);
   }, []);
@@ -2247,6 +2278,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setMessage(null);
     setResultName("");
     clearResults();
+    const batchController = new AbortController();
+    batchAbortRef.current = batchController;
+    const signal = batchController.signal;
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
     if (!_pdfLib && !hasNoPdfLibPreload(tool)) {
       setMessage({ type: "warning", text: t.engineLoading });
@@ -2260,6 +2294,84 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         completed = true;
         addHistory(toolLabel, fileLabel, true, activeTool.id);
       };
+      const classifyBatchError = (error: unknown) =>
+        classifyExecutionError(error, {
+          msgError: t.msgError,
+          msgPassword: t.msgPassword,
+          msgCorrupt: t.msgCorrupt,
+        });
+      const setBatchMessage = (
+        result: BatchSummaryResult<unknown>
+      ) => {
+        const total = files.length;
+        const success = result.values.length;
+        const failed = result.failures.length;
+        if (result.aborted) {
+          setMessage({
+            type: "warning",
+            text: t.msgBatchCancelledSummary
+              .replace("{processed}", String(success))
+              .replace("{total}", String(total)),
+          });
+          return;
+        }
+        if (success === 0 && failed > 0) {
+          setMessage({ type: "error", text: t.msgBatchAllFailed });
+          return;
+        }
+        if (failed > 0) {
+          setMessage({
+            type: "warning",
+            text: t.msgBatchSummaryWithFailures
+              .replace("{ok}", String(success))
+              .replace("{total}", String(total))
+              .replace("{failed}", String(failed)),
+          });
+          return;
+        }
+        setMessage({
+          type: "success",
+          text: t.msgBatchSummary.replace("{ok}", String(success)).replace("{total}", String(total)),
+        });
+      };
+      const runBatch = async <T,>(processFile: (file: File, idx: number) => Promise<T>) => {
+        const failures: BatchFailureInfo[] = [];
+        const result = await processFileBatchWithErrors(
+          files,
+          async (file, idx) => {
+            assertNotAborted(signal);
+            return processFile(file, idx);
+          },
+          setBatchProgress,
+          (index) => {
+            assertNotAborted(signal);
+            setMessage({ type: "warning", text: `${t.msgBatchProcess} ${index + 1}/${files.length}...` });
+          },
+          {
+            continueOnError: true,
+            signal,
+            onFailure: (failure) => {
+              failures.push({
+                index: failure.index,
+                fileName: failure.fileName,
+                reason: classifyBatchError(failure.error),
+              });
+            },
+          }
+        );
+        setBatchFailures(failures);
+        return { ...result, failures };
+      };
+      const applySingleOrMultiResults = (results: { name: string; data: Uint8Array }[]) => {
+        if (results.length === 1) {
+          const result = results[0];
+          if (!result) return;
+          setResultData(result.data);
+          setResultName(result.name);
+          return;
+        }
+        if (results.length > 1) setResultMulti(results);
+      };
       switch (view) {
         case "unlock": {
           if (files.length === 1) {
@@ -2271,19 +2383,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setMessage({ type: "success", text: t.msgUnlocked });
             recordSuccess(file.name);
           } else {
-            const results = await processFileBatch(
-              files,
-              async (file, idx) => {
-                setMessage({ type: "warning", text: `${t.msgBatchProcess} ${idx + 1}/${files.length}...` });
-                const buf = await file.arrayBuffer();
-                const data = await unlockPDF(buf);
-                return { name: replaceExtension(file.name, "_unlocked.pdf"), data };
-              },
-              setBatchProgress
-            );
-            setResultMulti(results);
-            setMessage({ type: "success", text: `${files.length}${t.msgBatchUnlocked}` });
-            recordSuccess(`${files.length} files`);
+            const result = await runBatch(async (file) => {
+              const buf = await file.arrayBuffer();
+              const data = await unlockPDF(buf);
+              return { name: replaceExtension(file.name, "_unlocked.pdf"), data };
+            });
+            setBatchMessage(result);
+            applySingleOrMultiResults(result.values);
+            if (!result.aborted && result.failures.length === 0) {
+              recordSuccess(`${files.length} files`);
+            }
           }
           break;
         }
@@ -2420,21 +2529,15 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgconvert": {
-          const results = await processFileBatch(
-            files,
-            (file) => convertImageFormat(file, imgOutputFormat),
-            setBatchProgress
-          );
-          if (results.length === 1) {
-            const result = results[0];
-            if (!result) break;
-            setResultData(result.data);
-            setResultName(result.name);
-          } else {
-            setResultMulti(results);
+          const result = await runBatch((file) => convertImageFormat(file, imgOutputFormat));
+          setBatchMessage(result);
+          if (result.values.length > 0) {
+            applySingleOrMultiResults(result.values);
+            if (result.failures.length === 0 && !result.aborted) {
+              setMessage({ type: "success", text: `${result.values.length}${t.msgImgConverted} (${imgOutputFormat.toUpperCase()})` });
+              recordSuccess(`${files.length} images`);
+            }
           }
-          setMessage({ type: "success", text: `${results.length}${t.msgImgConverted} (${imgOutputFormat.toUpperCase()})` });
-          recordSuccess(`${files.length} images`);
           break;
         }
         case "html2pdf": {
@@ -2449,53 +2552,43 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgresize": {
-          const results = await processFileBatch(
-            files,
-            async (file) => {
-              const r = await resizeImage(file, imgScale);
-              return { name: r.name, data: r.data };
-            },
-            setBatchProgress
-          );
-          if (results.length === 1) {
-            const result = results[0];
-            if (!result) break;
-            setResultData(result.data);
-            setResultName(result.name);
-          } else {
-            setResultMulti(results);
+          const result = await runBatch(async (file) => {
+            const r = await resizeImage(file, imgScale);
+            return { name: r.name, data: r.data };
+          });
+          setBatchMessage(result);
+          if (result.values.length > 0) {
+            applySingleOrMultiResults(result.values);
+            if (result.failures.length === 0 && !result.aborted) {
+              setMessage({ type: "success", text: `${result.values.length}${t.msgImgResized} (${Math.round(imgScale * 100)}%)` });
+              recordSuccess(`${files.length} images`);
+            }
           }
-          setMessage({ type: "success", text: `${results.length}${t.msgImgResized} (${Math.round(imgScale * 100)}%)` });
-          recordSuccess(`${files.length} images`);
           break;
         }
         case "imgcompress": {
           let totalBefore = 0, totalAfter = 0;
-          const results = await processFileBatch(
-            files,
-            async (file) => {
-              const r = await compressImage(file, imgQuality);
-              totalBefore += r.before;
-              totalAfter += r.after;
-              return { name: r.name, data: r.data };
-            },
-            setBatchProgress
-          );
-          if (results.length === 1) {
-            const result = results[0];
-            if (!result) break;
-            setResultData(result.data);
-            setResultName(result.name);
-          } else {
-            setResultMulti(results);
-          }
+          const result = await runBatch(async (file) => {
+            const r = await compressImage(file, imgQuality);
+            totalBefore += r.before;
+            totalAfter += r.after;
+            return { name: r.name, data: r.data };
+          });
           setCompressionInfo({ before: totalBefore, after: totalAfter });
           const saved = Math.max(0, totalBefore - totalAfter);
           const pct = totalBefore > 0 ? Math.round((saved / totalBefore) * 100) : 0;
-          setMessage(saved > 0
-            ? { type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${pct}% ${t.compressPercent})` }
-            : { type: "warning", text: t.compressAlready });
-          recordSuccess(`${files.length} images`);
+          setBatchMessage(result);
+          if (result.values.length > 0) {
+            applySingleOrMultiResults(result.values);
+          }
+          if (!result.aborted && result.failures.length === 0) {
+            if (saved > 0) {
+              setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${pct}% ${t.compressPercent})` });
+            } else {
+              setMessage({ type: "warning", text: t.compressAlready });
+            }
+            recordSuccess(`${files.length} images`);
+          }
           break;
         }
         case "pdftext": {
@@ -2538,6 +2631,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
       if (completed) setProcessCount((c) => c + 1);
     } catch (err: unknown) {
+      if (isAbortError(err)) {
+        setMessage({ type: "warning", text: t.msgBatchCancelled });
+        return;
+      }
       const errMsg = classifyExecutionError(err, {
         msgError: t.msgError,
         msgPassword: t.msgPassword,
@@ -2551,6 +2648,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       const failedFile = files[0];
       if (failedFile) addHistory(toolLabel, failedFile.name, false, tool);
     } finally {
+      if (batchAbortRef.current === batchController) batchAbortRef.current = null;
       setProcessing(false);
       setBatchProgress(-1);
       if (completed) {
@@ -2605,6 +2703,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     textInput,
     processing,
   });
+  const isCancellableBatchTool = view === "unlock" || view === "imgconvert" || view === "imgresize" || view === "imgcompress";
 
   // Ctrl+Enter to execute (must be after canExecute/execute are defined)
   useEffect(() => {
@@ -3559,9 +3658,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             {/* Execute Button */}
             {view !== "info" && (files.length > 0 || view === "txt2pdf") && (
               <div className="relative">
-                <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
-                  {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
-                </AccentButton>
+                {processing && isCancellableBatchTool ? (
+                  <button onClick={() => batchAbortRef.current?.abort()}
+                    className="w-full py-3.5 rounded-xl font-bold text-sm tracking-tight transition-all duration-300 bg-red-600 text-white shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/25 hover:-translate-y-0.5 active:translate-y-0">
+                    {t.cancel}
+                  </button>
+                ) : (
+                  <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
+                    {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
+                  </AccentButton>
+                )}
                 {canExecute && !processing && (
                   <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 font-mono hidden sm:inline">Ctrl+Enter</kbd>
                 )}
@@ -3570,6 +3676,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {/* Messages */}
             {message && <Toast type={message.type} text={message.text} onDismiss={() => setMessage(null)} dismissLabel={t.dismiss} />}
+
+            {batchFailures.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 p-4 space-y-2">
+                <h3 className="text-xs text-amber-700 dark:text-amber-300 font-semibold">{t.msgBatchFailedTitle}</h3>
+                <ul className="space-y-1">
+                  {batchFailures.map((failure) => (
+                    <li
+                      key={`${failure.index}:${failure.fileName}`}
+                      className="text-xs text-amber-700 dark:text-amber-200 leading-relaxed"
+                    >
+                      <span className="font-medium">{failure.fileName}</span>
+                      <span className="text-amber-600 dark:text-amber-300/90">: {failure.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div id="results-area" />
 
@@ -3759,17 +3882,25 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       {/* Mobile fixed CTA bar */}
       {view !== "info" && files.length > 0 && !resultData && !resultMulti.length && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 p-3 sm:hidden">
-          <button
-            onClick={canExecute ? execute : undefined}
-            disabled={!canExecute}
-            className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
-              canExecute
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                : "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
-            }`}
-          >
-            {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
-          </button>
+          {processing && isCancellableBatchTool ? (
+            <button onClick={() => batchAbortRef.current?.abort()}
+              className="w-full py-3 rounded-xl font-bold text-sm bg-red-600 text-white shadow-lg shadow-red-500/20"
+            >
+              {t.cancel}
+            </button>
+          ) : (
+            <button
+              onClick={canExecute ? execute : undefined}
+              disabled={!canExecute}
+              className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                canExecute
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                  : "bg-gray-100 dark:bg-slate-800 text-gray-300 dark:text-slate-600 cursor-not-allowed"
+              }`}
+            >
+              {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
+            </button>
+          )}
         </div>
       )}
 
