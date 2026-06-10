@@ -340,6 +340,9 @@ const _koTranslations = {
     retryFailed: "실패 파일만 재시도",
     showDetails: "상세 내용 보기",
     hideDetails: "상세 내용 숨기기",
+    historyFiles: "개 파일",
+    historySuccess: "성공",
+    historyFailed: "실패",
     msgBatchAllFailed: "모든 파일 처리에 실패했습니다.",
     msgBatchUnlocked: "개 파일 잠금해제 완료!",
     msgStitched: "개 이미지 합치기 완료!",
@@ -618,6 +621,9 @@ const enTranslations: TranslationBundle = {
     retryFailed: "Retry failed files",
     showDetails: "Show details",
     hideDetails: "Hide details",
+    historyFiles: "files",
+    historySuccess: "success",
+    historyFailed: "failed",
     msgBatchAllFailed: "All files failed to process.",
     msgBatchUnlocked: " files unlocked!",
     msgStitched: " images stitched!",
@@ -3120,11 +3126,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                       <span className="sr-only">{h.ok ? `${t.statusSuccess}: ` : `${t.statusError}: `}</span>
                       <span className="text-gray-700 dark:text-slate-300 block truncate">{h.action}</span>
                       <span className="text-gray-500 dark:text-slate-400 block truncate">{h.file}</span>
-                      {h.totalFiles != null && (
-                        <span className="text-gray-400 dark:text-slate-500 text-[11px] block mt-0.5">
-                          {`${h.totalFiles} files · ${h.successFiles ?? 0} success · ${h.failedFiles ?? 0} failed`}
-                        </span>
-                      )}
+                        {h.totalFiles != null && (
+                          <span className="text-gray-400 dark:text-slate-500 text-[11px] block mt-0.5">
+                            {`${h.totalFiles} ${t.historyFiles} · ${h.successFiles ?? 0} ${t.historySuccess} · ${h.failedFiles ?? 0} ${t.historyFailed}`}
+                          </span>
+                        )}
                     </span>
                     <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono flex-shrink-0">{h.time}</span>
                     </button>
