@@ -54,6 +54,9 @@ interface HistoryItem {
   file: string;
   ok: boolean;
   toolId: Tool;
+  totalFiles?: number;
+  successFiles?: number;
+  failedFiles?: number;
 }
 
 interface PdfInfo {
@@ -70,6 +73,12 @@ interface BatchFailureInfo {
   index: number;
   fileName: string;
   reason: string;
+  details?: string;
+}
+
+interface BatchRunItem {
+  file: File;
+  sourceIndex: number;
 }
 
 type BatchSummaryResult<T> = {
@@ -328,6 +337,9 @@ const _koTranslations = {
     msgBatchCancelled: "일괄 처리 취소",
     msgBatchCancelledSummary: "일괄 처리 중단: {processed}/{total}개",
     msgBatchFailedTitle: "실패 파일",
+    retryFailed: "실패 파일만 재시도",
+    showDetails: "상세 내용 보기",
+    hideDetails: "상세 내용 숨기기",
     msgBatchAllFailed: "모든 파일 처리에 실패했습니다.",
     msgBatchUnlocked: "개 파일 잠금해제 완료!",
     msgStitched: "개 이미지 합치기 완료!",
@@ -603,6 +615,9 @@ const enTranslations: TranslationBundle = {
     msgBatchCancelled: "Batch processing cancelled",
     msgBatchCancelledSummary: "Batch cancelled after {processed}/{total} files",
     msgBatchFailedTitle: "Failed files",
+    retryFailed: "Retry failed files",
+    showDetails: "Show details",
+    hideDetails: "Hide details",
     msgBatchAllFailed: "All files failed to process.",
     msgBatchUnlocked: " files unlocked!",
     msgStitched: " images stitched!",
@@ -1843,6 +1858,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   const [batchProgress, setBatchProgress] = useState<number>(-1);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [batchFailures, setBatchFailures] = useState<BatchFailureInfo[]>([]);
+  const [lastBatchRunItems, setLastBatchRunItems] = useState<BatchRunItem[]>([]);
+  const [expandedFailureDetails, setExpandedFailureDetails] = useState<Set<number>>(new Set());
 
   // Result state
   const [resultData, setResultData] = useState<Uint8Array | null>(null);
@@ -2074,8 +2091,65 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     });
   }, [processing, view, splitMode, rotateScope, files.length]);
 
-  const addHistory = useCallback((action: string, file: string, ok: boolean, toolId: Tool) => {
-    setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId }, ...prev].slice(0, 30));
+  const addHistory = useCallback(
+    (
+      action: string,
+      file: string,
+      ok: boolean,
+      toolId: Tool,
+      stats?: {
+        totalFiles?: number;
+        successFiles?: number;
+        failedFiles?: number;
+      }
+    ) => {
+      setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId, ...stats }, ...prev].slice(0, 30));
+    },
+    []
+  );
+
+  const getFailureDetails = useCallback((error: unknown): string | undefined => {
+    if (error == null) return undefined;
+    if (error instanceof Error) {
+      const message = error.message?.trim();
+      const stack = error.stack?.trim();
+      if (!message) return undefined;
+      if (!stack || stack.includes(message)) return message;
+      return `${message}\n${stack}`;
+    }
+    if (typeof error === "string") {
+      const text = error.trim();
+      return text || undefined;
+    }
+    if (typeof error === "object" && "message" in error) {
+      const message = typeof (error as { message?: unknown }).message === "string" ? (error as { message?: string }).message : "";
+      if (message) return message.trim();
+    }
+    try {
+      const asJson = JSON.stringify(error);
+      return asJson || undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  const retryableFailures = useMemo(() => {
+    if (batchFailures.length === 0 || lastBatchRunItems.length === 0) return [] as BatchRunItem[];
+    const retryIndices = new Set<number>(batchFailures.map((failure) => failure.index));
+    return lastBatchRunItems.filter((item) => retryIndices.has(item.sourceIndex));
+  }, [batchFailures, lastBatchRunItems]);
+
+  const clearExpandedFailureDetails = useCallback(() => {
+    setExpandedFailureDetails(new Set());
+  }, []);
+
+  const toggleFailureDetails = useCallback((sourceIndex: number) => {
+    setExpandedFailureDetails((prev) => {
+      const next = new Set(prev);
+      if (next.has(sourceIndex)) next.delete(sourceIndex);
+      else next.add(sourceIndex);
+      return next;
+    });
   }, []);
 
   const clearResults = useCallback(() => {
@@ -2085,9 +2159,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setCompressionInfo(null);
     setHtmlPreview(null);
     setBatchFailures([]);
+    setLastBatchRunItems([]);
+    clearExpandedFailureDetails();
     setProcTime(null);
     setBatchProgress(-1);
-  }, []);
+  }, [clearExpandedFailureDetails]);
 
   const resetState = useCallback(() => {
     setFiles([]);
@@ -2265,19 +2341,24 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
   }, [handleFiles, files, view]);
 
   // ─── Execute ───
-  const execute = useCallback(async () => {
+  const execute = useCallback(async (targetRunItems?: BatchRunItem[]) => {
     if (view === "home") return;
-    if (files.length === 0 && view !== "txt2pdf") return;
     if (!activeTool) return;
     const tool = view;
-    const firstFile = files[0];
-    if (tool !== "txt2pdf" && !firstFile) return;
+    const runItems = targetRunItems && targetRunItems.length > 0
+      ? targetRunItems
+      : files.map((file, sourceIndex) => ({ file, sourceIndex }));
+    const runFiles = runItems.map((item) => item.file);
+    const runTotal = runItems.length;
+    const firstRunFile = runItems[0]?.file;
+    if (tool !== "txt2pdf" && runTotal === 0) return;
     const toolLabel = activeTool ? tx(activeTool.labelKey, activeTool.labelEn) : "";
     const startTime = performance.now();
     setProcessing(true);
     setMessage(null);
     setResultName("");
     clearResults();
+    setLastBatchRunItems(runItems);
     const batchController = new AbortController();
     batchAbortRef.current = batchController;
     const signal = batchController.signal;
@@ -2289,9 +2370,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     }
 
     let completed = false;
+    const markCompleted = () => {
+      completed = true;
+    };
     try {
       const recordSuccess = (fileLabel: string) => {
-        completed = true;
+        markCompleted();
         addHistory(toolLabel, fileLabel, true, activeTool.id);
       };
       const classifyBatchError = (error: unknown) =>
@@ -2303,7 +2387,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       const setBatchMessage = (
         result: BatchSummaryResult<unknown>
       ) => {
-        const total = files.length;
+        const total = runTotal;
         const success = result.values.length;
         const failed = result.failures.length;
         if (result.aborted) {
@@ -2334,27 +2418,44 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           text: t.msgBatchSummary.replace("{ok}", String(success)).replace("{total}", String(total)),
         });
       };
-      const runBatch = async <T,>(processFile: (file: File, idx: number) => Promise<T>) => {
+      const recordBatchHistory = (result: BatchSummaryResult<unknown>) => {
+        const successFiles = result.values.length;
+        const failedFiles = result.failures.length;
+        if (result.values.length + result.failures.length === 0) return;
+        addHistory(
+          toolLabel,
+          `${runTotal} files`,
+          !result.aborted && failedFiles === 0,
+          activeTool.id,
+          { totalFiles: runTotal, successFiles, failedFiles }
+        );
+      };
+      const runBatch = async <T,>(processFile: (file: File, sourceIndex: number) => Promise<T>) => {
         const failures: BatchFailureInfo[] = [];
         const result = await processFileBatchWithErrors(
-          files,
-          async (file, idx) => {
+          runFiles,
+          async (_file, runIndex) => {
+            const runItem = runItems[runIndex];
+            if (!runItem) throw new Error("Unexpected run item");
             assertNotAborted(signal);
-            return processFile(file, idx);
+            return processFile(runItem.file, runItem.sourceIndex);
           },
           setBatchProgress,
           (index) => {
             assertNotAborted(signal);
-            setMessage({ type: "warning", text: `${t.msgBatchProcess} ${index + 1}/${files.length}...` });
+            setMessage({ type: "warning", text: `${t.msgBatchProcess} ${index + 1}/${runTotal}...` });
           },
           {
             continueOnError: true,
             signal,
             onFailure: (failure) => {
+              const runItem = runItems[failure.index];
+              const sourceIndex = runItem?.sourceIndex ?? failure.index;
               failures.push({
-                index: failure.index,
-                fileName: failure.fileName,
+                index: sourceIndex,
+                fileName: runItem?.file.name || failure.fileName,
                 reason: classifyBatchError(failure.error),
+                details: getFailureDetails(failure.error),
               });
             },
           }
@@ -2374,8 +2475,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       };
       switch (view) {
         case "unlock": {
-          if (files.length === 1) {
-            const file = firstFile as File;
+          if (runTotal === 1) {
+            const file = firstRunFile as File;
             const buf = await file.arrayBuffer();
             const data = await unlockPDF(buf);
             setResultData(data);
@@ -2390,24 +2491,23 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             });
             setBatchMessage(result);
             applySingleOrMultiResults(result.values);
-            if (!result.aborted && result.failures.length === 0) {
-              recordSuccess(`${files.length} files`);
-            }
+            if (!result.aborted) markCompleted();
+            recordBatchHistory(result);
           }
           break;
         }
         case "merge": {
-          const buffers = await Promise.all(files.map((f) => f.arrayBuffer()));
+          const buffers = await Promise.all(runFiles.map((f) => f.arrayBuffer()));
           const data = await mergePDFs(buffers);
           setResultData(data);
           setResultName("merged.pdf");
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
-          setMessage({ type: "success", text: `${files.length}${t.msgMerged} (${t.msgMergedPages.replace("{n}", String(info.pages))})` });
-          recordSuccess(`${files.length} files`);
+          setMessage({ type: "success", text: `${runTotal}${t.msgMerged} (${t.msgMergedPages.replace("{n}", String(info.pages))})` });
+          recordSuccess(`${runTotal} files`);
           break;
         }
         case "split": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const { buffer: buf, info } = await loadPdfForOperation(file);
           const ranges = splitMode === "all"
             ? Array.from({ length: info.pages }, (_, i) => ({ start: i + 1, end: i + 1 }))
@@ -2422,7 +2522,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "extract": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const { buffer: buf, info } = await loadPdfForOperation(file);
           const pages = parsePageRanges(pagesInput, info.pages, { preserveOrder: true });
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
@@ -2434,7 +2534,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "rotate": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const { buffer: buf, info } = await loadPdfForOperation(file);
           let pageNums: number[] | undefined;
           if (rotateScope === "specific" && rotatePagesInput) {
@@ -2449,7 +2549,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "compress": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const buf = await file.arrayBuffer();
           const data = await compressPDF(buf);
           const saved = file.size - data.length;
@@ -2467,7 +2567,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "watermark": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const buf = await file.arrayBuffer();
           const data = await addWatermark(buf, wmText, wmSize, wmOpacity, wmRotation, wmPosition);
           setResultData(data);
@@ -2477,7 +2577,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "pagenum": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const buf = await file.arrayBuffer();
           const data = await addPageNumbers(buf, pnFormat, pnPosition, pnSize);
           setResultData(data);
@@ -2495,7 +2595,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             return;
           }
           setConfirmDelete(false);
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const { buffer: buf, info } = await loadPdfForOperation(file);
           const pages = parsePageRanges(deleteInput, info.pages);
           if (pages.length === 0) { setMessage({ type: "warning", text: t.extractInvalid }); break; }
@@ -2511,12 +2611,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgstitch": {
-          if (files.length < 2) { setMessage({ type: "warning", text: t.msgNeedImages }); break; }
-          const data = await stitchImages(files, stitchDir);
+          if (runTotal < 2) { setMessage({ type: "warning", text: t.msgNeedImages }); break; }
+          const data = await stitchImages(runFiles, stitchDir);
           setResultData(data);
           setResultName(`stitched_${stitchDir}.png`);
-          setMessage({ type: "success", text: `${files.length}${t.msgStitched}` });
-          recordSuccess(`${files.length} images`);
+          setMessage({ type: "success", text: `${runTotal}${t.msgStitched}` });
+          recordSuccess(`${runTotal} images`);
           break;
         }
         case "txt2pdf": {
@@ -2533,15 +2633,13 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setBatchMessage(result);
           if (result.values.length > 0) {
             applySingleOrMultiResults(result.values);
-            if (result.failures.length === 0 && !result.aborted) {
-              setMessage({ type: "success", text: `${result.values.length}${t.msgImgConverted} (${imgOutputFormat.toUpperCase()})` });
-              recordSuccess(`${files.length} images`);
-            }
           }
+          if (!result.aborted) markCompleted();
+          recordBatchHistory(result);
           break;
         }
         case "html2pdf": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const text = await file.text();
           if (!text.trim()) { setMessage({ type: "warning", text: t.msgEmptyHtml }); break; }
           const data = await htmlToPdf(text);
@@ -2559,11 +2657,9 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setBatchMessage(result);
           if (result.values.length > 0) {
             applySingleOrMultiResults(result.values);
-            if (result.failures.length === 0 && !result.aborted) {
-              setMessage({ type: "success", text: `${result.values.length}${t.msgImgResized} (${Math.round(imgScale * 100)}%)` });
-              recordSuccess(`${files.length} images`);
-            }
           }
+          if (!result.aborted) markCompleted();
+          recordBatchHistory(result);
           break;
         }
         case "imgcompress": {
@@ -2581,18 +2677,19 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           if (result.values.length > 0) {
             applySingleOrMultiResults(result.values);
           }
-          if (!result.aborted && result.failures.length === 0) {
+          if (!result.aborted && result.values.length > 0) {
             if (saved > 0) {
               setMessage({ type: "success", text: `${fmtSize(saved)} ${t.compressSaved} (${pct}% ${t.compressPercent})` });
             } else {
               setMessage({ type: "warning", text: t.compressAlready });
             }
-            recordSuccess(`${files.length} images`);
           }
+          if (!result.aborted) markCompleted();
+          recordBatchHistory(result);
           break;
         }
         case "pdftext": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const buf = await file.arrayBuffer();
           const text = await extractPdfText(buf);
           setHtmlPreview(`<pre style="white-space:pre-wrap;word-break:break-word;font-family:inherit">${escapeHtml(text)}</pre>`);
@@ -2601,7 +2698,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "docx2html": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const buf = await file.arrayBuffer();
           const html = await docxToHtml(buf);
           setHtmlPreview(html);
@@ -2610,7 +2707,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "pdf2img": {
-          const file = firstFile as File;
+          const file = firstRunFile as File;
           const buf = await file.arrayBuffer();
           setMessage({ type: "warning", text: t.msgPdfToImg });
           const images = await pdfToImages(buf, (pct) => setBatchProgress(pct));
@@ -2620,12 +2717,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "img2pdf": {
-          const data = await imagesToPDF(files);
+          const data = await imagesToPDF(runFiles);
           setResultData(data);
-          setResultName(files.length === 1 ? replaceExtension((firstFile as File).name, ".pdf") : `${files.length}_images.pdf`);
+          setResultName(runTotal === 1 ? replaceExtension((runFiles[0] as File).name, ".pdf") : `${runTotal}_images.pdf`);
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
-          setMessage({ type: "success", text: `${files.length}${t.msgImgToPdfDone} (${info.pages}p)` });
-          recordSuccess(`${files.length} images`);
+          setMessage({ type: "success", text: `${runTotal}${t.msgImgToPdfDone} (${info.pages}p)` });
+          recordSuccess(`${runTotal} images`);
           break;
         }
       }
@@ -2642,11 +2739,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       });
       setMessage({ type: "error", text: errMsg });
       if (tool === "txt2pdf") {
-        addHistory(toolLabel, "text input", false, tool);
+        addHistory(toolLabel, "text input", false, tool, { totalFiles: 0, failedFiles: 1 });
         return;
       }
-      const failedFile = files[0];
-      if (failedFile) addHistory(toolLabel, failedFile.name, false, tool);
+      if (firstRunFile) {
+        addHistory(toolLabel, firstRunFile.name, false, tool, {
+          totalFiles: runTotal,
+          successFiles: 0,
+          failedFiles: runTotal,
+        });
+      }
     } finally {
       if (batchAbortRef.current === batchController) batchAbortRef.current = null;
       setProcessing(false);
@@ -2663,6 +2765,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     addHistory,
     activeTool,
     clearResults,
+    getFailureDetails,
     confirmDelete,
     deleteInput,
     files,
@@ -3012,12 +3115,18 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   {history.slice(0, 8).map((h, i) => (
                     <button key={i} onClick={() => h.toolId && isValidTool(h.toolId) && goTool(h.toolId)}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors w-full text-left ${h.toolId ? "cursor-pointer" : "cursor-default"}`}>
-                      <div aria-hidden="true" className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
-                      <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1 truncate">
-                        <span className="sr-only">{h.ok ? `${t.statusSuccess}: ` : `${t.statusError}: `}</span>
-                        <span className="text-gray-700 dark:text-slate-300">{h.action}</span> — {h.file}
-                      </span>
-                      <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono flex-shrink-0">{h.time}</span>
+                    <div aria-hidden="true" className={`w-2 h-2 rounded-full flex-shrink-0 ${h.ok ? "bg-green-500" : "bg-red-400"}`} />
+                    <span className="text-sm text-gray-500 dark:text-slate-400 font-medium flex-1 min-w-0">
+                      <span className="sr-only">{h.ok ? `${t.statusSuccess}: ` : `${t.statusError}: `}</span>
+                      <span className="text-gray-700 dark:text-slate-300 block truncate">{h.action}</span>
+                      <span className="text-gray-500 dark:text-slate-400 block truncate">{h.file}</span>
+                      {h.totalFiles != null && (
+                        <span className="text-gray-400 dark:text-slate-500 text-[11px] block mt-0.5">
+                          {`${h.totalFiles} files · ${h.successFiles ?? 0} success · ${h.failedFiles ?? 0} failed`}
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-gray-300 dark:text-slate-600 font-mono flex-shrink-0">{h.time}</span>
                     </button>
                   ))}
                 </div>
@@ -3664,7 +3773,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     {t.cancel}
                   </button>
                 ) : (
-                  <AccentButton onClick={execute} disabled={!canExecute} loading={processing}>
+                <AccentButton onClick={() => execute()} disabled={!canExecute} loading={processing}>
                     {processing ? t.processing : confirmDelete ? t.confirmDeleteBtn : toolActionLabel}
                   </AccentButton>
                 )}
@@ -3679,7 +3788,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {batchFailures.length > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 p-4 space-y-2">
-                <h3 className="text-xs text-amber-700 dark:text-amber-300 font-semibold">{t.msgBatchFailedTitle}</h3>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
+                    {t.msgBatchFailedTitle} ({batchFailures.length})
+                  </h3>
+                  {retryableFailures.length > 0 && (
+                    <button onClick={() => execute(retryableFailures)} className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950 dark:hover:bg-amber-900/70 dark:text-amber-300 transition-colors">
+                      {t.retryFailed}
+                    </button>
+                  )}
+                </div>
                 <ul className="space-y-1">
                   {batchFailures.map((failure) => (
                     <li
@@ -3688,6 +3806,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                     >
                       <span className="font-medium">{failure.fileName}</span>
                       <span className="text-amber-600 dark:text-amber-300/90">: {failure.reason}</span>
+                      {failure.details && (
+                        <button onClick={() => toggleFailureDetails(failure.index)} className="ml-2 text-amber-600 dark:text-amber-300 underline underline-offset-2">
+                          {expandedFailureDetails.has(failure.index) ? t.hideDetails : t.showDetails}
+                        </button>
+                      )}
+                      {expandedFailureDetails.has(failure.index) && failure.details && (
+                        <pre className="mt-2 text-[11px] text-amber-800 dark:text-amber-100 bg-amber-100/70 dark:bg-amber-950/70 p-2 rounded border border-amber-200/60 dark:border-amber-900/70 overflow-auto whitespace-pre-wrap break-all">
+                          {failure.details}
+                        </pre>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -3890,7 +4018,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             </button>
           ) : (
             <button
-              onClick={canExecute ? execute : undefined}
+              onClick={() => execute()}
               disabled={!canExecute}
               className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
                 canExecute
