@@ -30,6 +30,14 @@ describe("toolkit translations", () => {
       }
     }
   });
+
+  it("keeps history count templates renderable", () => {
+    for (const lang of LANGS) {
+      expect(T[lang].historyFileCount, `${lang}.historyFileCount`).toContain("{n}");
+      expect(T[lang].historyImageCount, `${lang}.historyImageCount`).toContain("{n}");
+      expect(T[lang].historyTextInput.trim(), `${lang}.historyTextInput`).not.toBe("");
+    }
+  });
 });
 
 describe("related tools", () => {

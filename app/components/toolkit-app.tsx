@@ -338,6 +338,9 @@ const _koTranslations = {
     historyFiles: "개 파일",
     historySuccess: "성공",
     historyFailed: "실패",
+    historyFileCount: "{n}개 파일",
+    historyImageCount: "{n}개 이미지",
+    historyTextInput: "텍스트 입력",
     msgBatchAllFailed: "모든 파일 처리에 실패했습니다.",
     msgBatchUnlocked: "개 파일 잠금해제 완료!",
     msgStitched: "개 이미지 합치기 완료!",
@@ -622,6 +625,9 @@ const enTranslations: TranslationBundle = {
     historyFiles: "files",
     historySuccess: "success",
     historyFailed: "failed",
+    historyFileCount: "{n} files",
+    historyImageCount: "{n} images",
+    historyTextInput: "text input",
     msgBatchAllFailed: "All files failed to process.",
     msgBatchUnlocked: " files unlocked!",
     msgStitched: " images stitched!",
@@ -2112,6 +2118,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     () => getRetryableBatchRunItems(batchFailures, lastBatchRunItems),
     [batchFailures, lastBatchRunItems]
   );
+  const historyFileLabel = useCallback(
+    (count: number) => t.historyFileCount.replace("{n}", String(count)),
+    [t]
+  );
+  const historyImageLabel = useCallback(
+    (count: number) => t.historyImageCount.replace("{n}", String(count)),
+    [t]
+  );
 
   const clearExpandedFailureDetails = useCallback(() => {
     setExpandedFailureDetails(new Set());
@@ -2397,7 +2411,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         if (result.values.length + result.failures.length === 0) return;
         addHistory(
           toolLabel,
-          `${runTotal} files`,
+          historyFileLabel(runTotal),
           !result.aborted && stats.failedFiles === 0,
           activeTool.id,
           stats
@@ -2470,7 +2484,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName("merged.pdf");
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${runTotal}${t.msgMerged} (${t.msgMergedPages.replace("{n}", String(info.pages))})` });
-          recordSuccess(`${runTotal} files`);
+          recordSuccess(historyFileLabel(runTotal));
           break;
         }
         case "split": {
@@ -2583,7 +2597,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName(`stitched_${stitchDir}.png`);
           setMessage({ type: "success", text: `${runTotal}${t.msgStitched}` });
-          recordSuccess(`${runTotal} images`);
+          recordSuccess(historyImageLabel(runTotal));
           break;
         }
         case "txt2pdf": {
@@ -2592,7 +2606,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultData(data);
           setResultName("text.pdf");
           setMessage({ type: "success", text: t.msgTxtDone });
-          recordSuccess("text input");
+          recordSuccess(t.historyTextInput);
           break;
         }
         case "imgconvert": {
@@ -2689,7 +2703,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           setResultName(runTotal === 1 ? replaceExtension((runFiles[0] as File).name, ".pdf") : `${runTotal}_images.pdf`);
           const info = await getPdfInfo(toArrayBuffer(data), data.length);
           setMessage({ type: "success", text: `${runTotal}${t.msgImgToPdfDone} (${info.pages}p)` });
-          recordSuccess(`${runTotal} images`);
+          recordSuccess(historyImageLabel(runTotal));
           break;
         }
       }
@@ -2706,7 +2720,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       });
       setMessage({ type: "error", text: errMsg });
       if (tool === "txt2pdf") {
-        addHistory(toolLabel, "text input", false, tool, { totalFiles: 0, failedFiles: 1 });
+        addHistory(toolLabel, t.historyTextInput, false, tool, { totalFiles: 0, failedFiles: 1 });
         return;
       }
       if (firstRunFile) {
@@ -2735,6 +2749,8 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     confirmDelete,
     deleteInput,
     files,
+    historyFileLabel,
+    historyImageLabel,
     imgOutputFormat,
     imgQuality,
     imgScale,
