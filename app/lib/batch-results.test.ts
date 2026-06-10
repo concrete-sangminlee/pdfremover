@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createBatchHistoryStats,
+  formatBatchFailureReport,
   getBatchFailureDetails,
   getRetryableBatchRunItems,
   type BatchFailureInfo,
@@ -67,5 +68,26 @@ describe("createBatchHistoryStats", () => {
       successFiles: 2,
       failedFiles: 1,
     });
+  });
+});
+
+describe("formatBatchFailureReport", () => {
+  it("formats a copyable failure report", () => {
+    expect(formatBatchFailureReport([
+      { index: 3, fileName: "broken.pdf", reason: "Password required", details: "Encrypted" },
+      { index: 4, fileName: "bad.pdf", reason: "Invalid PDF" },
+    ])).toBe([
+      "1. broken.pdf",
+      "Reason: Password required",
+      "Details:",
+      "Encrypted",
+      "",
+      "2. bad.pdf",
+      "Reason: Invalid PDF",
+    ].join("\n"));
+  });
+
+  it("returns an empty report for empty failures", () => {
+    expect(formatBatchFailureReport([])).toBe("");
   });
 });

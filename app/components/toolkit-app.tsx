@@ -24,6 +24,7 @@ import {
 } from "../lib/operation-utils";
 import {
   createBatchHistoryStats,
+  formatBatchFailureReport,
   getBatchFailureDetails,
   getRetryableBatchRunItems,
   type BatchFailureInfo,
@@ -329,6 +330,7 @@ const _koTranslations = {
     msgBatchCancelledSummary: "일괄 처리 중단: {processed}/{total}개",
     msgBatchFailedTitle: "실패 파일",
     retryFailed: "실패 파일만 재시도",
+    copyFailureReport: "실패 리포트 복사",
     showDetails: "상세 내용 보기",
     hideDetails: "상세 내용 숨기기",
     historyFiles: "개 파일",
@@ -610,6 +612,7 @@ const enTranslations: TranslationBundle = {
     msgBatchCancelledSummary: "Batch cancelled after {processed}/{total} files",
     msgBatchFailedTitle: "Failed files",
     retryFailed: "Retry failed files",
+    copyFailureReport: "Copy failure report",
     showDetails: "Show details",
     hideDetails: "Hide details",
     historyFiles: "files",
@@ -3754,15 +3757,26 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
             {batchFailures.length > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 p-4 space-y-2">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <h3 className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
                     {t.msgBatchFailedTitle} ({batchFailures.length})
                   </h3>
-                  {retryableFailures.length > 0 && (
-                    <button onClick={() => execute(retryableFailures)} className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950 dark:hover:bg-amber-900/70 dark:text-amber-300 transition-colors">
-                      {t.retryFailed}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        const ok = await copyToClipboard(formatBatchFailureReport(batchFailures));
+                        setMessage(ok ? { type: "success", text: t.copied } : { type: "error", text: t.msgError });
+                      }}
+                      className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950 dark:hover:bg-amber-900/70 dark:text-amber-300 transition-colors"
+                    >
+                      {t.copyFailureReport}
                     </button>
-                  )}
+                    {retryableFailures.length > 0 && (
+                      <button onClick={() => execute(retryableFailures)} className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950 dark:hover:bg-amber-900/70 dark:text-amber-300 transition-colors">
+                        {t.retryFailed}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <ul className="space-y-1">
                   {batchFailures.map((failure) => (

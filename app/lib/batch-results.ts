@@ -66,3 +66,18 @@ export function createBatchHistoryStats<T>(
     failedFiles: result.failures.length,
   };
 }
+
+export function formatBatchFailureReport(failures: readonly BatchFailureInfo[]): string {
+  return failures
+    .map((failure, index) => {
+      const lines = [
+        `${index + 1}. ${failure.fileName}`,
+        `Reason: ${failure.reason}`,
+      ];
+      if (failure.details) {
+        lines.push(`Details:\n${failure.details}`);
+      }
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
