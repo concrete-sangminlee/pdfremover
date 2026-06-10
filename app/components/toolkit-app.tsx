@@ -3,19 +3,23 @@
 import { useState, useRef, useCallback, useEffect, useId, useMemo } from "react";
 import NextImage from "next/image";
 import {
-  NO_PAGE_INFO_TOOLS,
-  NO_PDF_LIB_PRELOAD_TOOLS,
   PAGE_INPUT_TOOLS,
   TOOLS,
   TOOL_BY_ID,
   normalizeToolPath,
   isImageInputTool,
+  hasNoPageInfo,
+  hasNoPdfLibPreload,
   isValidTool,
   type Lang,
   type Tool,
   type View,
 } from "../lib/config";
 import { sanitizeOutputFilename, uniqueOutputFilename } from "../lib/file-names";
+import {
+  classifyExecutionError,
+  processFileBatch,
+} from "../lib/operation-utils";
 import {
   analyzePageRangeInputForSplit,
   formatPageRanges,
@@ -2019,7 +2023,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
 
   // Preload pdf-lib when entering a tool page (skip for tools that don't need it)
   useEffect(() => {
-    if (view !== "home" && !NO_PDF_LIB_PRELOAD_TOOLS.includes(view)) getPdfLib();
+    if (view !== "home" && !hasNoPdfLibPreload(view)) getPdfLib();
   }, [view]);
 
   // Focus the primary input when switching tools/modes for better keyboard flow
@@ -2189,7 +2193,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setMessage(nextMessage);
     setConfirmDelete(false);
     clearResults();
-    if (!NO_PAGE_INFO_TOOLS.includes(view)) loadPageInfo(validFiles);
+    if (!hasNoPageInfo(view)) loadPageInfo(validFiles);
     // Large file warning
     const totalSize = validFiles.reduce((sum, f) => sum + f.size, 0);
     if (totalSize > 50 * 1024 * 1024) {
@@ -2244,7 +2248,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     setResultName("");
     clearResults();
     // Pre-warm pdf-lib on first use — skip for pure image tools that don't need it
-    if (!_pdfLib && !NO_PDF_LIB_PRELOAD_TOOLS.includes(tool)) {
+    if (!_pdfLib && !hasNoPdfLibPreload(tool)) {
       setMessage({ type: "warning", text: t.engineLoading });
       await getPdfLib();
       setMessage(null);
@@ -2267,16 +2271,16 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             setMessage({ type: "success", text: t.msgUnlocked });
             recordSuccess(file.name);
           } else {
-            // Batch unlock with progress
-            const results: { name: string; data: Uint8Array }[] = [];
-            for (const [idx, file] of files.entries()) {
-              setBatchProgress(Math.round((idx / files.length) * 100));
-              setMessage({ type: "warning", text: `${t.msgBatchProcess} ${idx + 1}/${files.length}...` });
-              const buf = await file.arrayBuffer();
-              const data = await unlockPDF(buf);
-              results.push({ name: replaceExtension(file.name, "_unlocked.pdf"), data });
-            }
-            setBatchProgress(100);
+            const results = await processFileBatch(
+              files,
+              async (file, idx) => {
+                setMessage({ type: "warning", text: `${t.msgBatchProcess} ${idx + 1}/${files.length}...` });
+                const buf = await file.arrayBuffer();
+                const data = await unlockPDF(buf);
+                return { name: replaceExtension(file.name, "_unlocked.pdf"), data };
+              },
+              setBatchProgress
+            );
             setResultMulti(results);
             setMessage({ type: "success", text: `${files.length}${t.msgBatchUnlocked}` });
             recordSuccess(`${files.length} files`);
@@ -2416,12 +2420,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgconvert": {
-          const results: { name: string; data: Uint8Array }[] = [];
-          for (const [fi, file] of files.entries()) {
-            setBatchProgress(Math.round((fi / files.length) * 100));
-            results.push(await convertImageFormat(file, imgOutputFormat));
-          }
-          setBatchProgress(100);
+          const results = await processFileBatch(
+            files,
+            (file) => convertImageFormat(file, imgOutputFormat),
+            setBatchProgress
+          );
           if (results.length === 1) {
             const result = results[0];
             if (!result) break;
@@ -2446,13 +2449,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgresize": {
-          const results: { name: string; data: Uint8Array }[] = [];
-          for (const [fi, file] of files.entries()) {
-            setBatchProgress(Math.round((fi / files.length) * 100));
-            const r = await resizeImage(file, imgScale);
-            results.push({ name: r.name, data: r.data });
-          }
-          setBatchProgress(100);
+          const results = await processFileBatch(
+            files,
+            async (file) => {
+              const r = await resizeImage(file, imgScale);
+              return { name: r.name, data: r.data };
+            },
+            setBatchProgress
+          );
           if (results.length === 1) {
             const result = results[0];
             if (!result) break;
@@ -2466,16 +2470,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
           break;
         }
         case "imgcompress": {
-          const results: { name: string; data: Uint8Array }[] = [];
           let totalBefore = 0, totalAfter = 0;
-          for (const [fi, file] of files.entries()) {
-            setBatchProgress(Math.round((fi / files.length) * 100));
-            const r = await compressImage(file, imgQuality);
-            results.push({ name: r.name, data: r.data });
-            totalBefore += r.before;
-            totalAfter += r.after;
-          }
-          setBatchProgress(100);
+          const results = await processFileBatch(
+            files,
+            async (file) => {
+              const r = await compressImage(file, imgQuality);
+              totalBefore += r.before;
+              totalAfter += r.after;
+              return { name: r.name, data: r.data };
+            },
+            setBatchProgress
+          );
           if (results.length === 1) {
             const result = results[0];
             if (!result) break;
@@ -2533,16 +2538,11 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       }
       if (completed) setProcessCount((c) => c + 1);
     } catch (err: unknown) {
-      let errMsg = t.msgError;
-      if (err instanceof Error) {
-        if (err.message.includes("encrypt") || err.message.includes("password")) {
-          errMsg = t.msgPassword;
-        } else if (err.message.includes("invalid") || err.message.includes("Failed to parse")) {
-          errMsg = t.msgCorrupt;
-        } else {
-          errMsg = err.message;
-        }
-      }
+      const errMsg = classifyExecutionError(err, {
+        msgError: t.msgError,
+        msgPassword: t.msgPassword,
+        msgCorrupt: t.msgCorrupt,
+      });
       setMessage({ type: "error", text: errMsg });
       if (tool === "txt2pdf") {
         addHistory(toolLabel, "text input", false, tool);
