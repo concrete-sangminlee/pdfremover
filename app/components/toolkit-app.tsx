@@ -23,6 +23,15 @@ import {
   processFileBatchWithErrors,
 } from "../lib/operation-utils";
 import {
+  createBatchHistoryStats,
+  getBatchFailureDetails,
+  getRetryableBatchRunItems,
+  type BatchFailureInfo,
+  type BatchHistoryStats,
+  type BatchRunItem,
+  type BatchSummaryResult,
+} from "../lib/batch-results";
+import {
   analyzePageRangeInputForSplit,
   formatPageRanges,
   countPagesInRanges,
@@ -68,24 +77,6 @@ interface PdfInfo {
   encrypted: boolean;
   size: number;
 }
-
-interface BatchFailureInfo {
-  index: number;
-  fileName: string;
-  reason: string;
-  details?: string;
-}
-
-interface BatchRunItem {
-  file: File;
-  sourceIndex: number;
-}
-
-type BatchSummaryResult<T> = {
-  values: T[];
-  failures: BatchFailureInfo[];
-  aborted: boolean;
-};
 
 const getPageInfoKey = (file: File): string => `${file.name}|${file.size}|${file.lastModified}`;
 
@@ -2103,47 +2094,17 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
       file: string,
       ok: boolean,
       toolId: Tool,
-      stats?: {
-        totalFiles?: number;
-        successFiles?: number;
-        failedFiles?: number;
-      }
+      stats?: BatchHistoryStats
     ) => {
       setHistory((prev) => [{ time: fmtTime(), action, file, ok, toolId, ...stats }, ...prev].slice(0, 30));
     },
     []
   );
 
-  const getFailureDetails = useCallback((error: unknown): string | undefined => {
-    if (error == null) return undefined;
-    if (error instanceof Error) {
-      const message = error.message?.trim();
-      const stack = error.stack?.trim();
-      if (!message) return undefined;
-      if (!stack || stack.includes(message)) return message;
-      return `${message}\n${stack}`;
-    }
-    if (typeof error === "string") {
-      const text = error.trim();
-      return text || undefined;
-    }
-    if (typeof error === "object" && "message" in error) {
-      const message = typeof (error as { message?: unknown }).message === "string" ? (error as { message?: string }).message : "";
-      if (message) return message.trim();
-    }
-    try {
-      const asJson = JSON.stringify(error);
-      return asJson || undefined;
-    } catch {
-      return undefined;
-    }
-  }, []);
-
-  const retryableFailures = useMemo(() => {
-    if (batchFailures.length === 0 || lastBatchRunItems.length === 0) return [] as BatchRunItem[];
-    const retryIndices = new Set<number>(batchFailures.map((failure) => failure.index));
-    return lastBatchRunItems.filter((item) => retryIndices.has(item.sourceIndex));
-  }, [batchFailures, lastBatchRunItems]);
+  const retryableFailures = useMemo(
+    () => getRetryableBatchRunItems(batchFailures, lastBatchRunItems),
+    [batchFailures, lastBatchRunItems]
+  );
 
   const clearExpandedFailureDetails = useCallback(() => {
     setExpandedFailureDetails(new Set());
@@ -2425,15 +2386,14 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         });
       };
       const recordBatchHistory = (result: BatchSummaryResult<unknown>) => {
-        const successFiles = result.values.length;
-        const failedFiles = result.failures.length;
+        const stats = createBatchHistoryStats(result, runTotal);
         if (result.values.length + result.failures.length === 0) return;
         addHistory(
           toolLabel,
           `${runTotal} files`,
-          !result.aborted && failedFiles === 0,
+          !result.aborted && stats.failedFiles === 0,
           activeTool.id,
-          { totalFiles: runTotal, successFiles, failedFiles }
+          stats
         );
       };
       const runBatch = async <T,>(processFile: (file: File, sourceIndex: number) => Promise<T>) => {
@@ -2457,11 +2417,12 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             onFailure: (failure) => {
               const runItem = runItems[failure.index];
               const sourceIndex = runItem?.sourceIndex ?? failure.index;
+              const details = getBatchFailureDetails(failure.error);
               failures.push({
                 index: sourceIndex,
                 fileName: runItem?.file.name || failure.fileName,
                 reason: classifyBatchError(failure.error),
-                details: getFailureDetails(failure.error),
+                ...(details ? { details } : {}),
               });
             },
           }
@@ -2771,7 +2732,6 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
     addHistory,
     activeTool,
     clearResults,
-    getFailureDetails,
     confirmDelete,
     deleteInput,
     files,
