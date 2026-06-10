@@ -3,10 +3,21 @@ import { TOOL_BY_ID, TOOLS, VALID_TOOLS } from "../lib/config";
 import { RELATED_TOOLS, T } from "./toolkit-app";
 
 const LANGS = ["ko", "en"] as const;
+const PLACEHOLDER_PATTERN = /\{[A-Za-z0-9_]+\}/g;
+
+function placeholders(value: string): string[] {
+  return [...new Set(value.match(PLACEHOLDER_PATTERN) || [])].sort();
+}
 
 describe("toolkit translations", () => {
   it("keeps Korean and English dictionaries aligned", () => {
     expect(Object.keys(T.ko).sort()).toEqual(Object.keys(T.en).sort());
+  });
+
+  it("keeps dynamic placeholders aligned across languages", () => {
+    for (const key of Object.keys(T.ko) as Array<keyof typeof T.ko>) {
+      expect(placeholders(T.ko[key]), key).toEqual(placeholders(T.en[key]));
+    }
   });
 
   it("has labels and descriptions for every registered tool", () => {
