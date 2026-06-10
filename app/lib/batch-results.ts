@@ -16,6 +16,12 @@ export interface BatchRunItem {
   sourceIndex: number;
 }
 
+export interface BatchFailureInput {
+  index: number;
+  fileName: string;
+  error: unknown;
+}
+
 export type BatchSummaryResult<T> = {
   values: T[];
   failures: BatchFailureInfo[];
@@ -67,15 +73,42 @@ export function createBatchHistoryStats<T>(
   };
 }
 
-export function formatBatchFailureReport(failures: readonly BatchFailureInfo[]): string {
+export function createBatchFailureInfo(
+  failure: BatchFailureInput,
+  classifyError: (error: unknown) => string,
+  runItem?: BatchRunItem
+): BatchFailureInfo {
+  const details = getBatchFailureDetails(failure.error);
+  return {
+    index: runItem?.sourceIndex ?? failure.index,
+    fileName: runItem?.file.name || failure.fileName,
+    reason: classifyError(failure.error),
+    ...(details ? { details } : {}),
+  };
+}
+
+export interface BatchFailureReportLabels {
+  reason: string;
+  details: string;
+}
+
+const DEFAULT_FAILURE_REPORT_LABELS: BatchFailureReportLabels = {
+  reason: "Reason",
+  details: "Details",
+};
+
+export function formatBatchFailureReport(
+  failures: readonly BatchFailureInfo[],
+  labels: BatchFailureReportLabels = DEFAULT_FAILURE_REPORT_LABELS
+): string {
   return failures
     .map((failure, index) => {
       const lines = [
         `${index + 1}. ${failure.fileName}`,
-        `Reason: ${failure.reason}`,
+        `${labels.reason}: ${failure.reason}`,
       ];
       if (failure.details) {
-        lines.push(`Details:\n${failure.details}`);
+        lines.push(`${labels.details}:\n${failure.details}`);
       }
       return lines.join("\n");
     })

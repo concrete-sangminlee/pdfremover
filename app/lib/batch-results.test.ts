@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createBatchFailureInfo,
   createBatchHistoryStats,
   formatBatchFailureReport,
   getBatchFailureDetails,
@@ -71,6 +72,35 @@ describe("createBatchHistoryStats", () => {
   });
 });
 
+describe("createBatchFailureInfo", () => {
+  it("maps raw failures to source-indexed user-facing failures", () => {
+    const file = new File(["x"], "source.pdf");
+    const failure = createBatchFailureInfo(
+      { index: 0, fileName: "internal.pdf", error: new Error("raw failure") },
+      (error) => error instanceof Error ? `classified: ${error.message}` : "classified",
+      { file, sourceIndex: 9 }
+    );
+
+    expect(failure).toEqual({
+      index: 9,
+      fileName: "source.pdf",
+      reason: "classified: raw failure",
+      details: "raw failure",
+    });
+  });
+
+  it("falls back to raw failure index and file name", () => {
+    expect(createBatchFailureInfo(
+      { index: 2, fileName: "fallback.pdf", error: "" },
+      () => "classified"
+    )).toEqual({
+      index: 2,
+      fileName: "fallback.pdf",
+      reason: "classified",
+    });
+  });
+});
+
 describe("formatBatchFailureReport", () => {
   it("formats a copyable failure report", () => {
     expect(formatBatchFailureReport([
@@ -89,5 +119,16 @@ describe("formatBatchFailureReport", () => {
 
   it("returns an empty report for empty failures", () => {
     expect(formatBatchFailureReport([])).toBe("");
+  });
+
+  it("uses localized report labels", () => {
+    expect(formatBatchFailureReport([
+      { index: 3, fileName: "broken.pdf", reason: "Password required", details: "Encrypted" },
+    ], { reason: "사유", details: "상세" })).toBe([
+      "1. broken.pdf",
+      "사유: Password required",
+      "상세:",
+      "Encrypted",
+    ].join("\n"));
   });
 });

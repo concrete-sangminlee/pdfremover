@@ -23,9 +23,9 @@ import {
   processFileBatchWithErrors,
 } from "../lib/operation-utils";
 import {
+  createBatchFailureInfo,
   createBatchHistoryStats,
   formatBatchFailureReport,
-  getBatchFailureDetails,
   getRetryableBatchRunItems,
   type BatchFailureInfo,
   type BatchHistoryStats,
@@ -331,6 +331,8 @@ const _koTranslations = {
     msgBatchFailedTitle: "실패 파일",
     retryFailed: "실패 파일만 재시도",
     copyFailureReport: "실패 리포트 복사",
+    failureReportReason: "사유",
+    failureReportDetails: "상세",
     showDetails: "상세 내용 보기",
     hideDetails: "상세 내용 숨기기",
     historyFiles: "개 파일",
@@ -613,6 +615,8 @@ const enTranslations: TranslationBundle = {
     msgBatchFailedTitle: "Failed files",
     retryFailed: "Retry failed files",
     copyFailureReport: "Copy failure report",
+    failureReportReason: "Reason",
+    failureReportDetails: "Details",
     showDetails: "Show details",
     hideDetails: "Hide details",
     historyFiles: "files",
@@ -2419,14 +2423,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
             signal,
             onFailure: (failure) => {
               const runItem = runItems[failure.index];
-              const sourceIndex = runItem?.sourceIndex ?? failure.index;
-              const details = getBatchFailureDetails(failure.error);
-              failures.push({
-                index: sourceIndex,
-                fileName: runItem?.file.name || failure.fileName,
-                reason: classifyBatchError(failure.error),
-                ...(details ? { details } : {}),
-              });
+              failures.push(createBatchFailureInfo(failure, classifyBatchError, runItem));
             },
           }
         );
@@ -3764,7 +3761,10 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={async () => {
-                        const ok = await copyToClipboard(formatBatchFailureReport(batchFailures));
+                        const ok = await copyToClipboard(formatBatchFailureReport(batchFailures, {
+                          reason: t.failureReportReason,
+                          details: t.failureReportDetails,
+                        }));
                         setMessage(ok ? { type: "success", text: t.copied } : { type: "error", text: t.msgError });
                       }}
                       className="text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-950 dark:hover:bg-amber-900/70 dark:text-amber-300 transition-colors"
