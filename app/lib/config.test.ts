@@ -35,6 +35,12 @@ describe("tool config", () => {
     }
   });
 
+  it("marks image input tools with the image category", () => {
+    for (const tool of IMAGE_INPUT_TOOLS) {
+      expect(TOOL_BY_ID[tool].category, tool).toBe("image");
+    }
+  });
+
   it("validates tool ids and image-tool view detection", () => {
     expect(isValidTool("split")).toBe(true);
     expect(isValidTool("missing-tool")).toBe(false);

@@ -2411,7 +2411,7 @@ export default function ToolkitApp({ initialTool = "home" }: { initialTool?: Vie
         if (result.values.length + result.failures.length === 0) return;
         addHistory(
           toolLabel,
-          historyFileLabel(runTotal),
+          activeTool.category === "image" ? historyImageLabel(runTotal) : historyFileLabel(runTotal),
           !result.aborted && stats.failedFiles === 0,
           activeTool.id,
           stats
